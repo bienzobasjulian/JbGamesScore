@@ -10,6 +10,8 @@ import {
   GameSettings,
   Match,
   Player,
+  RoundBreakdown,
+  RoundScores,
   SavedPlayer,
   ScoringMode,
 } from '../types';
@@ -31,13 +33,31 @@ import {
   RECENT_PLAYERS_HOME_LIMIT,
 } from '../constants';
 import { sumBreakdownItems } from '../utils/scoring';
+import {
+  emptyRoundBreakdown,
+  emptyRoundScores,
+  normalizeMatchRounds,
+  truncateLaterRounds,
+} from '../utils/rounds';
 
-function emptyBreakdownForPlayers(playerIds: string[]) {
-  const breakdown: Record<string, number[]> = {};
-  playerIds.forEach((id) => {
-    breakdown[id] = [];
-  });
-  return breakdown;
+function patchActiveRound(
+  match: Match,
+  patch: (
+    round: RoundScores,
+    breakdown: RoundBreakdown,
+  ) => { round: RoundScores; breakdown: RoundBreakdown },
+): Match {
+  const m = normalizeMatchRounds(match);
+  const idx = m.activeRoundIndex;
+  const rounds = [...m.rounds];
+  const roundBreakdowns = [...m.roundBreakdowns];
+  const result = patch(
+    { ...rounds[idx] },
+    { ...(roundBreakdowns[idx] ?? emptyRoundBreakdown()) },
+  );
+  rounds[idx] = result.round;
+  roundBreakdowns[idx] = result.breakdown;
+  return { ...m, rounds, roundBreakdowns };
 }
 
 function touchPlayer(
@@ -205,23 +225,72 @@ export function useApp() {
     [],
   );
 
-  const adjustRoundScore = useCallback(
-    (matchId: string, playerId: string, delta: number) => {
+  const goToRound = useCallback(
+    (matchId: string, roundIndex: number) => {
+      updateMatch(matchId, (match) => {
+        const m = normalizeMatchRounds(match);
+        if (roundIndex < 0 || roundIndex >= m.rounds.length) return m;
+        const maxRounds = m.settings.maxRounds;
+        if (
+          maxRounds != null &&
+          roundIndex > m.activeRoundIndex + 1
+        ) {
+          return m;
+        }
+        return { ...m, activeRoundIndex: roundIndex };
+      });
+    },
+    [updateMatch],
+  );
+
+  const addNextRound = useCallback(
+    (matchId: string) => {
       updateMatch(matchId, (match) => {
         const state = matchToGameState(match);
         if (checkGameOver(state).isOver) return match;
-        const nextBreakdown = { ...match.currentRoundBreakdown };
-        delete nextBreakdown[playerId];
+        const m = normalizeMatchRounds(match);
+        if (m.settings.maxRounds != null) {
+          if (m.activeRoundIndex < m.rounds.length - 1) {
+            return { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+          }
+          return m;
+        }
+        if (m.activeRoundIndex < m.rounds.length - 1) {
+          return { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+        }
         return {
-          ...match,
+          ...m,
+          rounds: [...m.rounds, emptyRoundScores(m.players)],
+          roundBreakdowns: [...m.roundBreakdowns, emptyRoundBreakdown()],
+          activeRoundIndex: m.rounds.length,
+        };
+      });
+    },
+    [updateMatch],
+  );
+
+  const adjustRoundScore = useCallback(
+    (matchId: string, playerId: string, delta: number, truncateLater = false) => {
+      updateMatch(matchId, (match) => {
+        const state = matchToGameState(match);
+        if (checkGameOver(state).isOver) return match;
+        let m = normalizeMatchRounds(match);
+        if (truncateLater) m = truncateLaterRounds(m);
+        return {
+          ...patchActiveRound(m, (round, breakdown) => {
+            const nextBreakdown = { ...breakdown };
+            delete nextBreakdown[playerId];
+            return {
+              round: {
+                ...round,
+                [playerId]: (round[playerId] ?? 0) + delta,
+              },
+              breakdown: nextBreakdown,
+            };
+          }),
           roundScoringMode: {
-            ...match.roundScoringMode,
+            ...m.roundScoringMode,
             [playerId]: 'direct',
-          },
-          currentRoundBreakdown: nextBreakdown,
-          currentRound: {
-            ...match.currentRound,
-            [playerId]: (match.currentRound[playerId] ?? 0) + delta,
           },
         };
       });
@@ -230,22 +299,24 @@ export function useApp() {
   );
 
   const setRoundScore = useCallback(
-    (matchId: string, playerId: string, value: number) => {
+    (matchId: string, playerId: string, value: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
         const state = matchToGameState(match);
         if (checkGameOver(state).isOver) return match;
-        const nextBreakdown = { ...match.currentRoundBreakdown };
-        delete nextBreakdown[playerId];
+        let m = normalizeMatchRounds(match);
+        if (truncateLater) m = truncateLaterRounds(m);
         return {
-          ...match,
+          ...patchActiveRound(m, (round, breakdown) => {
+            const nextBreakdown = { ...breakdown };
+            delete nextBreakdown[playerId];
+            return {
+              round: { ...round, [playerId]: value },
+              breakdown: nextBreakdown,
+            };
+          }),
           roundScoringMode: {
-            ...match.roundScoringMode,
+            ...m.roundScoringMode,
             [playerId]: 'direct',
-          },
-          currentRoundBreakdown: nextBreakdown,
-          currentRound: {
-            ...match.currentRound,
-            [playerId]: value,
           },
         };
       });
@@ -254,43 +325,43 @@ export function useApp() {
   );
 
   const setRoundScoringMode = useCallback(
-    (matchId: string, playerId: string, mode: ScoringMode) => {
+    (matchId: string, playerId: string, mode: ScoringMode, truncateLater = false) => {
       updateMatch(matchId, (match) => {
         const state = matchToGameState(match);
         if (checkGameOver(state).isOver) return match;
+        let m = normalizeMatchRounds(match);
+        if (truncateLater) m = truncateLaterRounds(m);
 
         if (mode === 'breakdown') {
-          const existing = match.currentRoundBreakdown[playerId] ?? [];
-          const score = match.currentRound[playerId] ?? 0;
-          const items =
-            existing.length > 0 ? existing : score !== 0 ? [score] : [];
-          const total = sumBreakdownItems(items);
           return {
-            ...match,
+            ...patchActiveRound(m, (round, breakdown) => {
+              const existing = breakdown[playerId] ?? [];
+              const score = round[playerId] ?? 0;
+              const items =
+                existing.length > 0 ? existing : score !== 0 ? [score] : [];
+              const total = sumBreakdownItems(items);
+              return {
+                round: { ...round, [playerId]: total },
+                breakdown: { ...breakdown, [playerId]: items },
+              };
+            }),
             roundScoringMode: {
-              ...match.roundScoringMode,
+              ...m.roundScoringMode,
               [playerId]: 'breakdown',
-            },
-            currentRoundBreakdown: {
-              ...match.currentRoundBreakdown,
-              [playerId]: items,
-            },
-            currentRound: {
-              ...match.currentRound,
-              [playerId]: total,
             },
           };
         }
 
-        const nextBreakdown = { ...match.currentRoundBreakdown };
-        delete nextBreakdown[playerId];
         return {
-          ...match,
+          ...patchActiveRound(m, (round, breakdown) => {
+            const nextBreakdown = { ...breakdown };
+            delete nextBreakdown[playerId];
+            return { round, breakdown: nextBreakdown };
+          }),
           roundScoringMode: {
-            ...match.roundScoringMode,
+            ...m.roundScoringMode,
             [playerId]: 'direct',
           },
-          currentRoundBreakdown: nextBreakdown,
         };
       });
     },
@@ -298,25 +369,24 @@ export function useApp() {
   );
 
   const addBreakdownItem = useCallback(
-    (matchId: string, playerId: string, value: number) => {
+    (matchId: string, playerId: string, value: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
         const state = matchToGameState(match);
         if (checkGameOver(state).isOver) return match;
-        const items = [...(match.currentRoundBreakdown[playerId] ?? []), value];
-        const total = sumBreakdownItems(items);
+        let m = normalizeMatchRounds(match);
+        if (truncateLater) m = truncateLaterRounds(m);
         return {
-          ...match,
+          ...patchActiveRound(m, (round, breakdown) => {
+            const items = [...(breakdown[playerId] ?? []), value];
+            const total = sumBreakdownItems(items);
+            return {
+              round: { ...round, [playerId]: total },
+              breakdown: { ...breakdown, [playerId]: items },
+            };
+          }),
           roundScoringMode: {
-            ...match.roundScoringMode,
+            ...m.roundScoringMode,
             [playerId]: 'breakdown',
-          },
-          currentRoundBreakdown: {
-            ...match.currentRoundBreakdown,
-            [playerId]: items,
-          },
-          currentRound: {
-            ...match.currentRound,
-            [playerId]: total,
           },
         };
       });
@@ -325,77 +395,26 @@ export function useApp() {
   );
 
   const removeBreakdownItem = useCallback(
-    (matchId: string, playerId: string, index: number) => {
+    (matchId: string, playerId: string, index: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
         const state = matchToGameState(match);
         if (checkGameOver(state).isOver) return match;
-        const items = [...(match.currentRoundBreakdown[playerId] ?? [])];
-        items.splice(index, 1);
-        const total = sumBreakdownItems(items);
+        let m = normalizeMatchRounds(match);
+        if (truncateLater) m = truncateLaterRounds(m);
         return {
-          ...match,
-          currentRoundBreakdown: {
-            ...match.currentRoundBreakdown,
-            [playerId]: items,
+          ...patchActiveRound(m, (round, breakdown) => {
+            const items = [...(breakdown[playerId] ?? [])];
+            items.splice(index, 1);
+            const total = sumBreakdownItems(items);
+            return {
+              round: { ...round, [playerId]: total },
+              breakdown: { ...breakdown, [playerId]: items },
+            };
+          }),
+          roundScoringMode: {
+            ...m.roundScoringMode,
+            [playerId]: 'breakdown',
           },
-          currentRound: {
-            ...match.currentRound,
-            [playerId]: total,
-          },
-        };
-      });
-    },
-    [updateMatch],
-  );
-
-  const finishRound = useCallback(
-    (matchId: string) => {
-      updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
-        const snapshot = { ...match.currentRound };
-        const breakdownSnapshot = { ...match.currentRoundBreakdown };
-        const currentRound: Record<string, number> = {};
-        match.players.forEach((p) => {
-          currentRound[p.id] = 0;
-        });
-        const next: Match = {
-          ...match,
-          completedRounds: [...match.completedRounds, snapshot],
-          completedRoundBreakdowns: [
-            ...match.completedRoundBreakdowns,
-            breakdownSnapshot,
-          ],
-          currentRound,
-          currentRoundBreakdown: emptyBreakdownForPlayers(
-            match.players.map((p) => p.id),
-          ),
-        };
-        const over = checkGameOver(matchToGameState(next));
-        if (over.isOver) {
-          return { ...next, status: 'finished' as const };
-        }
-        return next;
-      });
-    },
-    [updateMatch],
-  );
-
-  const undoLastRound = useCallback(
-    (matchId: string) => {
-      updateMatch(matchId, (match) => {
-        if (match.completedRounds.length === 0) return match;
-        const completed = [...match.completedRounds];
-        const completedBreakdowns = [...match.completedRoundBreakdowns];
-        const lastRound = completed.pop()!;
-        const lastBreakdown = completedBreakdowns.pop() ?? {};
-        return {
-          ...match,
-          completedRounds: completed,
-          completedRoundBreakdowns: completedBreakdowns,
-          currentRound: lastRound,
-          currentRoundBreakdown: lastBreakdown,
-          status: 'in_progress',
         };
       });
     },
@@ -414,37 +433,10 @@ export function useApp() {
 
   const finishMatch = useCallback(
     (matchId: string) => {
-      updateMatch(matchId, (match) => {
-        const hasRoundActivity = match.players.some(
-          (p) => (match.currentRound[p.id] ?? 0) !== 0,
-        );
-        let completedRounds = match.completedRounds;
-        let currentRound = match.currentRound;
-        let completedRoundBreakdowns = match.completedRoundBreakdowns;
-        let currentRoundBreakdown = match.currentRoundBreakdown;
-        if (hasRoundActivity) {
-          completedRounds = [...match.completedRounds, { ...match.currentRound }];
-          completedRoundBreakdowns = [
-            ...match.completedRoundBreakdowns,
-            { ...match.currentRoundBreakdown },
-          ];
-          currentRound = {};
-          currentRoundBreakdown = emptyBreakdownForPlayers(
-            match.players.map((p) => p.id),
-          );
-          match.players.forEach((p) => {
-            currentRound[p.id] = 0;
-          });
-        }
-        return {
-          ...match,
-          status: 'finished',
-          completedRounds,
-          completedRoundBreakdowns,
-          currentRound,
-          currentRoundBreakdown,
-        };
-      });
+      updateMatch(matchId, (match) => ({
+        ...normalizeMatchRounds(match),
+        status: 'finished',
+      }));
     },
     [updateMatch],
   );
@@ -535,13 +527,13 @@ export function useApp() {
     createAndStartMatch,
     deleteMatch,
     getMatch,
+    goToRound,
+    addNextRound,
     adjustRoundScore,
     setRoundScore,
     setRoundScoringMode,
     addBreakdownItem,
     removeBreakdownItem,
-    finishRound,
-    undoLastRound,
     markMatchFinished,
     finishMatch,
     resumeMatch,

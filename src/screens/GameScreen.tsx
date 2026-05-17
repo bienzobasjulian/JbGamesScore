@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   ScrollView,
@@ -12,12 +12,15 @@ import { FinishMatchModal } from '../components/FinishMatchModal';
 import { MatchRanking } from '../components/MatchRanking';
 import { PlayerCard } from '../components/PlayerCard';
 import { RoundHistory } from '../components/RoundHistory';
+import { RoundPagination } from '../components/RoundPagination';
+import { TruncateRoundsModal } from '../components/TruncateRoundsModal';
 import { theme } from '../constants';
 import { GameState, ScoringMode } from '../types';
 import {
   checkGameOver,
   formatPointsGoal,
   formatRoundProgress,
+  getActiveRoundScores,
   getPlayerTotal,
   getRoundScore,
   sortPlayersByScore,
@@ -28,17 +31,31 @@ import {
   getPlayerScoringMode,
 } from '../utils/scoring';
 
+type ScoreMutation = (truncateLater: boolean) => void;
+
 type Props = {
   state: GameState;
   matchTitle?: string;
   isMatchFinished?: boolean;
-  onAdjust: (playerId: string, delta: number) => void;
-  onSetScore: (playerId: string, value: number) => void;
-  onScoringModeChange: (playerId: string, mode: ScoringMode) => void;
-  onAddBreakdownItem: (playerId: string, value: number) => void;
-  onRemoveBreakdownItem: (playerId: string, index: number) => void;
-  onFinishRound: () => void;
-  onUndoRound: () => void;
+  onAdjust: (playerId: string, delta: number, truncateLater?: boolean) => void;
+  onSetScore: (playerId: string, value: number, truncateLater?: boolean) => void;
+  onScoringModeChange: (
+    playerId: string,
+    mode: ScoringMode,
+    truncateLater?: boolean,
+  ) => void;
+  onAddBreakdownItem: (
+    playerId: string,
+    value: number,
+    truncateLater?: boolean,
+  ) => void;
+  onRemoveBreakdownItem: (
+    playerId: string,
+    index: number,
+    truncateLater?: boolean,
+  ) => void;
+  onGoToRound: (roundIndex: number) => void;
+  onAddRound: () => void;
   onBack: () => void;
   onFinishMatch: () => void;
   onResumeMatch: () => void;
@@ -55,8 +72,8 @@ export function GameScreen({
   onScoringModeChange,
   onAddBreakdownItem,
   onRemoveBreakdownItem,
-  onFinishRound,
-  onUndoRound,
+  onGoToRound,
+  onAddRound,
   onBack,
   onFinishMatch,
   onResumeMatch,
@@ -64,25 +81,68 @@ export function GameScreen({
   onDeleteMatch,
 }: Props) {
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const [viewingResults, setViewingResults] = useState(isMatchFinished);
+
+  useEffect(() => {
+    if (isMatchFinished) {
+      setViewingResults(true);
+    }
+  }, [isMatchFinished]);
+  const [truncatePrompt, setTruncatePrompt] = useState<{
+    roundNumber: number;
+    removedCount: number;
+    pending: ScoreMutation;
+  } | null>(null);
 
   const gameOver = checkGameOver(state);
-  const showResults = gameOver.isOver || isMatchFinished;
+  const showResults = gameOver.isOver || isMatchFinished || viewingResults;
+
+  const pastRounds =
+    state.activeRoundIndex > 0
+      ? state.rounds.slice(0, state.activeRoundIndex)
+      : [];
+  const activeRound = getActiveRoundScores(state);
+  const activeBreakdown =
+    state.roundBreakdowns[state.activeRoundIndex] ?? {};
+  const hasLaterRounds =
+    state.activeRoundIndex < state.rounds.length - 1;
+
   const ranking = useMemo(
     () => getMatchRankingFromState(state),
-    [state.players, state.completedRounds, state.currentRound],
+    [state.players, state.rounds, state.activeRoundIndex],
   );
 
   const rankedPlayers = sortPlayersByScore(state.players, state);
   const leader = rankedPlayers[0];
   const leaderTotal = leader ? getPlayerTotal(leader.id, state) : 0;
   const pointsGoal = formatPointsGoal(state);
-  const isLastRound =
-    state.settings.maxRounds != null &&
-    state.completedRounds.length + 1 >= state.settings.maxRounds;
 
   const handleSaveFinished = () => {
     setFinishModalVisible(false);
+    setViewingResults(true);
     onFinishMatch();
+  };
+
+  const handleResumeMatch = () => {
+    setViewingResults(false);
+    onResumeMatch();
+  };
+
+  const withTruncateGuard = (mutation: ScoreMutation) => {
+    if (hasLaterRounds) {
+      setTruncatePrompt({
+        roundNumber: state.activeRoundIndex + 1,
+        removedCount: state.rounds.length - state.activeRoundIndex - 1,
+        pending: mutation,
+      });
+      return;
+    }
+    mutation(false);
+  };
+
+  const confirmTruncate = () => {
+    truncatePrompt?.pending(true);
+    setTruncatePrompt(null);
   };
 
   return (
@@ -123,11 +183,8 @@ export function GameScreen({
             keyboardShouldPersistTaps="handled"
           >
             <MatchRanking ranking={ranking} />
-            {state.completedRounds.length > 0 && (
-              <RoundHistory
-                players={state.players}
-                rounds={state.completedRounds}
-              />
+            {state.rounds.length > 0 && (
+              <RoundHistory players={state.players} rounds={state.rounds} />
             )}
           </ScrollView>
         ) : (
@@ -138,11 +195,11 @@ export function GameScreen({
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={
-              state.completedRounds.length > 0 ? (
+              pastRounds.length > 0 ? (
                 <View style={styles.listHeader}>
                   <RoundHistory
                     players={state.players}
-                    rounds={state.completedRounds}
+                    rounds={pastRounds}
                   />
                 </View>
               ) : null
@@ -151,26 +208,36 @@ export function GameScreen({
               <PlayerCard
                 player={item}
                 total={getPlayerTotal(item.id, state)}
-                roundScore={getRoundScore(state.currentRound, item.id)}
+                roundScore={getRoundScore(activeRound, item.id)}
                 breakdownItems={getPlayerBreakdownItems(
-                  state.currentRoundBreakdown,
+                  activeBreakdown,
                   item.id,
                 )}
                 scoringMode={getPlayerScoringMode(
                   state.roundScoringMode,
                   item.id,
-                  state.currentRoundBreakdown[item.id],
+                  activeBreakdown[item.id],
                 )}
-                onAdjust={(delta) => onAdjust(item.id, delta)}
-                onSetScore={(value) => onSetScore(item.id, value)}
+                onAdjust={(delta) =>
+                  withTruncateGuard((t) => onAdjust(item.id, delta, t))
+                }
+                onSetScore={(value) =>
+                  withTruncateGuard((t) => onSetScore(item.id, value, t))
+                }
                 onScoringModeChange={(mode) =>
-                  onScoringModeChange(item.id, mode)
+                  withTruncateGuard((t) =>
+                    onScoringModeChange(item.id, mode, t),
+                  )
                 }
                 onAddBreakdownItem={(value) =>
-                  onAddBreakdownItem(item.id, value)
+                  withTruncateGuard((t) =>
+                    onAddBreakdownItem(item.id, value, t),
+                  )
                 }
                 onRemoveBreakdownItem={(index) =>
-                  onRemoveBreakdownItem(item.id, index)
+                  withTruncateGuard((t) =>
+                    onRemoveBreakdownItem(item.id, index, t),
+                  )
                 }
               />
             )}
@@ -184,7 +251,7 @@ export function GameScreen({
             <Button label="Repetir partida" onPress={onRepeatMatch} />
             <Button
               label="Retomar partida"
-              onPress={onResumeMatch}
+              onPress={handleResumeMatch}
               variant="secondary"
             />
             <Button
@@ -195,21 +262,13 @@ export function GameScreen({
           </>
         ) : (
           <>
-            <Button
-              label={
-                isLastRound
-                  ? 'Finalizar última ronda'
-                  : `Finalizar ronda ${state.completedRounds.length + 1}`
-              }
-              onPress={onFinishRound}
+            <RoundPagination
+              roundCount={state.rounds.length}
+              activeIndex={state.activeRoundIndex}
+              maxRounds={state.settings.maxRounds}
+              onSelectRound={onGoToRound}
+              onAddRound={onAddRound}
             />
-            {state.completedRounds.length > 0 && (
-              <Button
-                label="Deshacer última ronda"
-                onPress={onUndoRound}
-                variant="secondary"
-              />
-            )}
             <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
           </>
         )}
@@ -224,6 +283,14 @@ export function GameScreen({
           onDelete={onDeleteMatch}
         />
       )}
+
+      <TruncateRoundsModal
+        visible={truncatePrompt != null}
+        roundNumber={truncatePrompt?.roundNumber ?? 1}
+        removedCount={truncatePrompt?.removedCount ?? 0}
+        onConfirm={confirmTruncate}
+        onCancel={() => setTruncatePrompt(null)}
+      />
     </View>
   );
 }
@@ -287,8 +354,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   listHeader: {
-    gap: 12,
-    marginBottom: 4,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
   },
   footer: {
     gap: 10,

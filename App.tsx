@@ -42,8 +42,8 @@ export default function App() {
     app.screen.type,
     app.screen.type === 'game' ? app.screen.matchId : null,
     activeMatch?.status,
-    activeMatch?.completedRounds,
-    activeMatch?.currentRound,
+    activeMatch?.rounds,
+    activeMatch?.activeRoundIndex,
   ]);
 
   useEffect(() => {
@@ -126,23 +126,25 @@ export default function App() {
             state={state}
             matchTitle={formatMatchTitle(match)}
             isMatchFinished={match.status === 'finished'}
-            onAdjust={(playerId, delta) =>
-              app.adjustRoundScore(match.id, playerId, delta)
+            onAddBreakdownItem={(playerId, value, truncateLater) =>
+              app.addBreakdownItem(match.id, playerId, value, truncateLater)
             }
-            onSetScore={(playerId, value) =>
-              app.setRoundScore(match.id, playerId, value)
+            onRemoveBreakdownItem={(playerId, index, truncateLater) =>
+              app.removeBreakdownItem(match.id, playerId, index, truncateLater)
             }
-            onScoringModeChange={(playerId, mode) =>
-              app.setRoundScoringMode(match.id, playerId, mode)
+            onGoToRound={(roundIndex) =>
+              app.goToRound(match.id, roundIndex)
             }
-            onAddBreakdownItem={(playerId, value) =>
-              app.addBreakdownItem(match.id, playerId, value)
+            onAddRound={() => app.addNextRound(match.id)}
+            onAdjust={(playerId, delta, truncateLater) =>
+              app.adjustRoundScore(match.id, playerId, delta, truncateLater)
             }
-            onRemoveBreakdownItem={(playerId, index) =>
-              app.removeBreakdownItem(match.id, playerId, index)
+            onSetScore={(playerId, value, truncateLater) =>
+              app.setRoundScore(match.id, playerId, value, truncateLater)
             }
-            onFinishRound={() => app.finishRound(match.id)}
-            onUndoRound={() => app.undoLastRound(match.id)}
+            onScoringModeChange={(playerId, mode, truncateLater) =>
+              app.setRoundScoringMode(match.id, playerId, mode, truncateLater)
+            }
             onBack={app.goHome}
             onFinishMatch={() => app.finishMatch(match.id)}
             onResumeMatch={() => app.resumeMatch(match.id)}

@@ -5,8 +5,8 @@ export function createId(): string {
 }
 
 export function getPlayerTotal(playerId: string, state: GameState): number {
-  let total = state.currentRound[playerId] ?? 0;
-  for (const round of state.completedRounds) {
+  let total = 0;
+  for (const round of state.rounds) {
     total += round[playerId] ?? 0;
   }
   return total;
@@ -17,6 +17,10 @@ export function getRoundScore(
   playerId: string,
 ): number {
   return round[playerId] ?? 0;
+}
+
+export function getActiveRoundScores(state: GameState): RoundScores {
+  return state.rounds[state.activeRoundIndex] ?? {};
 }
 
 export function sortPlayersByScore(players: Player[], state: GameState): Player[] {
@@ -47,9 +51,9 @@ export function normalizeSettings(
 export function initialGameState(): GameState {
   return {
     players: [],
-    completedRounds: [],
-    currentRound: {},
-    currentRoundBreakdown: {},
+    rounds: [],
+    roundBreakdowns: [],
+    activeRoundIndex: 0,
     roundScoringMode: {},
     isPlaying: false,
     settings: normalizeSettings(),
@@ -81,8 +85,11 @@ export function checkGameOver(state: GameState): GameOverResult {
   }
 
   if (state.settings.maxRounds != null) {
-    if (state.completedRounds.length >= state.settings.maxRounds) {
-      const topScore = sorted.length > 0 ? getPlayerTotal(sorted[0].id, state) : 0;
+    const onLastRound =
+      state.activeRoundIndex >= state.settings.maxRounds - 1;
+    if (onLastRound && state.rounds.length >= state.settings.maxRounds) {
+      const topScore =
+        sorted.length > 0 ? getPlayerTotal(sorted[0].id, state) : 0;
       const winners =
         sorted.length > 0
           ? sorted.filter((p) => getPlayerTotal(p.id, state) === topScore)
@@ -95,7 +102,7 @@ export function checkGameOver(state: GameState): GameOverResult {
 }
 
 export function getCurrentRoundNumber(state: GameState): number {
-  return state.completedRounds.length + 1;
+  return state.activeRoundIndex + 1;
 }
 
 export function formatRoundProgress(state: GameState): string {

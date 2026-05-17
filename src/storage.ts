@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants';
-import { AppData, GameState, Match, SavedPlayer } from './types';
-import { createId, initialGameState, normalizeSettings } from './utils/game';
-import { initialAppData, pickPlayerColor } from './utils/match';
+import { AppData, Match, SavedPlayer } from './types';
+import { createId, normalizeSettings } from './utils/game';
+import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
+import { normalizeMatchRounds } from './utils/rounds';
 
 function normalizeAppData(raw: Partial<AppData> | null): AppData {
   const base = initialAppData();
@@ -10,37 +11,21 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
   return {
     players: Array.isArray(raw.players) ? raw.players : [],
     matches: Array.isArray(raw.matches)
-      ? raw.matches.map((m) => ({
-          ...m,
-          name:
-            typeof m.name === 'string' && m.name.trim()
-              ? m.name.trim()
-              : null,
-          settings: normalizeSettings(m.settings),
-          players: m.players ?? [],
-          completedRounds: (() => {
-            const rounds = m.completedRounds ?? [];
-            const breakdowns = m.completedRoundBreakdowns ?? [];
-            while (breakdowns.length < rounds.length) {
-              breakdowns.push({});
-            }
-            return rounds;
-          })(),
-          completedRoundBreakdowns: (() => {
-            const rounds = m.completedRounds ?? [];
-            const breakdowns = m.completedRoundBreakdowns ?? [];
-            while (breakdowns.length < rounds.length) {
-              breakdowns.push({});
-            }
-            return breakdowns.slice(0, rounds.length);
-          })(),
-          currentRound: m.currentRound ?? {},
-          currentRoundBreakdown: m.currentRoundBreakdown ?? {},
-          roundScoringMode: m.roundScoringMode ?? {},
-          status: m.status === 'finished' ? 'finished' : 'in_progress',
-          createdAt: m.createdAt ?? Date.now(),
-          updatedAt: m.updatedAt ?? Date.now(),
-        }))
+      ? raw.matches.map((m) =>
+          normalizeMatchRounds({
+            ...m,
+            name:
+              typeof m.name === 'string' && m.name.trim()
+                ? m.name.trim()
+                : null,
+            settings: normalizeSettings(m.settings),
+            players: m.players ?? [],
+            roundScoringMode: m.roundScoringMode ?? {},
+            status: m.status === 'finished' ? 'finished' : 'in_progress',
+            createdAt: m.createdAt ?? Date.now(),
+            updatedAt: m.updatedAt ?? Date.now(),
+          } as Match),
+        )
       : [],
   };
 }
@@ -49,46 +34,44 @@ async function migrateLegacyGame(): Promise<AppData | null> {
   try {
     const raw = await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as GameState;
-    const base = initialGameState();
-    const state: GameState = {
-      ...base,
-      ...parsed,
-      settings: normalizeSettings({ ...base.settings, ...parsed.settings }),
+    const parsed = JSON.parse(raw) as {
+      players?: Match['players'];
+      settings?: Match['settings'];
+      isPlaying?: boolean;
+      completedRounds?: Match['completedRounds'];
+      currentRound?: Match['currentRound'];
     };
     await AsyncStorage.removeItem(LEGACY_STORAGE_KEY);
 
-    if (state.players.length === 0) return null;
+    if (!parsed.players?.length) return null;
 
     const now = Date.now();
-    const savedPlayers: SavedPlayer[] = state.players.map((p, i) => ({
+    const savedPlayers: SavedPlayer[] = parsed.players.map((p, i) => ({
       ...p,
       lastUsedAt: now - i,
     }));
 
-    const matches: Match[] = [];
-    if (state.isPlaying || state.completedRounds.length > 0) {
-      const currentRound = { ...state.currentRound };
-      state.players.forEach((p) => {
-        if (currentRound[p.id] === undefined) currentRound[p.id] = 0;
-      });
-      matches.push({
-        id: createId(),
-        name: null,
-        settings: state.settings,
-        players: state.players,
-        completedRounds: state.completedRounds,
-        completedRoundBreakdowns: [],
-        currentRound,
-        currentRoundBreakdown: {},
-        roundScoringMode: {},
-        status: state.isPlaying ? 'in_progress' : 'finished',
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
+    const legacyMatch: Match = {
+      id: createId(),
+      name: null,
+      settings: normalizeSettings(parsed.settings),
+      players: parsed.players,
+      rounds: [],
+      roundBreakdowns: [],
+      activeRoundIndex: 0,
+      completedRounds: parsed.completedRounds ?? [],
+      currentRound: parsed.currentRound ?? {},
+      currentRoundBreakdown: {},
+      roundScoringMode: {},
+      status: parsed.isPlaying ? 'in_progress' : 'finished',
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return { players: savedPlayers, matches };
+    return {
+      players: savedPlayers,
+      matches: [normalizeMatchRounds(legacyMatch)],
+    };
   } catch {
     return null;
   }

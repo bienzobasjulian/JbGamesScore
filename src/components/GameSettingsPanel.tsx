@@ -19,6 +19,24 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
   const maxRoundsEnabled = settings.maxRounds != null;
   const maxPointsEnabled = settings.maxPointsToWin != null;
 
+  const handleMaxRoundsText = (text: string) => {
+    const parsed = parseLimit(text);
+    if (parsed != null) {
+      onChange({ ...settings, maxRounds: parsed });
+    } else if (text.trim() === '') {
+      onChange({ ...settings, maxRounds: null });
+    }
+  };
+
+  const handleMaxPointsText = (text: string) => {
+    const parsed = parseLimit(text);
+    if (parsed != null) {
+      onChange({ ...settings, maxPointsToWin: parsed });
+    } else if (text.trim() === '') {
+      onChange({ ...settings, maxPointsToWin: null });
+    }
+  };
+
   return (
     <View style={styles.panel}>
       <Text style={styles.title}>Configuración de partida</Text>
@@ -33,7 +51,7 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
           onValueChange={(on) =>
             onChange({
               ...settings,
-              maxRounds: on ? 5 : null,
+              maxRounds: on ? 3 : null,
             })
           }
           trackColor={{ false: theme.border, true: theme.accentDark }}
@@ -44,18 +62,13 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
       {maxRoundsEnabled && (
         <TextInput
           style={styles.input}
-          defaultValue={String(settings.maxRounds ?? 5)}
-          key={`rounds-${settings.maxRounds}`}
-          onEndEditing={(e) => {
-            const parsed = parseLimit(e.nativeEvent.text);
-            if (parsed != null) {
-              onChange({ ...settings, maxRounds: parsed });
-            }
-          }}
+          value={String(settings.maxRounds ?? 3)}
+          onChangeText={handleMaxRoundsText}
           keyboardType="number-pad"
-          placeholder="Ej. 10"
+          placeholder="Número de rondas"
           placeholderTextColor={theme.textMuted}
           editable={!disabled}
+          maxLength={3}
         />
       )}
 
@@ -80,18 +93,13 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
       {maxPointsEnabled && (
         <TextInput
           style={styles.input}
-          defaultValue={String(settings.maxPointsToWin ?? 100)}
-          key={`points-${settings.maxPointsToWin}`}
-          onEndEditing={(e) => {
-            const parsed = parseLimit(e.nativeEvent.text);
-            if (parsed != null) {
-              onChange({ ...settings, maxPointsToWin: parsed });
-            }
-          }}
+          value={String(settings.maxPointsToWin ?? 100)}
+          onChangeText={handleMaxPointsText}
           keyboardType="number-pad"
-          placeholder="Ej. 100"
+          placeholder="Puntos objetivo"
           placeholderTextColor={theme.textMuted}
           editable={!disabled}
+          maxLength={4}
         />
       )}
     </View>

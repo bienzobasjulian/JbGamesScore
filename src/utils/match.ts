@@ -14,6 +14,10 @@ import {
   normalizeSettings,
   sortPlayersByScore,
 } from './game';
+import {
+  createInitialRounds,
+  normalizeMatchRounds,
+} from './rounds';
 
 export type RankedPlayer = {
   player: Player;
@@ -22,14 +26,15 @@ export type RankedPlayer = {
 };
 
 export function matchToGameState(match: Match): GameState {
+  const m = normalizeMatchRounds(match);
   return {
-    players: match.players,
-    completedRounds: match.completedRounds,
-    currentRound: match.currentRound,
-    currentRoundBreakdown: match.currentRoundBreakdown ?? {},
-    roundScoringMode: match.roundScoringMode ?? {},
-    isPlaying: match.status === 'in_progress',
-    settings: match.settings,
+    players: m.players,
+    rounds: m.rounds,
+    roundBreakdowns: m.roundBreakdowns,
+    activeRoundIndex: m.activeRoundIndex,
+    roundScoringMode: m.roundScoringMode ?? {},
+    isPlaying: m.status === 'in_progress',
+    settings: m.settings,
   };
 }
 
@@ -91,7 +96,8 @@ export function getMatchWinners(match: Match): Player[] {
   const over = checkGameOver(state);
   if (over.winners.length > 0) return over.winners;
 
-  if (match.status === 'finished' || match.completedRounds.length > 0) {
+  const m = normalizeMatchRounds(match);
+  if (match.status === 'finished' || m.rounds.length > 0) {
     const ranked = sortPlayersByScore(match.players, state);
     if (ranked.length === 0) return [];
     const topScore = getPlayerTotal(ranked[0].id, state);
@@ -110,11 +116,9 @@ export function formatWinnerLabel(match: Match): string | null {
 }
 
 export function formatMatchSubtitle(match: Match): string {
-  const round =
-    match.completedRounds.length +
-    (match.status === 'in_progress' ? 1 : 0);
+  const m = normalizeMatchRounds(match);
   if (match.status === 'finished') return 'Finalizada';
-  return `Ronda ${round}`;
+  return `Ronda ${m.activeRoundIndex + 1}`;
 }
 
 export function formatMatchListMeta(match: Match): string {
@@ -172,20 +176,21 @@ export function createMatch(
   name?: string | null,
 ): Match {
   const now = Date.now();
-  const currentRound: RoundScores = {};
-  players.forEach((p) => {
-    currentRound[p.id] = 0;
-  });
   const trimmedName = name?.trim();
+  const normalizedSettings = normalizeSettings(settings);
+  const initialRoundCount = normalizedSettings.maxRounds ?? 1;
+  const { rounds, roundBreakdowns } = createInitialRounds(
+    players,
+    initialRoundCount,
+  );
   return {
     id: createId(),
     name: trimmedName ? trimmedName : null,
-    settings: normalizeSettings(settings),
+    settings: normalizedSettings,
     players,
-    completedRounds: [],
-    completedRoundBreakdowns: [],
-    currentRound,
-    currentRoundBreakdown: {},
+    rounds,
+    roundBreakdowns,
+    activeRoundIndex: 0,
     roundScoringMode: {},
     status: 'in_progress',
     createdAt: now,

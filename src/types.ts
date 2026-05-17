@@ -26,10 +26,14 @@ export type Match = {
   name: string | null;
   settings: GameSettings;
   players: Player[];
-  completedRounds: RoundScores[];
-  completedRoundBreakdowns: RoundBreakdown[];
-  currentRound: RoundScores;
-  currentRoundBreakdown: RoundBreakdown;
+  rounds: RoundScores[];
+  roundBreakdowns: RoundBreakdown[];
+  activeRoundIndex: number;
+  /** @deprecated Migrado a `rounds` */
+  completedRounds?: RoundScores[];
+  completedRoundBreakdowns?: RoundBreakdown[];
+  currentRound?: RoundScores;
+  currentRoundBreakdown?: RoundBreakdown;
   roundScoringMode: Record<string, ScoringMode>;
   status: MatchStatus;
   createdAt: number;
@@ -38,9 +42,9 @@ export type Match = {
 
 export type GameState = {
   players: Player[];
-  completedRounds: RoundScores[];
-  currentRound: RoundScores;
-  currentRoundBreakdown: RoundBreakdown;
+  rounds: RoundScores[];
+  roundBreakdowns: RoundBreakdown[];
+  activeRoundIndex: number;
   roundScoringMode: Record<string, ScoringMode>;
   isPlaying: boolean;
   settings: GameSettings;
