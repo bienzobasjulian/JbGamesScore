@@ -77,11 +77,14 @@ export default function App() {
           />
         );
 
-      case 'createMatch':
+      case 'createMatch': {
+        const initialTemplateId = app.screen.templateId;
         return (
           <CreateMatchScreen
+            key={initialTemplateId ?? 'new'}
             templates={app.data.templates}
             savedPlayers={app.data.players}
+            initialTemplateId={initialTemplateId}
             onBack={app.goHome}
             onStart={(players, settings, name) => {
               app.createAndStartMatch(players, settings, name);
@@ -90,6 +93,7 @@ export default function App() {
             onCreateNewPlayer={app.createPlayerForMatch}
           />
         );
+      }
 
       case 'matchesList':
         return (
@@ -109,6 +113,7 @@ export default function App() {
             savedPlayers={app.data.players}
             onBack={app.goHome}
             onCreateTemplate={() => app.goEditTemplate()}
+            onPlayTemplate={app.playTemplate}
             onEditTemplate={app.goEditTemplate}
             onDeleteTemplate={app.deleteTemplate}
           />

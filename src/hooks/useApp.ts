@@ -137,8 +137,13 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const goCreateMatch = useCallback(() => {
-    setScreen({ type: 'createMatch' });
+  const goCreateMatch = useCallback((templateId?: string) => {
+    setScreen({ type: 'createMatch', templateId });
+    setMenuOpen(false);
+  }, []);
+
+  const playTemplate = useCallback((templateId: string) => {
+    setScreen({ type: 'createMatch', templateId });
     setMenuOpen(false);
   }, []);
 
@@ -611,6 +616,7 @@ export function useApp() {
     closeMenu,
     goHome,
     goCreateMatch,
+    playTemplate,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

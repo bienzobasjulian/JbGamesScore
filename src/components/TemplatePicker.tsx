@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { MatchTemplate, SavedPlayer } from '../types';
 import { formatTemplateSubtitle } from '../utils/template';
@@ -16,10 +17,12 @@ export function TemplatePicker({
   selectedId,
   onSelect,
 }: Props) {
+  const [open, setOpen] = useState(false);
+
   if (templates.length === 0) {
     return (
       <View style={styles.panel}>
-        <Text style={styles.title}>Plantilla</Text>
+        <Text style={styles.label}>Plantilla</Text>
         <Text style={styles.empty}>
           Crea plantillas en el menú para reutilizar ajustes y jugadores.
         </Text>
@@ -27,70 +30,86 @@ export function TemplatePicker({
     );
   }
 
+  const selected = templates.find((t) => t.id === selectedId);
+  const triggerLabel = selected?.name ?? 'Sin plantilla';
+
+  const pick = (template: MatchTemplate | null) => {
+    onSelect(template);
+    setOpen(false);
+  };
+
   return (
     <View style={styles.panel}>
-      <Text style={styles.title}>Cargar plantilla</Text>
+      <Text style={styles.label}>Plantilla</Text>
       <Text style={styles.hint}>
-        Rellena el formulario; los cambios aquí no modifican la plantilla
-        guardada.
+        Los cambios aquí no modifican la plantilla guardada.
       </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        keyboardShouldPersistTaps="handled"
+
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        style={({ pressed }) => [
+          styles.trigger,
+          open && styles.triggerOpen,
+          pressed && styles.triggerPressed,
+        ]}
       >
-        <Pressable
-          onPress={() => onSelect(null)}
-          style={({ pressed }) => [
-            styles.chip,
-            selectedId === null && styles.chipSelected,
-            pressed && styles.chipPressed,
-          ]}
-        >
-          <Text
-            style={[
-              styles.chipText,
-              selectedId === null && styles.chipTextSelected,
+        <Text style={styles.triggerText} numberOfLines={1}>
+          {triggerLabel}
+        </Text>
+        <Text style={styles.chevron}>{open ? '▲' : '▼'}</Text>
+      </Pressable>
+
+      {open ? (
+        <View style={styles.list}>
+          <Pressable
+            onPress={() => pick(null)}
+            style={({ pressed }) => [
+              styles.option,
+              selectedId === null && styles.optionSelected,
+              pressed && styles.optionPressed,
             ]}
           >
-            Ninguna
-          </Text>
-        </Pressable>
-        {templates.map((template) => {
-          const selected = selectedId === template.id;
-          return (
-            <Pressable
-              key={template.id}
-              onPress={() => onSelect(template)}
-              style={({ pressed }) => [
-                styles.chip,
-                selected && styles.chipSelected,
-                pressed && styles.chipPressed,
+            <Text
+              style={[
+                styles.optionTitle,
+                selectedId === null && styles.optionTitleSelected,
               ]}
             >
-              <Text
-                style={[
-                  styles.chipText,
-                  selected && styles.chipTextSelected,
+              Sin plantilla
+            </Text>
+          </Pressable>
+
+          {templates.map((template, index) => {
+            const isSelected = selectedId === template.id;
+            const isLast = index === templates.length - 1;
+            return (
+              <Pressable
+                key={template.id}
+                onPress={() => pick(template)}
+                style={({ pressed }) => [
+                  styles.option,
+                  isLast && styles.optionLast,
+                  isSelected && styles.optionSelected,
+                  pressed && styles.optionPressed,
                 ]}
-                numberOfLines={1}
               >
-                {template.name}
-              </Text>
-              <Text
-                style={[
-                  styles.chipSub,
-                  selected && styles.chipSubSelected,
-                ]}
-                numberOfLines={1}
-              >
-                {formatTemplateSubtitle(template, savedPlayers)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <Text
+                  style={[
+                    styles.optionTitle,
+                    isSelected && styles.optionTitleSelected,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {template.name}
+                </Text>
+                <Text style={styles.optionSub} numberOfLines={2}>
+                  {formatTemplateSubtitle(template, savedPlayers)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -104,10 +123,10 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     gap: 8,
   },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.text,
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textMuted,
   },
   hint: {
     fontSize: 12,
@@ -119,41 +138,68 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     lineHeight: 18,
   },
-  chips: {
-    gap: 8,
-    paddingTop: 4,
-    paddingRight: 4,
-  },
-  chip: {
-    maxWidth: 200,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
     backgroundColor: theme.surfaceLight,
     borderWidth: 1,
     borderColor: theme.border,
-    gap: 2,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  chipSelected: {
+  triggerOpen: {
     borderColor: theme.accent,
-    backgroundColor: theme.accent + '18',
   },
-  chipPressed: {
-    opacity: 0.85,
+  triggerPressed: {
+    opacity: 0.9,
   },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '700',
+  triggerText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
     color: theme.text,
   },
-  chipTextSelected: {
+  chevron: {
+    fontSize: 12,
+    color: theme.textMuted,
+  },
+  list: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: theme.surfaceLight,
+  },
+  option: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    gap: 2,
+  },
+  optionLast: {
+    borderBottomWidth: 0,
+  },
+  optionSelected: {
+    backgroundColor: theme.accent + '14',
+  },
+  optionPressed: {
+    opacity: 0.85,
+  },
+  optionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  optionTitleSelected: {
     color: theme.accent,
   },
-  chipSub: {
-    fontSize: 11,
+  optionSub: {
+    fontSize: 12,
     color: theme.textMuted,
-  },
-  chipSubSelected: {
-    color: theme.textMuted,
+    lineHeight: 16,
   },
 });

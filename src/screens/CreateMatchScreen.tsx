@@ -19,9 +19,41 @@ import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
 import { applyTemplateDraft } from '../utils/template';
 
+function buildInitialFromTemplate(
+  templates: MatchTemplate[],
+  savedPlayers: SavedPlayer[],
+  templateId?: string,
+) {
+  if (!templateId) {
+    return {
+      settings: defaultSettings(),
+      matchName: '',
+      players: [] as Player[],
+      loadedTemplateId: null as string | null,
+    };
+  }
+  const template = templates.find((t) => t.id === templateId);
+  if (!template) {
+    return {
+      settings: defaultSettings(),
+      matchName: '',
+      players: [] as Player[],
+      loadedTemplateId: null as string | null,
+    };
+  }
+  const draft = applyTemplateDraft(template, savedPlayers);
+  return {
+    settings: draft.settings,
+    matchName: draft.suggestedMatchName,
+    players: draft.players,
+    loadedTemplateId: template.id,
+  };
+}
+
 type Props = {
   templates: MatchTemplate[];
   savedPlayers: SavedPlayer[];
+  initialTemplateId?: string;
   onBack: () => void;
   onStart: (players: Player[], settings: GameSettings, name?: string | null) => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
@@ -31,15 +63,23 @@ type Props = {
 export function CreateMatchScreen({
   templates,
   savedPlayers,
+  initialTemplateId,
   onBack,
   onStart,
   onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
-  const [settings, setSettings] = useState<GameSettings>(defaultSettings());
-  const [matchName, setMatchName] = useState('');
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
+  const initial = buildInitialFromTemplate(
+    templates,
+    savedPlayers,
+    initialTemplateId,
+  );
+  const [settings, setSettings] = useState<GameSettings>(initial.settings);
+  const [matchName, setMatchName] = useState(initial.matchName);
+  const [players, setPlayers] = useState<Player[]>(initial.players);
+  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
+    initial.loadedTemplateId,
+  );
 
   const selectedIds = useMemo(
     () => new Set(players.map((p) => p.id)),
@@ -89,13 +129,6 @@ export function CreateMatchScreen({
 
   const header = (
     <View style={styles.headerBlock}>
-      <TemplatePicker
-        templates={templates}
-        savedPlayers={savedPlayers}
-        selectedId={loadedTemplateId}
-        onSelect={handleSelectTemplate}
-      />
-
       <View style={styles.namePanel}>
         <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
         <TextInput
@@ -108,6 +141,13 @@ export function CreateMatchScreen({
           returnKeyType="done"
         />
       </View>
+
+      <TemplatePicker
+        templates={templates}
+        savedPlayers={savedPlayers}
+        selectedId={loadedTemplateId}
+        onSelect={handleSelectTemplate}
+      />
 
       <GameSettingsPanel settings={settings} onChange={setSettings} />
 

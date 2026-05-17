@@ -67,7 +67,7 @@ export type AppData = {
 
 export type AppScreen =
   | { type: 'home' }
-  | { type: 'createMatch' }
+  | { type: 'createMatch'; templateId?: string }
   | { type: 'game'; matchId: string }
   | { type: 'matchesList' }
   | { type: 'playersList' }

@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { ListRow } from '../components/ListRow';
+import { TemplateListRow } from '../components/TemplateListRow';
 import { theme } from '../constants';
 import { MatchTemplate, SavedPlayer } from '../types';
 import { formatTemplateSubtitle } from '../utils/template';
@@ -13,6 +13,7 @@ type Props = {
   savedPlayers: SavedPlayer[];
   onBack: () => void;
   onCreateTemplate: () => void;
+  onPlayTemplate: (templateId: string) => void;
   onEditTemplate: (templateId: string) => void;
   onDeleteTemplate: (templateId: string) => void;
 };
@@ -22,6 +23,7 @@ export function TemplatesListScreen({
   savedPlayers,
   onBack,
   onCreateTemplate,
+  onPlayTemplate,
   onEditTemplate,
   onDeleteTemplate,
 }: Props) {
@@ -39,8 +41,8 @@ export function TemplatesListScreen({
       <AppHeader title="Plantillas" onBack={onBack} />
 
       <Text style={styles.intro}>
-        Guarda ajustes de rondas, puntos y jugadores habituales para cargarlos
-        al crear una partida.
+        Guarda ajustes de rondas, puntos y jugadores habituales. Usa Jugar para
+        crear una partida con esa plantilla al instante.
       </Text>
 
       <Button
@@ -57,12 +59,13 @@ export function TemplatesListScreen({
           <Text style={styles.empty}>No hay plantillas guardadas</Text>
         ) : (
           sorted.map((template) => (
-            <ListRow
+            <TemplateListRow
               key={template.id}
               title={template.name}
               subtitle={formatTemplateSubtitle(template, savedPlayers)}
-              onPress={() => onEditTemplate(template.id)}
-              onRemove={() => setToDelete(template)}
+              onPlay={() => onPlayTemplate(template.id)}
+              onEdit={() => onEditTemplate(template.id)}
+              onDelete={() => setToDelete(template)}
             />
           ))
         )}
