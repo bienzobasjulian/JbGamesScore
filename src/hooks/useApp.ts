@@ -10,6 +10,7 @@ import {
   GameSettings,
   Match,
   MatchTemplate,
+  PelusasSession,
   Player,
   RoundBreakdown,
   RoundScores,
@@ -40,6 +41,13 @@ import {
   normalizeMatchRounds,
   truncateLaterRounds,
 } from '../utils/rounds';
+import {
+  createFinishedPelusasMatch,
+  createPelusasCountsByPlayer,
+  emptyPelusasCounts,
+  getPelusasCardValues,
+  pelusasCardKey,
+} from '../utils/pelusas';
 
 function patchActiveRound(
   match: Match,
@@ -114,6 +122,9 @@ export function useApp() {
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pelusasSession, setPelusasSession] = useState<PelusasSession | null>(
+    null,
+  );
   const previousScreenRef = useRef<AppScreen>({ type: 'home' });
 
   useEffect(() => {
@@ -145,6 +156,143 @@ export function useApp() {
   const playTemplate = useCallback((templateId: string) => {
     setScreen({ type: 'createMatch', templateId });
     setMenuOpen(false);
+  }, []);
+
+  const goPelusasSetup = useCallback((keepSession = false) => {
+    if (!keepSession) {
+      setPelusasSession(null);
+    }
+    setScreen({ type: 'pelusasSetup' });
+    setMenuOpen(false);
+  }, []);
+
+  const exitPelusas = useCallback(() => {
+    setPelusasSession(null);
+    setScreen({ type: 'home' });
+    setMenuOpen(false);
+  }, []);
+
+  const startPelusasSession = useCallback((players: Player[]) => {
+    if (players.length < 2) return;
+    setData((prev) => ({
+      ...prev,
+      players: players.reduce(
+        (acc, p) => upsertSavedPlayer(acc, p),
+        prev.players,
+      ),
+    }));
+    setPelusasSession({
+      players,
+      revolutionMode: false,
+      countsByPlayer: createPelusasCountsByPlayer(players, false),
+    });
+    setScreen({ type: 'pelusasCount' });
+  }, []);
+
+  const updatePelusasPlayers = useCallback((players: Player[]) => {
+    if (players.length < 2) return;
+    setData((prev) => ({
+      ...prev,
+      players: players.reduce(
+        (acc, p) => upsertSavedPlayer(acc, p),
+        prev.players,
+      ),
+    }));
+    setPelusasSession((prev) => {
+      if (!prev) {
+        return {
+          players,
+          revolutionMode: false,
+          countsByPlayer: createPelusasCountsByPlayer(players, false),
+        };
+      }
+      const revolutionMode = prev.revolutionMode;
+      const countsByPlayer = createPelusasCountsByPlayer(
+        players,
+        revolutionMode,
+      );
+      for (const player of players) {
+        const previous = prev.countsByPlayer[player.id];
+        if (!previous) continue;
+        const merged = { ...countsByPlayer[player.id] };
+        for (const [key, qty] of Object.entries(previous)) {
+          merged[key] = qty;
+        }
+        countsByPlayer[player.id] = merged;
+      }
+      return { players, revolutionMode, countsByPlayer };
+    });
+    setScreen({ type: 'pelusasCount' });
+  }, []);
+
+  const setPelusasRevolutionMode = useCallback((enabled: boolean) => {
+    setPelusasSession((prev) => {
+      if (!prev) return null;
+      const countsByPlayer: PelusasSession['countsByPlayer'] = {};
+      for (const player of prev.players) {
+        const existing = prev.countsByPlayer[player.id] ?? {};
+        const next: Record<string, number> = { ...existing };
+        for (const value of getPelusasCardValues(enabled)) {
+          const key = pelusasCardKey(value);
+          if (next[key] == null) {
+            next[key] = 0;
+          }
+        }
+        countsByPlayer[player.id] = next;
+      }
+      return { ...prev, revolutionMode: enabled, countsByPlayer };
+    });
+  }, []);
+
+  const setPelusasCardCount = useCallback(
+    (playerId: string, cardValue: number, count: number) => {
+      setPelusasSession((prev) => {
+        if (!prev) return null;
+        const key = pelusasCardKey(cardValue);
+        return {
+          ...prev,
+          countsByPlayer: {
+            ...prev.countsByPlayer,
+            [playerId]: {
+              ...(prev.countsByPlayer[playerId] ??
+                emptyPelusasCounts(prev.revolutionMode)),
+              [key]: Math.max(0, Math.floor(count)),
+            },
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const resetPelusasCounts = useCallback(() => {
+    setPelusasSession((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        countsByPlayer: createPelusasCountsByPlayer(
+          prev.players,
+          prev.revolutionMode,
+        ),
+      };
+    });
+  }, []);
+
+  const finishPelusasSession = useCallback(() => {
+    setPelusasSession((prev) => {
+      if (!prev) return null;
+      const match = createFinishedPelusasMatch(prev);
+      setData((data) => ({
+        ...data,
+        players: prev.players.reduce(
+          (acc, p) => upsertSavedPlayer(acc, p),
+          data.players,
+        ),
+        matches: [...data.matches, match],
+      }));
+      setScreen({ type: 'game', matchId: match.id });
+      return null;
+    });
   }, []);
 
   const goMatchesList = useCallback(() => {
@@ -617,6 +765,15 @@ export function useApp() {
     goHome,
     goCreateMatch,
     playTemplate,
+    pelusasSession,
+    goPelusasSetup,
+    exitPelusas,
+    startPelusasSession,
+    updatePelusasPlayers,
+    setPelusasRevolutionMode,
+    setPelusasCardCount,
+    resetPelusasCounts,
+    finishPelusasSession,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

@@ -12,6 +12,8 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { EditTemplateScreen } from './src/screens/EditTemplateScreen';
 import { MatchesListScreen } from './src/screens/MatchesListScreen';
 import { PlayersListScreen } from './src/screens/PlayersListScreen';
+import { PelusasCounterScreen } from './src/screens/PelusasCounterScreen';
+import { PelusasSetupScreen } from './src/screens/PelusasSetupScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import { checkGameOver } from './src/utils/game';
 import {
@@ -170,6 +172,7 @@ export default function App() {
             state={state}
             matchTitle={formatMatchTitle(match)}
             isMatchFinished={match.status === 'finished'}
+            isPelusasMatch={match.gameMode === 'pelusas'}
             onAddBreakdownItem={(playerId, value, truncateLater) =>
               app.addBreakdownItem(match.id, playerId, value, truncateLater)
             }
@@ -198,6 +201,39 @@ export default function App() {
         );
       }
 
+      case 'pelusasSetup':
+        return (
+          <PelusasSetupScreen
+            key={
+              app.pelusasSession?.players.map((p) => p.id).join('-') ?? 'new'
+            }
+            savedPlayers={app.data.players}
+            initialPlayers={app.pelusasSession?.players}
+            onBack={app.exitPelusas}
+            onStart={(players) =>
+              app.pelusasSession
+                ? app.updatePelusasPlayers(players)
+                : app.startPelusasSession(players)
+            }
+            onAddFromSaved={app.addPlayerFromSaved}
+            onCreateNewPlayer={app.createPlayerForMatch}
+          />
+        );
+
+      case 'pelusasCount': {
+        if (!app.pelusasSession) return null;
+        return (
+          <PelusasCounterScreen
+            session={app.pelusasSession}
+            onBack={() => app.goPelusasSetup(true)}
+            onFinishMatch={app.finishPelusasSession}
+            onSetRevolutionMode={app.setPelusasRevolutionMode}
+            onSetCardCount={app.setPelusasCardCount}
+            onResetCounts={app.resetPelusasCounts}
+          />
+        );
+      }
+
       default:
         return null;
     }
@@ -219,6 +255,10 @@ export default function App() {
               {
                 label: 'Plantillas de partida',
                 onPress: app.goTemplatesList,
+              },
+              {
+                label: 'Contador de pelusas',
+                onPress: () => app.goPelusasSetup(false),
               },
             ]}
           />

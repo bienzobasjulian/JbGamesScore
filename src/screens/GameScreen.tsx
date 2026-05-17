@@ -37,6 +37,7 @@ type Props = {
   state: GameState;
   matchTitle?: string;
   isMatchFinished?: boolean;
+  isPelusasMatch?: boolean;
   onAdjust: (playerId: string, delta: number, truncateLater?: boolean) => void;
   onSetScore: (playerId: string, value: number, truncateLater?: boolean) => void;
   onScoringModeChange: (
@@ -67,6 +68,7 @@ export function GameScreen({
   state,
   matchTitle,
   isMatchFinished = false,
+  isPelusasMatch = false,
   onAdjust,
   onSetScore,
   onScoringModeChange,
@@ -248,12 +250,16 @@ export function GameScreen({
       <View style={styles.footer}>
         {showResults ? (
           <>
-            <Button label="Repetir partida" onPress={onRepeatMatch} />
-            <Button
-              label="Retomar partida"
-              onPress={handleResumeMatch}
-              variant="secondary"
-            />
+            {!isPelusasMatch ? (
+              <>
+                <Button label="Repetir partida" onPress={onRepeatMatch} />
+                <Button
+                  label="Retomar partida"
+                  onPress={handleResumeMatch}
+                  variant="secondary"
+                />
+              </>
+            ) : null}
             <Button
               label="Eliminar partida"
               onPress={onDeleteMatch}

@@ -41,6 +41,7 @@ export function matchToGameState(match: Match): GameState {
 export function formatMatchTitle(match: Match): string {
   const custom = match.name?.trim();
   if (custom) return custom;
+  if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
   if (names.length === 1) return names[0];
@@ -126,6 +127,11 @@ export function formatMatchListMeta(match: Match): string {
     formatMatchDate(match.updatedAt),
     formatPlayerCount(match.players.length),
   ];
+  if (match.gameMode === 'pelusas') {
+    parts.push(
+      match.pelusasRevolution ? 'Pelusas · Revolution' : 'Pelusas',
+    );
+  }
   if (match.status === 'in_progress') {
     parts.push(formatMatchSubtitle(match));
   }

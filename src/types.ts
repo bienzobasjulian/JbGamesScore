@@ -21,9 +21,13 @@ export type GameSettings = {
 
 export type MatchStatus = 'in_progress' | 'finished';
 
+export type MatchGameMode = 'standard' | 'pelusas';
+
 export type Match = {
   id: string;
   name: string | null;
+  gameMode?: MatchGameMode;
+  pelusasRevolution?: boolean;
   settings: GameSettings;
   players: Player[];
   rounds: RoundScores[];
@@ -59,6 +63,14 @@ export type MatchTemplate = {
   updatedAt: number;
 };
 
+export type PelusasPlayerCounts = Record<string, number>;
+
+export type PelusasSession = {
+  players: Player[];
+  revolutionMode: boolean;
+  countsByPlayer: Record<string, PelusasPlayerCounts>;
+};
+
 export type AppData = {
   players: SavedPlayer[];
   matches: Match[];
@@ -73,4 +85,6 @@ export type AppScreen =
   | { type: 'playersList' }
   | { type: 'createPlayer' }
   | { type: 'templatesList' }
-  | { type: 'editTemplate'; templateId?: string };
+  | { type: 'editTemplate'; templateId?: string }
+  | { type: 'pelusasSetup' }
+  | { type: 'pelusasCount' };
