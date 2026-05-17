@@ -250,15 +250,13 @@ export function GameScreen({
       <View style={styles.footer}>
         {showResults ? (
           <>
+            <Button label="Repetir partida" onPress={onRepeatMatch} />
             {!isPelusasMatch ? (
-              <>
-                <Button label="Repetir partida" onPress={onRepeatMatch} />
-                <Button
-                  label="Retomar partida"
-                  onPress={handleResumeMatch}
-                  variant="secondary"
-                />
-              </>
+              <Button
+                label="Retomar partida"
+                onPress={handleResumeMatch}
+                variant="secondary"
+              />
             ) : null}
             <Button
               label="Eliminar partida"

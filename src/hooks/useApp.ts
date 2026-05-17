@@ -702,6 +702,27 @@ export function useApp() {
     (matchId: string) => {
       const source = data.matches.find((m) => m.id === matchId);
       if (!source) return;
+
+      if (source.gameMode === 'pelusas') {
+        setData((prev) => ({
+          ...prev,
+          players: source.players.reduce(
+            (acc, p) => upsertSavedPlayer(acc, p),
+            prev.players,
+          ),
+        }));
+        setPelusasSession({
+          players: source.players,
+          revolutionMode: Boolean(source.pelusasRevolution),
+          countsByPlayer: createPelusasCountsByPlayer(
+            source.players,
+            Boolean(source.pelusasRevolution),
+          ),
+        });
+        setScreen({ type: 'pelusasCount' });
+        return;
+      }
+
       const newMatch = createMatch(source.players, source.settings, source.name);
       setData((prev) => ({
         ...prev,

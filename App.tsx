@@ -88,8 +88,11 @@ export default function App() {
             savedPlayers={app.data.players}
             initialTemplateId={initialTemplateId}
             onBack={app.goHome}
-            onStart={(players, settings, name) => {
+            onStartStandard={(players, settings, name) => {
               app.createAndStartMatch(players, settings, name);
+            }}
+            onStartPelusas={(players) => {
+              app.startPelusasSession(players);
             }}
             onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}

@@ -11,11 +11,13 @@ import { AddPlayerInput } from '../components/AddPlayerInput';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
+import { GameTypePicker } from '../components/GameTypePicker';
 import { PlayerCard } from '../components/PlayerCard';
 import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
+import { CreateMatchGameType } from '../utils/games';
 import { defaultSettings } from '../utils/game';
 import { applyTemplateDraft } from '../utils/template';
 
@@ -54,8 +56,14 @@ type Props = {
   templates: MatchTemplate[];
   savedPlayers: SavedPlayer[];
   initialTemplateId?: string;
+  initialGameType?: CreateMatchGameType;
   onBack: () => void;
-  onStart: (players: Player[], settings: GameSettings, name?: string | null) => void;
+  onStartStandard: (
+    players: Player[],
+    settings: GameSettings,
+    name?: string | null,
+  ) => void;
+  onStartPelusas: (players: Player[]) => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
@@ -64,8 +72,10 @@ export function CreateMatchScreen({
   templates,
   savedPlayers,
   initialTemplateId,
+  initialGameType = 'standard',
   onBack,
-  onStart,
+  onStartStandard,
+  onStartPelusas,
   onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
@@ -74,6 +84,7 @@ export function CreateMatchScreen({
     savedPlayers,
     initialTemplateId,
   );
+  const [gameType, setGameType] = useState<CreateMatchGameType>(initialGameType);
   const [settings, setSettings] = useState<GameSettings>(initial.settings);
   const [matchName, setMatchName] = useState(initial.matchName);
   const [players, setPlayers] = useState<Player[]>(initial.players);
@@ -81,12 +92,15 @@ export function CreateMatchScreen({
     initial.loadedTemplateId,
   );
 
+  const isPelusas = gameType === 'pelusas';
+
   const selectedIds = useMemo(
     () => new Set(players.map((p) => p.id)),
     [players],
   );
 
   const canStart = players.length >= 2;
+  const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
 
   const handleAddSaved = (saved: SavedPlayer) => {
     if (selectedIds.has(saved.id)) return;
@@ -106,6 +120,15 @@ export function CreateMatchScreen({
     setPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const handleSelectGame = (next: CreateMatchGameType) => {
+    setGameType(next);
+    if (next === 'pelusas') {
+      setLoadedTemplateId(null);
+      setSettings(defaultSettings());
+      setMatchName('');
+    }
+  };
+
   const handleSelectTemplate = (template: MatchTemplate | null) => {
     if (!template) {
       setLoadedTemplateId(null);
@@ -122,34 +145,48 @@ export function CreateMatchScreen({
   };
 
   const handleStart = () => {
-    if (canStart) {
-      onStart(players, settings, matchName.trim() || null);
+    if (!canStart) return;
+    if (isPelusas) {
+      onStartPelusas(players);
+    } else {
+      onStartStandard(players, settings, matchName.trim() || null);
     }
   };
 
   const header = (
     <View style={styles.headerBlock}>
-      <View style={styles.namePanel}>
-        <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
-        <TextInput
-          style={styles.nameInput}
-          placeholder="Ej. Domino del viernes"
-          placeholderTextColor={theme.textMuted}
-          value={matchName}
-          onChangeText={setMatchName}
-          maxLength={40}
-          returnKeyType="done"
-        />
-      </View>
+      <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
 
-      <TemplatePicker
-        templates={templates}
-        savedPlayers={savedPlayers}
-        selectedId={loadedTemplateId}
-        onSelect={handleSelectTemplate}
-      />
+      {!isPelusas ? (
+        <>
+          <View style={styles.namePanel}>
+            <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Ej. Domino del viernes"
+              placeholderTextColor={theme.textMuted}
+              value={matchName}
+              onChangeText={setMatchName}
+              maxLength={40}
+              returnKeyType="done"
+            />
+          </View>
 
-      <GameSettingsPanel settings={settings} onChange={setSettings} />
+          <TemplatePicker
+            templates={templates}
+            savedPlayers={savedPlayers}
+            selectedId={loadedTemplateId}
+            onSelect={handleSelectTemplate}
+          />
+
+          <GameSettingsPanel settings={settings} onChange={setSettings} />
+        </>
+      ) : (
+        <Text style={styles.pelusasHint}>
+          Solo necesitas elegir quién juega. El conteo de cartas y el modo
+          Revolution se configuran en la siguiente pantalla.
+        </Text>
+      )}
 
       <View style={styles.playersSection}>
         <Text style={styles.playersTitle}>Jugadores</Text>
@@ -177,7 +214,7 @@ export function CreateMatchScreen({
           {header}
           <Text style={styles.empty}>Añade al menos 2 jugadores</Text>
           <Button
-            label="Comenzar partida"
+            label={startLabel}
             onPress={handleStart}
             disabled={!canStart}
           />
@@ -192,7 +229,7 @@ export function CreateMatchScreen({
           ListFooterComponent={
             <View style={styles.footer}>
               <Button
-                label="Comenzar partida"
+                label={startLabel}
                 onPress={handleStart}
                 disabled={!canStart}
               />
@@ -250,6 +287,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: theme.text,
+  },
+  pelusasHint: {
+    fontSize: 14,
+    color: theme.textMuted,
+    lineHeight: 20,
+    paddingHorizontal: 4,
   },
   playersSection: {
     gap: 10,
