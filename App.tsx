@@ -9,8 +9,10 @@ import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
 import { CreatePlayerScreen } from './src/screens/CreatePlayerScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { EditTemplateScreen } from './src/screens/EditTemplateScreen';
 import { MatchesListScreen } from './src/screens/MatchesListScreen';
 import { PlayersListScreen } from './src/screens/PlayersListScreen';
+import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import { checkGameOver } from './src/utils/game';
 import {
   formatMatchTitle,
@@ -78,6 +80,7 @@ export default function App() {
       case 'createMatch':
         return (
           <CreateMatchScreen
+            templates={app.data.templates}
             savedPlayers={app.data.players}
             onBack={app.goHome}
             onStart={(players, settings, name) => {
@@ -98,6 +101,42 @@ export default function App() {
             onDeleteMatch={app.deleteMatch}
           />
         );
+
+      case 'templatesList':
+        return (
+          <TemplatesListScreen
+            templates={app.data.templates}
+            savedPlayers={app.data.players}
+            onBack={app.goHome}
+            onCreateTemplate={() => app.goEditTemplate()}
+            onEditTemplate={app.goEditTemplate}
+            onDeleteTemplate={app.deleteTemplate}
+          />
+        );
+
+      case 'editTemplate': {
+        const template = app.screen.templateId
+          ? app.getTemplate(app.screen.templateId)
+          : undefined;
+        if (app.screen.templateId && !template) {
+          return null;
+        }
+        return (
+          <EditTemplateScreen
+            template={template}
+            savedPlayers={app.data.players}
+            onBack={app.goTemplatesList}
+            onSave={app.saveTemplate}
+            onDelete={
+              template
+                ? () => app.deleteTemplate(template.id)
+                : undefined
+            }
+            onAddFromSaved={app.addPlayerFromSaved}
+            onCreateNewPlayer={app.createPlayerForMatch}
+          />
+        );
+      }
 
       case 'playersList':
         return (
@@ -172,6 +211,10 @@ export default function App() {
               { label: 'Nueva partida', onPress: app.goCreateMatch },
               { label: 'Lista de partidas', onPress: app.goMatchesList },
               { label: 'Lista de jugadores', onPress: app.goPlayersList },
+              {
+                label: 'Plantillas de partida',
+                onPress: app.goTemplatesList,
+              },
             ]}
           />
         )}

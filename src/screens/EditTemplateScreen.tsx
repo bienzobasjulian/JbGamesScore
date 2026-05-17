@@ -10,109 +10,126 @@ import {
 import { AddPlayerInput } from '../components/AddPlayerInput';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { PlayerCard } from '../components/PlayerCard';
 import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
-import { TemplatePicker } from '../components/TemplatePicker';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
-import { applyTemplateDraft } from '../utils/template';
-
 type Props = {
-  templates: MatchTemplate[];
+  template?: MatchTemplate;
   savedPlayers: SavedPlayer[];
   onBack: () => void;
-  onStart: (players: Player[], settings: GameSettings, name?: string | null) => void;
+  onSave: (draft: {
+    id?: string;
+    name: string;
+    settings: GameSettings;
+    playerIds: string[];
+  }) => string | null;
+  onDelete?: () => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
 
-export function CreateMatchScreen({
-  templates,
+export function EditTemplateScreen({
+  template,
   savedPlayers,
   onBack,
-  onStart,
+  onSave,
+  onDelete,
   onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
-  const [settings, setSettings] = useState<GameSettings>(defaultSettings());
-  const [matchName, setMatchName] = useState('');
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
+  const isNew = template == null;
+  const [name, setName] = useState(template?.name ?? '');
+  const [settings, setSettings] = useState<GameSettings>(
+    template?.settings ?? defaultSettings(),
+  );
+  const [playerIds, setPlayerIds] = useState<string[]>(
+    template?.playerIds ?? [],
+  );
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const selectedIds = useMemo(
-    () => new Set(players.map((p) => p.id)),
-    [players],
+  const rosterPlayers = useMemo(
+    () =>
+      playerIds
+        .map((id) => savedPlayers.find((p) => p.id === id))
+        .filter((p): p is SavedPlayer => p != null)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          color: p.color,
+        })),
+    [playerIds, savedPlayers],
   );
 
-  const canStart = players.length >= 2;
+  const selectedIds = useMemo(() => new Set(playerIds), [playerIds]);
 
   const handleAddSaved = (saved: SavedPlayer) => {
     if (selectedIds.has(saved.id)) return;
-    const player = onAddFromSaved(saved);
-    setPlayers((prev) => [...prev, player]);
+    onAddFromSaved(saved);
+    setPlayerIds((prev) => [...prev, saved.id]);
   };
 
-  const handleAddNew = (name: string) => {
-    const player = onCreateNewPlayer(name, players);
+  const handleAddNew = (playerName: string) => {
+    const player = onCreateNewPlayer(playerName, rosterPlayers);
     if (!player) return false;
-    if (players.some((p) => p.id === player.id)) return false;
-    setPlayers((prev) => [...prev, player]);
+    if (playerIds.includes(player.id)) return false;
+    setPlayerIds((prev) => [...prev, player.id]);
     return true;
   };
 
   const handleRemove = (id: string) => {
-    setPlayers((prev) => prev.filter((p) => p.id !== id));
+    setPlayerIds((prev) => prev.filter((pid) => pid !== id));
   };
 
-  const handleSelectTemplate = (template: MatchTemplate | null) => {
-    if (!template) {
-      setLoadedTemplateId(null);
-      setSettings(defaultSettings());
-      setPlayers([]);
-      setMatchName('');
+  const handleSave = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError('El nombre de la plantilla es obligatorio');
       return;
     }
-    const draft = applyTemplateDraft(template, savedPlayers);
-    setLoadedTemplateId(template.id);
-    setSettings(draft.settings);
-    setPlayers(draft.players);
-    setMatchName(draft.suggestedMatchName);
-  };
-
-  const handleStart = () => {
-    if (canStart) {
-      onStart(players, settings, matchName.trim() || null);
+    const id = onSave({
+      id: template?.id,
+      name: trimmed,
+      settings,
+      playerIds,
+    });
+    if (id) {
+      onBack();
+    } else {
+      setError('No se pudo guardar la plantilla');
     }
   };
 
-  const header = (
+  const formBlock = (
     <View style={styles.headerBlock}>
-      <TemplatePicker
-        templates={templates}
-        savedPlayers={savedPlayers}
-        selectedId={loadedTemplateId}
-        onSelect={handleSelectTemplate}
-      />
-
       <View style={styles.namePanel}>
-        <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
+        <Text style={styles.nameLabel}>Nombre de la plantilla</Text>
         <TextInput
           style={styles.nameInput}
-          placeholder="Ej. Domino del viernes"
+          placeholder="Ej. Domino en familia"
           placeholderTextColor={theme.textMuted}
-          value={matchName}
-          onChangeText={setMatchName}
+          value={name}
+          onChangeText={(t) => {
+            setName(t);
+            setError(null);
+          }}
           maxLength={40}
           returnKeyType="done"
         />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
 
       <GameSettingsPanel settings={settings} onChange={setSettings} />
 
       <View style={styles.playersSection}>
-        <Text style={styles.playersTitle}>Jugadores</Text>
+        <Text style={styles.playersTitle}>Jugadores habituales</Text>
+        <Text style={styles.playersHint}>
+          Opcional. Se cargarán al usar esta plantilla en una partida nueva.
+        </Text>
         <Text style={styles.playersHint}>Guardados</Text>
         <SavedPlayerPicker
           players={savedPlayers}
@@ -127,35 +144,43 @@ export function CreateMatchScreen({
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Nueva partida" onBack={onBack} />
+      <AppHeader
+        title={isNew ? 'Nueva plantilla' : 'Editar plantilla'}
+        onBack={onBack}
+      />
 
-      {players.length === 0 ? (
+      {rosterPlayers.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {header}
-          <Text style={styles.empty}>Añade al menos 2 jugadores</Text>
-          <Button
-            label="Comenzar partida"
-            onPress={handleStart}
-            disabled={!canStart}
-          />
+          {formBlock}
+          <Button label="Guardar plantilla" onPress={handleSave} />
+          {!isNew && onDelete ? (
+            <Button
+              label="Eliminar plantilla"
+              onPress={() => setDeleteVisible(true)}
+              variant="danger"
+            />
+          ) : null}
         </ScrollView>
       ) : (
         <FlatList
-          data={players}
+          data={rosterPlayers}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={header}
+          ListHeaderComponent={formBlock}
           ListFooterComponent={
             <View style={styles.footer}>
-              <Button
-                label="Comenzar partida"
-                onPress={handleStart}
-                disabled={!canStart}
-              />
+              <Button label="Guardar plantilla" onPress={handleSave} />
+              {!isNew && onDelete ? (
+                <Button
+                  label="Eliminar plantilla"
+                  onPress={() => setDeleteVisible(true)}
+                  variant="danger"
+                />
+              ) : null}
             </View>
           }
           renderItem={({ item }) => (
@@ -171,6 +196,23 @@ export function CreateMatchScreen({
           )}
         />
       )}
+
+      <ConfirmModal
+        visible={deleteVisible}
+        title="¿Eliminar plantilla?"
+        message={
+          template
+            ? `Se borrará «${template.name}» permanentemente.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        danger
+        onConfirm={() => {
+          setDeleteVisible(false);
+          onDelete?.();
+        }}
+        onCancel={() => setDeleteVisible(false)}
+      />
     </View>
   );
 }
@@ -211,6 +253,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.text,
   },
+  error: {
+    fontSize: 13,
+    color: theme.danger,
+  },
   playersSection: {
     gap: 10,
   },
@@ -228,12 +274,6 @@ const styles = StyleSheet.create({
   list: {
     gap: 12,
     paddingBottom: 8,
-  },
-  empty: {
-    color: theme.textMuted,
-    fontSize: 15,
-    textAlign: 'center',
-    marginVertical: 16,
   },
   footer: {
     paddingTop: 16,

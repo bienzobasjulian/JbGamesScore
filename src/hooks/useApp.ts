@@ -9,6 +9,7 @@ import {
   AppScreen,
   GameSettings,
   Match,
+  MatchTemplate,
   Player,
   RoundBreakdown,
   RoundScores,
@@ -105,7 +106,11 @@ function updateMatchInData(
 }
 
 export function useApp() {
-  const [data, setData] = useState<AppData>({ players: [], matches: [] });
+  const [data, setData] = useState<AppData>({
+    players: [],
+    matches: [],
+    templates: [],
+  });
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -155,6 +160,16 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
+  const goTemplatesList = useCallback(() => {
+    setScreen({ type: 'templatesList' });
+    setMenuOpen(false);
+  }, []);
+
+  const goEditTemplate = useCallback((templateId?: string) => {
+    setScreen({ type: 'editTemplate', templateId });
+    setMenuOpen(false);
+  }, []);
+
   const backFromCreatePlayer = useCallback(() => {
     setScreen(previousScreenRef.current);
   }, []);
@@ -182,7 +197,83 @@ export function useApp() {
     setData((prev) => ({
       ...prev,
       players: prev.players.filter((p) => p.id !== playerId),
+      templates: prev.templates.map((t) => ({
+        ...t,
+        playerIds: t.playerIds.filter((id) => id !== playerId),
+      })),
     }));
+  }, []);
+
+  const getTemplate = useCallback(
+    (templateId: string) =>
+      data.templates.find((t) => t.id === templateId),
+    [data.templates],
+  );
+
+  const saveTemplate = useCallback(
+    (draft: {
+      id?: string;
+      name: string;
+      settings: GameSettings;
+      playerIds: string[];
+    }) => {
+      const trimmed = draft.name.trim();
+      if (!trimmed) return null;
+      const now = Date.now();
+      const settings = normalizeSettings(draft.settings);
+      const playerIds = [...new Set(draft.playerIds)];
+
+      if (draft.id) {
+        let found = false;
+        setData((prev) => ({
+          ...prev,
+          templates: prev.templates.map((t) => {
+            if (t.id !== draft.id) return t;
+            found = true;
+            return {
+              ...t,
+              name: trimmed,
+              settings,
+              playerIds,
+              updatedAt: now,
+            };
+          }),
+        }));
+        return found ? draft.id : null;
+      }
+
+      const id = createId();
+      const template: MatchTemplate = {
+        id,
+        name: trimmed,
+        settings,
+        playerIds,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setData((prev) => ({
+        ...prev,
+        templates: [...prev.templates, template],
+      }));
+      return id;
+    },
+    [],
+  );
+
+  const deleteTemplate = useCallback((templateId: string) => {
+    setData((prev) => ({
+      ...prev,
+      templates: prev.templates.filter((t) => t.id !== templateId),
+    }));
+    setScreen((current) => {
+      if (
+        current.type === 'editTemplate' &&
+        current.templateId === templateId
+      ) {
+        return { type: 'templatesList' };
+      }
+      return current;
+    });
   }, []);
 
   const createAndStartMatch = useCallback(
@@ -190,6 +281,7 @@ export function useApp() {
       if (players.length < 2) return null;
       const match = createMatch(players, settings, name);
       setData((prev) => ({
+        ...prev,
         players: players.reduce(
           (acc, p) => upsertSavedPlayer(acc, p),
           prev.players,
@@ -521,8 +613,13 @@ export function useApp() {
     goCreateMatch,
     goMatchesList,
     goPlayersList,
+    goTemplatesList,
+    goEditTemplate,
     goCreatePlayer,
     backFromCreatePlayer,
+    getTemplate,
+    saveTemplate,
+    deleteTemplate,
     openMatch,
     addSavedPlayer,
     removeSavedPlayer,

@@ -50,9 +50,19 @@ export type GameState = {
   settings: GameSettings;
 };
 
+export type MatchTemplate = {
+  id: string;
+  name: string;
+  settings: GameSettings;
+  playerIds: string[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type AppData = {
   players: SavedPlayer[];
   matches: Match[];
+  templates: MatchTemplate[];
 };
 
 export type AppScreen =
@@ -61,4 +71,6 @@ export type AppScreen =
   | { type: 'game'; matchId: string }
   | { type: 'matchesList' }
   | { type: 'playersList' }
-  | { type: 'createPlayer' };
+  | { type: 'createPlayer' }
+  | { type: 'templatesList' }
+  | { type: 'editTemplate'; templateId?: string };

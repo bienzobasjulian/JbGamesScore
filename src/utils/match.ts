@@ -203,5 +203,5 @@ export function pickPlayerColor(existing: Player[]): string {
 }
 
 export function initialAppData(): AppData {
-  return { players: [], matches: [] };
+  return { players: [], matches: [], templates: [] };
 }

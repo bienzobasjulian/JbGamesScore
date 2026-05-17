@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants';
-import { AppData, Match, SavedPlayer } from './types';
+import { AppData, Match, MatchTemplate, SavedPlayer } from './types';
 import { createId, normalizeSettings } from './utils/game';
 import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
 import { normalizeMatchRounds } from './utils/rounds';
@@ -26,6 +26,25 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
             updatedAt: m.updatedAt ?? Date.now(),
           } as Match),
         )
+      : [],
+    templates: Array.isArray(raw.templates)
+      ? raw.templates
+          .filter(
+            (t): t is MatchTemplate =>
+              t != null &&
+              typeof t.id === 'string' &&
+              typeof t.name === 'string',
+          )
+          .map((t) => ({
+            id: t.id,
+            name: t.name.trim() || 'Plantilla sin nombre',
+            settings: normalizeSettings(t.settings),
+            playerIds: Array.isArray(t.playerIds)
+              ? t.playerIds.filter((id) => typeof id === 'string')
+              : [],
+            createdAt: t.createdAt ?? Date.now(),
+            updatedAt: t.updatedAt ?? Date.now(),
+          }))
       : [],
   };
 }
@@ -71,6 +90,7 @@ async function migrateLegacyGame(): Promise<AppData | null> {
     return {
       players: savedPlayers,
       matches: [normalizeMatchRounds(legacyMatch)],
+      templates: [],
     };
   } catch {
     return null;
