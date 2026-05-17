@@ -40,7 +40,15 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'ghost' ? theme.text : '#fff'} />
       ) : (
-        <Text style={[styles.label, variant === 'ghost' && styles.ghostLabel]}>
+        <Text
+          style={[
+            styles.label,
+            variant === 'primary' && styles.primaryLabel,
+            variant === 'secondary' && styles.secondaryLabel,
+            variant === 'danger' && styles.primaryLabel,
+            variant === 'ghost' && styles.ghostLabel,
+          ]}
+        >
           {label}
         </Text>
       )}
@@ -77,9 +85,14 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   label: {
-    color: '#0F1419',
     fontSize: 16,
     fontWeight: '700',
+  },
+  primaryLabel: {
+    color: '#0F1419',
+  },
+  secondaryLabel: {
+    color: theme.text,
   },
   ghostLabel: {
     color: theme.textMuted,

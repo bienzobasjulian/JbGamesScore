@@ -2,11 +2,10 @@ import { useState } from 'react';
 import {
   Keyboard,
   StyleSheet,
+  Text,
   TextInput,
-  View,
 } from 'react-native';
 import { theme } from '../constants';
-import { Button } from './Button';
 
 type Props = {
   onAdd: (name: string) => boolean;
@@ -23,10 +22,10 @@ export function AddPlayerInput({ onAdd }: Props) {
   };
 
   return (
-    <View style={styles.row}>
+    <>
       <TextInput
         style={styles.input}
-        placeholder="Nombre del jugador"
+        placeholder="Escribe un nombre y pulsa enter"
         placeholderTextColor={theme.textMuted}
         value={name}
         onChangeText={setName}
@@ -34,23 +33,12 @@ export function AddPlayerInput({ onAdd }: Props) {
         returnKeyType="done"
         maxLength={24}
       />
-      <Button
-        label="Añadir"
-        onPress={handleAdd}
-        disabled={!name.trim()}
-        style={styles.btn}
-      />
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
   input: {
-    flex: 1,
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.border,
@@ -59,9 +47,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: theme.text,
-  },
-  btn: {
-    paddingHorizontal: 16,
-    minWidth: 90,
   },
 });

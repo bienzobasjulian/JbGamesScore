@@ -9,7 +9,10 @@ export const PLAYER_COLORS = [
   '#607D8B',
 ];
 
-export const STORAGE_KEY = '@jbgamesscore/game';
+export const STORAGE_KEY = '@jbgamesscore/app';
+export const LEGACY_STORAGE_KEY = '@jbgamesscore/game';
+export const RECENT_PLAYERS_HOME_LIMIT = 4;
+export const RECENT_FINISHED_MATCHES_LIMIT = 4;
 
 export const theme = {
   bg: '#0F1419',
