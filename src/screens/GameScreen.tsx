@@ -13,7 +13,7 @@ import { MatchRanking } from '../components/MatchRanking';
 import { PlayerCard } from '../components/PlayerCard';
 import { RoundHistory } from '../components/RoundHistory';
 import { theme } from '../constants';
-import { GameState } from '../types';
+import { GameState, ScoringMode } from '../types';
 import {
   checkGameOver,
   formatPointsGoal,
@@ -23,6 +23,10 @@ import {
   sortPlayersByScore,
 } from '../utils/game';
 import { getMatchRankingFromState } from '../utils/match';
+import {
+  getPlayerBreakdownItems,
+  getPlayerScoringMode,
+} from '../utils/scoring';
 
 type Props = {
   state: GameState;
@@ -30,6 +34,9 @@ type Props = {
   isMatchFinished?: boolean;
   onAdjust: (playerId: string, delta: number) => void;
   onSetScore: (playerId: string, value: number) => void;
+  onScoringModeChange: (playerId: string, mode: ScoringMode) => void;
+  onAddBreakdownItem: (playerId: string, value: number) => void;
+  onRemoveBreakdownItem: (playerId: string, index: number) => void;
   onFinishRound: () => void;
   onUndoRound: () => void;
   onBack: () => void;
@@ -45,6 +52,9 @@ export function GameScreen({
   isMatchFinished = false,
   onAdjust,
   onSetScore,
+  onScoringModeChange,
+  onAddBreakdownItem,
+  onRemoveBreakdownItem,
   onFinishRound,
   onUndoRound,
   onBack,
@@ -142,8 +152,26 @@ export function GameScreen({
                 player={item}
                 total={getPlayerTotal(item.id, state)}
                 roundScore={getRoundScore(state.currentRound, item.id)}
+                breakdownItems={getPlayerBreakdownItems(
+                  state.currentRoundBreakdown,
+                  item.id,
+                )}
+                scoringMode={getPlayerScoringMode(
+                  state.roundScoringMode,
+                  item.id,
+                  state.currentRoundBreakdown[item.id],
+                )}
                 onAdjust={(delta) => onAdjust(item.id, delta)}
                 onSetScore={(value) => onSetScore(item.id, value)}
+                onScoringModeChange={(mode) =>
+                  onScoringModeChange(item.id, mode)
+                }
+                onAddBreakdownItem={(value) =>
+                  onAddBreakdownItem(item.id, value)
+                }
+                onRemoveBreakdownItem={(index) =>
+                  onRemoveBreakdownItem(item.id, index)
+                }
               />
             )}
           />

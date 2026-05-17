@@ -10,6 +10,10 @@ export type SavedPlayer = Player & {
 
 export type RoundScores = Record<string, number>;
 
+export type RoundBreakdown = Record<string, number[]>;
+
+export type ScoringMode = 'direct' | 'breakdown';
+
 export type GameSettings = {
   maxRounds: number | null;
   maxPointsToWin: number | null;
@@ -23,7 +27,10 @@ export type Match = {
   settings: GameSettings;
   players: Player[];
   completedRounds: RoundScores[];
+  completedRoundBreakdowns: RoundBreakdown[];
   currentRound: RoundScores;
+  currentRoundBreakdown: RoundBreakdown;
+  roundScoringMode: Record<string, ScoringMode>;
   status: MatchStatus;
   createdAt: number;
   updatedAt: number;
@@ -33,6 +40,8 @@ export type GameState = {
   players: Player[];
   completedRounds: RoundScores[];
   currentRound: RoundScores;
+  currentRoundBreakdown: RoundBreakdown;
+  roundScoringMode: Record<string, ScoringMode>;
   isPlaying: boolean;
   settings: GameSettings;
 };

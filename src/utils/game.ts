@@ -49,6 +49,8 @@ export function initialGameState(): GameState {
     players: [],
     completedRounds: [],
     currentRound: {},
+    currentRoundBreakdown: {},
+    roundScoringMode: {},
     isPlaying: false,
     settings: normalizeSettings(),
   };

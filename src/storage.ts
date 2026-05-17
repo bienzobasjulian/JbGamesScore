@@ -18,8 +18,25 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               : null,
           settings: normalizeSettings(m.settings),
           players: m.players ?? [],
-          completedRounds: m.completedRounds ?? [],
+          completedRounds: (() => {
+            const rounds = m.completedRounds ?? [];
+            const breakdowns = m.completedRoundBreakdowns ?? [];
+            while (breakdowns.length < rounds.length) {
+              breakdowns.push({});
+            }
+            return rounds;
+          })(),
+          completedRoundBreakdowns: (() => {
+            const rounds = m.completedRounds ?? [];
+            const breakdowns = m.completedRoundBreakdowns ?? [];
+            while (breakdowns.length < rounds.length) {
+              breakdowns.push({});
+            }
+            return breakdowns.slice(0, rounds.length);
+          })(),
           currentRound: m.currentRound ?? {},
+          currentRoundBreakdown: m.currentRoundBreakdown ?? {},
+          roundScoringMode: m.roundScoringMode ?? {},
           status: m.status === 'finished' ? 'finished' : 'in_progress',
           createdAt: m.createdAt ?? Date.now(),
           updatedAt: m.updatedAt ?? Date.now(),
@@ -61,7 +78,10 @@ async function migrateLegacyGame(): Promise<AppData | null> {
         settings: state.settings,
         players: state.players,
         completedRounds: state.completedRounds,
+        completedRoundBreakdowns: [],
         currentRound,
+        currentRoundBreakdown: {},
+        roundScoringMode: {},
         status: state.isPlaying ? 'in_progress' : 'finished',
         createdAt: now,
         updatedAt: now,

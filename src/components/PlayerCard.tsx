@@ -1,15 +1,21 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { Player } from '../types';
-import { ScoreStepper } from './ScoreStepper';
+import { RoundScoringPanel } from './RoundScoringPanel';
+import { ScoringMode } from '../types';
 
 type Props = {
   player: Player;
   total: number;
   roundScore: number;
+  breakdownItems?: number[];
+  scoringMode?: ScoringMode;
   rank?: number;
   onAdjust: (delta: number) => void;
   onSetScore?: (value: number) => void;
+  onScoringModeChange?: (mode: ScoringMode) => void;
+  onAddBreakdownItem?: (value: number) => void;
+  onRemoveBreakdownItem?: (index: number) => void;
   onRemove?: () => void;
   showRoundControls?: boolean;
   showTotal?: boolean;
@@ -21,8 +27,13 @@ export function PlayerCard({
   total,
   roundScore,
   rank,
+  breakdownItems = [],
+  scoringMode = 'direct',
   onAdjust,
   onSetScore,
+  onScoringModeChange,
+  onAddBreakdownItem,
+  onRemoveBreakdownItem,
   onRemove,
   showRoundControls = true,
   showTotal = true,
@@ -68,14 +79,19 @@ export function PlayerCard({
       </View>
 
       {showRoundControls && (
-        <View style={styles.roundRow}>
+        <View style={styles.roundSection}>
           <Text style={styles.roundLabel}>Esta ronda</Text>
-          <ScoreStepper
-            value={roundScore}
-            onAdjust={onAdjust}
-            onSetValue={onSetScore ?? (() => {})}
+          <RoundScoringPanel
+            roundScore={roundScore}
+            breakdownItems={breakdownItems}
+            mode={scoringMode}
             color={player.color}
             disabled={controlsDisabled}
+            onModeChange={onScoringModeChange ?? (() => {})}
+            onAdjust={onAdjust}
+            onSetScore={onSetScore ?? (() => {})}
+            onAddBreakdownItem={onAddBreakdownItem ?? (() => {})}
+            onRemoveBreakdownItem={onRemoveBreakdownItem ?? (() => {})}
           />
         </View>
       )}
@@ -154,10 +170,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: theme.textMuted,
   },
-  roundRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  roundSection: {
+    gap: 10,
     paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: theme.border,
@@ -165,6 +179,6 @@ const styles = StyleSheet.create({
   roundLabel: {
     fontSize: 14,
     color: theme.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

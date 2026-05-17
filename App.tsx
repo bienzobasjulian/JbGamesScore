@@ -132,6 +132,15 @@ export default function App() {
             onSetScore={(playerId, value) =>
               app.setRoundScore(match.id, playerId, value)
             }
+            onScoringModeChange={(playerId, mode) =>
+              app.setRoundScoringMode(match.id, playerId, mode)
+            }
+            onAddBreakdownItem={(playerId, value) =>
+              app.addBreakdownItem(match.id, playerId, value)
+            }
+            onRemoveBreakdownItem={(playerId, index) =>
+              app.removeBreakdownItem(match.id, playerId, index)
+            }
             onFinishRound={() => app.finishRound(match.id)}
             onUndoRound={() => app.undoLastRound(match.id)}
             onBack={app.goHome}
