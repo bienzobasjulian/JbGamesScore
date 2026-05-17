@@ -202,16 +202,18 @@ export function useApp() {
     [],
   );
 
-  const deleteMatch = useCallback(
-    (matchId: string) => {
-      setData((prev) => ({
-        ...prev,
-        matches: prev.matches.filter((m) => m.id !== matchId),
-      }));
-      setScreen({ type: 'home' });
-    },
-    [],
-  );
+  const deleteMatch = useCallback((matchId: string) => {
+    setData((prev) => ({
+      ...prev,
+      matches: prev.matches.filter((m) => m.id !== matchId),
+    }));
+    setScreen((current) => {
+      if (current.type === 'game' && current.matchId === matchId) {
+        return { type: 'home' };
+      }
+      return current;
+    });
+  }, []);
 
   const getMatch = useCallback(
     (matchId: string) => data.matches.find((m) => m.id === matchId),
