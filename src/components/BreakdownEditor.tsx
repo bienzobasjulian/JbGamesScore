@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -35,13 +34,27 @@ export function BreakdownEditor({
   onRemove,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<TextInput>(null);
+  const refocusAfterAdd = useRef(false);
+
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!refocusAfterAdd.current) return;
+    refocusAfterAdd.current = false;
+    const id = setTimeout(focusInput, 0);
+    return () => clearTimeout(id);
+  }, [items.length]);
 
   const handleAdd = () => {
     const value = parsePoints(draft);
     if (value === null) return;
     onAdd(value);
     setDraft('');
-    Keyboard.dismiss();
+    refocusAfterAdd.current = true;
+    setTimeout(focusInput, 0);
   };
 
   return (
@@ -86,12 +99,14 @@ export function BreakdownEditor({
       {!disabled && (
         <View style={styles.addRow}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Puntos"
             placeholderTextColor={theme.textMuted}
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={handleAdd}
+            blurOnSubmit={false}
             keyboardType="number-pad"
             returnKeyType="done"
             maxLength={5}
