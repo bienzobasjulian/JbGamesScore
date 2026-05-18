@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { theme } from '../constants';
 import { GameSettings } from '../types';
@@ -7,6 +8,9 @@ type Props = {
   onChange: (settings: GameSettings) => void;
   disabled?: boolean;
 };
+
+const DEFAULT_MAX_ROUNDS = 3;
+const DEFAULT_MAX_POINTS = 100;
 
 function parseLimit(text: string): number | null {
   const trimmed = text.trim();
@@ -19,22 +23,37 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
   const maxRoundsEnabled = settings.maxRounds != null;
   const maxPointsEnabled = settings.maxPointsToWin != null;
 
-  const handleMaxRoundsText = (text: string) => {
-    const parsed = parseLimit(text);
-    if (parsed != null) {
-      onChange({ ...settings, maxRounds: parsed });
-    } else if (text.trim() === '') {
-      onChange({ ...settings, maxRounds: null });
+  const [roundsText, setRoundsText] = useState(
+    () => String(settings.maxRounds ?? DEFAULT_MAX_ROUNDS),
+  );
+  const [pointsText, setPointsText] = useState(
+    () => String(settings.maxPointsToWin ?? DEFAULT_MAX_POINTS),
+  );
+
+  useEffect(() => {
+    if (settings.maxRounds != null) {
+      setRoundsText(String(settings.maxRounds));
     }
+  }, [settings.maxRounds]);
+
+  useEffect(() => {
+    if (settings.maxPointsToWin != null) {
+      setPointsText(String(settings.maxPointsToWin));
+    }
+  }, [settings.maxPointsToWin]);
+
+  const commitRounds = (text: string) => {
+    const parsed = parseLimit(text);
+    const value = parsed ?? settings.maxRounds ?? DEFAULT_MAX_ROUNDS;
+    onChange({ ...settings, maxRounds: value });
+    setRoundsText(String(value));
   };
 
-  const handleMaxPointsText = (text: string) => {
+  const commitPoints = (text: string) => {
     const parsed = parseLimit(text);
-    if (parsed != null) {
-      onChange({ ...settings, maxPointsToWin: parsed });
-    } else if (text.trim() === '') {
-      onChange({ ...settings, maxPointsToWin: null });
-    }
+    const value = parsed ?? settings.maxPointsToWin ?? DEFAULT_MAX_POINTS;
+    onChange({ ...settings, maxPointsToWin: value });
+    setPointsText(String(value));
   };
 
   return (
@@ -48,12 +67,15 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
         </View>
         <Switch
           value={maxRoundsEnabled}
-          onValueChange={(on) =>
-            onChange({
-              ...settings,
-              maxRounds: on ? 3 : null,
-            })
-          }
+          onValueChange={(on) => {
+            if (on) {
+              const value = settings.maxRounds ?? DEFAULT_MAX_ROUNDS;
+              setRoundsText(String(value));
+              onChange({ ...settings, maxRounds: value });
+            } else {
+              onChange({ ...settings, maxRounds: null });
+            }
+          }}
           trackColor={{ false: theme.border, true: theme.accentDark }}
           thumbColor={maxRoundsEnabled ? theme.accent : theme.textMuted}
           disabled={disabled}
@@ -62,8 +84,10 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
       {maxRoundsEnabled && (
         <TextInput
           style={styles.input}
-          value={String(settings.maxRounds ?? 3)}
-          onChangeText={handleMaxRoundsText}
+          value={roundsText}
+          onChangeText={setRoundsText}
+          onBlur={() => commitRounds(roundsText)}
+          onSubmitEditing={() => commitRounds(roundsText)}
           keyboardType="number-pad"
           placeholder="Número de rondas"
           placeholderTextColor={theme.textMuted}
@@ -75,16 +99,23 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
       <View style={[styles.row, styles.rowSpaced]}>
         <View style={styles.rowInfo}>
           <Text style={styles.label}>Puntos para ganar</Text>
-          <Text style={styles.hint}>Gana quien llegue primero al objetivo</Text>
+          <Text style={styles.hint}>
+            {settings.lowestScoreWins
+              ? 'Se comprueba al terminar cada ronda; gana el menor total'
+              : 'Se comprueba al terminar cada ronda'}
+          </Text>
         </View>
         <Switch
           value={maxPointsEnabled}
-          onValueChange={(on) =>
-            onChange({
-              ...settings,
-              maxPointsToWin: on ? 100 : null,
-            })
-          }
+          onValueChange={(on) => {
+            if (on) {
+              const value = settings.maxPointsToWin ?? DEFAULT_MAX_POINTS;
+              setPointsText(String(value));
+              onChange({ ...settings, maxPointsToWin: value });
+            } else {
+              onChange({ ...settings, maxPointsToWin: null });
+            }
+          }}
           trackColor={{ false: theme.border, true: theme.accentDark }}
           thumbColor={maxPointsEnabled ? theme.accent : theme.textMuted}
           disabled={disabled}
@@ -93,8 +124,10 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
       {maxPointsEnabled && (
         <TextInput
           style={styles.input}
-          value={String(settings.maxPointsToWin ?? 100)}
-          onChangeText={handleMaxPointsText}
+          value={pointsText}
+          onChangeText={setPointsText}
+          onBlur={() => commitPoints(pointsText)}
+          onSubmitEditing={() => commitPoints(pointsText)}
           keyboardType="number-pad"
           placeholder="Puntos objetivo"
           placeholderTextColor={theme.textMuted}
@@ -102,6 +135,26 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
           maxLength={4}
         />
       )}
+
+      <View style={[styles.row, styles.rowSpaced]}>
+        <View style={styles.rowInfo}>
+          <Text style={styles.label}>Gana quien tenga menos puntos</Text>
+          <Text style={styles.hint}>
+            Por defecto gana la puntuación más alta
+          </Text>
+        </View>
+        <Switch
+          value={settings.lowestScoreWins === true}
+          onValueChange={(lowestScoreWins) =>
+            onChange({ ...settings, lowestScoreWins })
+          }
+          trackColor={{ false: theme.border, true: theme.accentDark }}
+          thumbColor={
+            settings.lowestScoreWins ? theme.accent : theme.textMuted
+          }
+          disabled={disabled}
+        />
+      </View>
     </View>
   );
 }

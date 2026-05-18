@@ -17,6 +17,8 @@ export type ScoringMode = 'direct' | 'breakdown';
 export type GameSettings = {
   maxRounds: number | null;
   maxPointsToWin: number | null;
+  /** Si es true, gana quien tenga menos puntos (por defecto gana quien tenga más). */
+  lowestScoreWins?: boolean;
 };
 
 export type MatchStatus = 'in_progress' | 'finished';

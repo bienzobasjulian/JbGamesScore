@@ -4,12 +4,27 @@ export function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function getPlayerTotal(playerId: string, state: GameState): number {
+export function getPlayerTotalThroughRound(
+  playerId: string,
+  state: GameState,
+  throughRoundIndex: number,
+): number {
   let total = 0;
-  for (const round of state.rounds) {
-    total += round[playerId] ?? 0;
+  const last = Math.min(throughRoundIndex, state.rounds.length - 1);
+  for (let i = 0; i <= last; i++) {
+    total += state.rounds[i]?.[playerId] ?? 0;
   }
   return total;
+}
+
+/** Suma todas las rondas, incluida la activa (para mostrar en pantalla). */
+export function getPlayerTotal(playerId: string, state: GameState): number {
+  if (state.rounds.length === 0) return 0;
+  return getPlayerTotalThroughRound(
+    playerId,
+    state,
+    state.rounds.length - 1,
+  );
 }
 
 export function getRoundScore(
@@ -23,15 +38,32 @@ export function getActiveRoundScores(state: GameState): RoundScores {
   return state.rounds[state.activeRoundIndex] ?? {};
 }
 
-export function sortPlayersByScore(players: Player[], state: GameState): Player[] {
-  return [...players].sort(
-    (a, b) => getPlayerTotal(b.id, state) - getPlayerTotal(a.id, state),
-  );
+/** Índice de la última ronda ya cerrada (-1 si ninguna). */
+export function getLastClosedRoundIndex(state: GameState): number {
+  return state.activeRoundIndex - 1;
+}
+
+export function sortPlayersByScore(
+  players: Player[],
+  state: GameState,
+  throughRoundIndex?: number,
+): Player[] {
+  const lowestWins = state.settings.lowestScoreWins === true;
+  const totalOf = (id: string) =>
+    throughRoundIndex != null
+      ? getPlayerTotalThroughRound(id, state, throughRoundIndex)
+      : getPlayerTotal(id, state);
+
+  return [...players].sort((a, b) => {
+    const diff = totalOf(b.id) - totalOf(a.id);
+    return lowestWins ? -diff : diff;
+  });
 }
 
 export const defaultSettings = (): GameState['settings'] => ({
   maxRounds: null,
   maxPointsToWin: null,
+  lowestScoreWins: false,
 });
 
 export function normalizeSettings(
@@ -45,7 +77,11 @@ export function normalizeSettings(
     settings?.maxPointsToWin != null && settings.maxPointsToWin > 0
       ? settings.maxPointsToWin
       : null;
-  return { maxRounds, maxPointsToWin };
+  return {
+    maxRounds,
+    maxPointsToWin,
+    lowestScoreWins: settings?.lowestScoreWins === true,
+  };
 }
 
 export function initialGameState(): GameState {
@@ -66,33 +102,71 @@ export type GameOverResult = {
   winners: Player[];
 };
 
-export function checkGameOver(state: GameState): GameOverResult {
-  const sorted = sortPlayersByScore(state.players, state);
-  const noWinners: Player[] = [];
+export type CheckGameOverOptions = {
+  /**
+   * Hasta qué ronda (inclusive) se suman puntos para el objetivo.
+   * Por defecto: solo rondas cerradas (anterior a la activa).
+   */
+  pointsThroughRoundIndex?: number;
+};
 
-  if (state.settings.maxPointsToWin != null) {
+function resolvePointsThroughRoundIndex(
+  state: GameState,
+  options?: CheckGameOverOptions,
+): number {
+  if (options?.pointsThroughRoundIndex != null) {
+    return options.pointsThroughRoundIndex;
+  }
+  return getLastClosedRoundIndex(state);
+}
+
+export function checkGameOver(
+  state: GameState,
+  options?: CheckGameOverOptions,
+): GameOverResult {
+  const noWinners: Player[] = [];
+  const pointsThrough = resolvePointsThroughRoundIndex(state, options);
+
+  if (state.settings.maxPointsToWin != null && pointsThrough >= 0) {
     const threshold = state.settings.maxPointsToWin;
-    const qualified = sorted.filter(
-      (p) => getPlayerTotal(p.id, state) >= threshold,
+    const lowestWins = state.settings.lowestScoreWins === true;
+    const totalOf = (id: string) =>
+      getPlayerTotalThroughRound(id, state, pointsThrough);
+
+    const someoneReachedLimit = state.players.some(
+      (p) => totalOf(p.id) >= threshold,
     );
-    if (qualified.length > 0) {
-      const topScore = getPlayerTotal(qualified[0].id, state);
-      const winners = qualified.filter(
-        (p) => getPlayerTotal(p.id, state) === topScore,
-      );
+
+    if (someoneReachedLimit) {
+      if (lowestWins) {
+        const ranked = sortPlayersByScore(
+          state.players,
+          state,
+          pointsThrough,
+        );
+        const bestScore = totalOf(ranked[0].id);
+        const winners = ranked.filter((p) => totalOf(p.id) === bestScore);
+        return { isOver: true, reason: 'points', winners };
+      }
+
+      const qualified = state.players.filter((p) => totalOf(p.id) >= threshold);
+      const ranked = sortPlayersByScore(qualified, state, pointsThrough);
+      const bestScore = totalOf(ranked[0].id);
+      const winners = ranked.filter((p) => totalOf(p.id) === bestScore);
       return { isOver: true, reason: 'points', winners };
     }
   }
 
   if (state.settings.maxRounds != null) {
-    const onLastRound =
-      state.activeRoundIndex >= state.settings.maxRounds - 1;
-    if (onLastRound && state.rounds.length >= state.settings.maxRounds) {
-      const topScore =
-        sorted.length > 0 ? getPlayerTotal(sorted[0].id, state) : 0;
+    if (state.activeRoundIndex >= state.settings.maxRounds) {
+      const through = state.settings.maxRounds - 1;
+      const ranked = sortPlayersByScore(state.players, state, through);
+      const totalOf = (id: string) =>
+        getPlayerTotalThroughRound(id, state, through);
+      const bestScore = ranked.length > 0 ? totalOf(ranked[0].id) : 0;
       const winners =
-        sorted.length > 0
-          ? sorted.filter((p) => getPlayerTotal(p.id, state) === topScore)
+        ranked.length > 0
+          ? ranked.filter((p) => totalOf(p.id) === bestScore)
           : noWinners;
       return { isOver: true, reason: 'rounds', winners };
     }
@@ -115,5 +189,8 @@ export function formatRoundProgress(state: GameState): string {
 
 export function formatPointsGoal(state: GameState): string | null {
   if (state.settings.maxPointsToWin == null) return null;
-  return `Objetivo: ${state.settings.maxPointsToWin} pts`;
+  if (state.settings.lowestScoreWins) {
+    return `Al cerrar ronda: si alguien llega a ${state.settings.maxPointsToWin} pts, gana el menor total`;
+  }
+  return `Al cerrar ronda: ${state.settings.maxPointsToWin} pts para ganar`;
 }

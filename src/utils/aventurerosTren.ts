@@ -12,7 +12,7 @@ import {
 import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
-export const AVENTUREROS_TREN_MIN_PLAYERS = 2;
+export const AVENTUREROS_TREN_MIN_PLAYERS = 1;
 export const AVENTUREROS_TREN_MAX_PLAYERS = 5;
 
 export const LONGEST_ROUTE_BONUS_POINTS = 10;

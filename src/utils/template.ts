@@ -31,7 +31,14 @@ export function formatTemplateSubtitle(
     parts.push(`${settings.maxRounds} rondas máx.`);
   }
   if (settings.maxPointsToWin != null) {
-    parts.push(`${settings.maxPointsToWin} pts para ganar`);
+    parts.push(
+      settings.lowestScoreWins
+        ? `${settings.maxPointsToWin} pts (gana el menor)`
+        : `${settings.maxPointsToWin} pts para ganar`,
+    );
+  }
+  if (settings.lowestScoreWins) {
+    parts.push('gana el menor puntaje');
   }
   if (parts.length === 0) {
     parts.push('Sin límite de rondas ni puntos');

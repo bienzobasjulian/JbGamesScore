@@ -198,7 +198,7 @@ export function useApp() {
   }, []);
 
   const startPelusasSession = useCallback((players: Player[]) => {
-    if (players.length < 2) return;
+    if (players.length < 1) return;
     setData((prev) => ({
       ...prev,
       players: players.reduce(
@@ -215,7 +215,7 @@ export function useApp() {
   }, []);
 
   const updatePelusasPlayers = useCallback((players: Player[]) => {
-    if (players.length < 2) return;
+    if (players.length < 1) return;
     setData((prev) => ({
       ...prev,
       players: players.reduce(
@@ -322,7 +322,7 @@ export function useApp() {
 
   const startSkullKingSession = useCallback((players: Player[]) => {
     if (
-      players.length < 2 ||
+      players.length < 1 ||
       players.length > 6
     ) {
       return;
@@ -714,7 +714,7 @@ export function useApp() {
 
   const createAndStartMatch = useCallback(
     (players: Player[], settings: GameSettings, name?: string | null) => {
-      if (players.length < 2) return null;
+      if (players.length < 1) return null;
       const match = createMatch(players, settings, name);
       setData((prev) => ({
         ...prev,
@@ -758,7 +758,8 @@ export function useApp() {
   const goToRound = useCallback(
     (matchId: string, roundIndex: number) => {
       updateMatch(matchId, (match) => {
-        const m = normalizeMatchRounds(match);
+        if (match.status === 'finished') return match;
+        let m = normalizeMatchRounds(match);
         if (roundIndex < 0 || roundIndex >= m.rounds.length) return m;
         const maxRounds = m.settings.maxRounds;
         if (
@@ -767,6 +768,23 @@ export function useApp() {
         ) {
           return m;
         }
+
+        if (roundIndex > m.activeRoundIndex) {
+          const pointsEnd = checkGameOver(matchToGameState(m), {
+            pointsThroughRoundIndex: roundIndex - 1,
+          });
+          if (pointsEnd.isOver && pointsEnd.reason === 'points') {
+            return { ...m, activeRoundIndex: roundIndex };
+          }
+
+          if (
+            maxRounds != null &&
+            roundIndex >= maxRounds
+          ) {
+            return { ...m, activeRoundIndex: roundIndex };
+          }
+        }
+
         return { ...m, activeRoundIndex: roundIndex };
       });
     },
@@ -776,24 +794,44 @@ export function useApp() {
   const addNextRound = useCallback(
     (matchId: string) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
-        const m = normalizeMatchRounds(match);
-        if (m.settings.maxRounds != null) {
+        if (match.status === 'finished') return match;
+        let m = normalizeMatchRounds(match);
+        const closingIndex = m.activeRoundIndex;
+
+        const pointsEnd = checkGameOver(matchToGameState(m), {
+          pointsThroughRoundIndex: closingIndex,
+        });
+
+        const advanceActiveRound = () => {
           if (m.activeRoundIndex < m.rounds.length - 1) {
-            return { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+            m = { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+            return;
           }
+          m = {
+            ...m,
+            rounds: [...m.rounds, emptyRoundScores(m.players)],
+            roundBreakdowns: [
+              ...m.roundBreakdowns,
+              emptyRoundBreakdown(),
+            ],
+            activeRoundIndex: m.rounds.length,
+          };
+        };
+
+        if (pointsEnd.isOver && pointsEnd.reason === 'points') {
+          advanceActiveRound();
           return m;
         }
-        if (m.activeRoundIndex < m.rounds.length - 1) {
-          return { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+
+        if (m.settings.maxRounds != null) {
+          const nextIndex = m.activeRoundIndex + 1;
+          if (nextIndex >= m.settings.maxRounds) {
+            return { ...m, activeRoundIndex: nextIndex };
+          }
         }
-        return {
-          ...m,
-          rounds: [...m.rounds, emptyRoundScores(m.players)],
-          roundBreakdowns: [...m.roundBreakdowns, emptyRoundBreakdown()],
-          activeRoundIndex: m.rounds.length,
-        };
+
+        advanceActiveRound();
+        return m;
       });
     },
     [updateMatch],
@@ -802,8 +840,7 @@ export function useApp() {
   const adjustRoundScore = useCallback(
     (matchId: string, playerId: string, delta: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
+        if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (truncateLater) m = truncateLaterRounds(m);
         return {
@@ -831,8 +868,7 @@ export function useApp() {
   const setRoundScore = useCallback(
     (matchId: string, playerId: string, value: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
+        if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (truncateLater) m = truncateLaterRounds(m);
         return {
@@ -857,8 +893,7 @@ export function useApp() {
   const setRoundScoringMode = useCallback(
     (matchId: string, playerId: string, mode: ScoringMode, truncateLater = false) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
+        if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (truncateLater) m = truncateLaterRounds(m);
 
@@ -901,8 +936,7 @@ export function useApp() {
   const addBreakdownItem = useCallback(
     (matchId: string, playerId: string, value: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
+        if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (truncateLater) m = truncateLaterRounds(m);
         return {
@@ -927,8 +961,7 @@ export function useApp() {
   const removeBreakdownItem = useCallback(
     (matchId: string, playerId: string, index: number, truncateLater = false) => {
       updateMatch(matchId, (match) => {
-        const state = matchToGameState(match);
-        if (checkGameOver(state).isOver) return match;
+        if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (truncateLater) m = truncateLaterRounds(m);
         return {

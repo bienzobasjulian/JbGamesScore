@@ -3,7 +3,7 @@ import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
 export const SKULL_KING_TOTAL_ROUNDS = 10;
-export const SKULL_KING_MIN_PLAYERS = 2;
+export const SKULL_KING_MIN_PLAYERS = 1;
 export const SKULL_KING_MAX_PLAYERS = 6;
 
 export function emptySkullKingRoundEntry(): SkullKingRoundEntry {

@@ -6,13 +6,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { AddPlayerInput } from '../components/AddPlayerInput';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
+import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { PlayerCard } from '../components/PlayerCard';
-import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { theme } from '../constants';
 import { Player, SavedPlayer } from '../types';
+import { ensureMatchPlayers } from '../utils/players';
 
 type Props = {
   savedPlayers: SavedPlayer[];
@@ -38,8 +38,6 @@ export function PelusasSetupScreen({
     [players],
   );
 
-  const canStart = players.length >= 2;
-
   const handleAddSaved = (saved: SavedPlayer) => {
     if (selectedIds.has(saved.id)) return;
     const player = onAddFromSaved(saved);
@@ -54,21 +52,19 @@ export function PelusasSetupScreen({
     return true;
   };
 
+  const handleStart = () => {
+    onStart(ensureMatchPlayers(players, onCreateNewPlayer));
+  };
+
   const rosterBlock = (
-    <View style={styles.playersSection}>
-      <Text style={styles.intro}>
-        Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al
-        10 tiene cada jugador (y las de Revolution, si las activáis).
-      </Text>
-      <Text style={styles.playersHint}>Guardados</Text>
-      <SavedPlayerPicker
-        players={savedPlayers}
-        selectedIds={selectedIds}
-        onSelect={handleAddSaved}
-      />
-      <Text style={styles.playersHint}>Nuevo nombre</Text>
-      <AddPlayerInput onAdd={handleAddNew} />
-    </View>
+    <MatchPlayerRoster
+      intro="Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al 10 tiene cada jugador (y las de Revolution, si las activáis)."
+      savedPlayers={savedPlayers}
+      selectedIds={selectedIds}
+      onSelectSaved={handleAddSaved}
+      onAddNew={handleAddNew}
+      soloHint="Sin jugadores seleccionados se usará un jugador «Yo» solo para este conteo."
+    />
   );
 
   return (
@@ -81,12 +77,10 @@ export function PelusasSetupScreen({
           keyboardShouldPersistTaps="handled"
         >
           {rosterBlock}
-          <Text style={styles.empty}>Añade al menos 2 jugadores</Text>
-          <Button
-            label="Contar puntos"
-            onPress={() => onStart(players)}
-            disabled={!canStart}
-          />
+          <Text style={styles.empty}>
+            Puedes contar puntos en solitario o elegir jugadores arriba.
+          </Text>
+          <Button label="Contar puntos" onPress={handleStart} />
         </ScrollView>
       ) : (
         <FlatList
@@ -97,11 +91,7 @@ export function PelusasSetupScreen({
           ListHeaderComponent={rosterBlock}
           ListFooterComponent={
             <View style={styles.footer}>
-              <Button
-                label="Contar puntos"
-                onPress={() => onStart(players)}
-                disabled={!canStart}
-              />
+              <Button label="Contar puntos" onPress={handleStart} />
             </View>
           }
           renderItem={({ item }) => (
@@ -135,21 +125,6 @@ const styles = StyleSheet.create({
   list: {
     gap: 12,
     paddingBottom: 8,
-  },
-  intro: {
-    fontSize: 14,
-    color: theme.textMuted,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  playersSection: {
-    gap: 10,
-    marginBottom: 12,
-  },
-  playersHint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textMuted,
   },
   empty: {
     color: theme.textMuted,

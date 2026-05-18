@@ -14,13 +14,13 @@ export function getCreateMatchPlayerLimits(
 ): CreateMatchPlayerLimits {
   switch (gameType) {
     case 'skull_king':
-      return { min: 2, max: 6 };
+      return { min: 1, max: 6 };
     case 'aventureros_tren':
-      return { min: 2, max: 5 };
+      return { min: 1, max: 5 };
     case 'pelusas':
-      return { min: 2, max: Number.POSITIVE_INFINITY };
+      return { min: 1, max: Number.POSITIVE_INFINITY };
     default:
-      return { min: 2, max: Number.POSITIVE_INFINITY };
+      return { min: 1, max: Number.POSITIVE_INFINITY };
   }
 }
 

@@ -21,10 +21,12 @@ export function RoundPagination({
 }: Props) {
   const fixedTabs = maxRounds != null;
   const displayCount = fixedTabs ? maxRounds : roundCount;
+  const onLastFixedRound =
+    fixedTabs && maxRounds != null && activeIndex === maxRounds - 1;
   const showAddButton =
     !disabled &&
-    !fixedTabs &&
-    activeIndex === roundCount - 1;
+    (onLastFixedRound ||
+      (!fixedTabs && activeIndex === roundCount - 1));
 
   return (
     <View style={styles.wrap}>
@@ -72,17 +74,28 @@ export function RoundPagination({
           <Pressable
             onPress={onAddRound}
             style={({ pressed }) => [
-              styles.addBtn,
+              onLastFixedRound ? styles.closeRoundBtn : styles.addBtn,
               pressed && styles.pagePressed,
             ]}
           >
-            <Text style={styles.addText}>+</Text>
+            <Text
+              style={
+                onLastFixedRound ? styles.closeRoundText : styles.addText
+              }
+            >
+              {onLastFixedRound ? '✓' : '+'}
+            </Text>
           </Pressable>
         )}
       </ScrollView>
       {fixedTabs ? (
         <Text style={styles.hint}>
           Ronda {activeIndex + 1} de {maxRounds}
+          {onLastFixedRound ? ' · Pulsa ✓ al terminar la ronda' : ''}
+        </Text>
+      ) : showAddButton ? (
+        <Text style={styles.hint}>
+          Pulsa + al terminar la ronda para sumar puntos y seguir
         </Text>
       ) : null}
     </View>
@@ -150,6 +163,22 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     color: theme.accent,
     lineHeight: 28,
+  },
+  closeRoundBtn: {
+    minWidth: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: theme.accent,
+    backgroundColor: theme.accent + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  closeRoundText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.accent,
   },
   hint: {
     fontSize: 12,

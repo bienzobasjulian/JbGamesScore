@@ -7,13 +7,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AddPlayerInput } from '../components/AddPlayerInput';
+import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { PlayerCard } from '../components/PlayerCard';
-import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
@@ -125,20 +124,14 @@ export function EditTemplateScreen({
 
       <GameSettingsPanel settings={settings} onChange={setSettings} />
 
-      <View style={styles.playersSection}>
-        <Text style={styles.playersTitle}>Jugadores habituales</Text>
-        <Text style={styles.playersHint}>
-          Opcional. Se cargarán al usar esta plantilla en una partida nueva.
-        </Text>
-        <Text style={styles.playersHint}>Guardados</Text>
-        <SavedPlayerPicker
-          players={savedPlayers}
-          selectedIds={selectedIds}
-          onSelect={handleAddSaved}
-        />
-        <Text style={styles.playersHint}>Nuevo nombre</Text>
-        <AddPlayerInput onAdd={handleAddNew} />
-      </View>
+      <MatchPlayerRoster
+        title="Jugadores habituales"
+        intro="Opcional. Se cargarán al usar esta plantilla en una partida nueva."
+        savedPlayers={savedPlayers}
+        selectedIds={selectedIds}
+        onSelectSaved={handleAddSaved}
+        onAddNew={handleAddNew}
+      />
     </View>
   );
 

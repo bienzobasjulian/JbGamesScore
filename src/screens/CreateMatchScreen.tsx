@@ -7,13 +7,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AddPlayerInput } from '../components/AddPlayerInput';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { GameTypePicker } from '../components/GameTypePicker';
+import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { PlayerCard } from '../components/PlayerCard';
-import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
 import { theme } from '../constants';
@@ -29,11 +28,9 @@ import {
   getCreateMatchPlayerLimits,
   isDedicatedCreateMatchGame,
 } from '../utils/games';
-import {
-  AVENTUREROS_TREN_MAX_PLAYERS,
-  AVENTUREROS_TREN_MIN_PLAYERS,
-} from '../utils/aventurerosTren';
+import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
 import { defaultSettings } from '../utils/game';
+import { ensureMatchPlayers } from '../utils/players';
 import { applyTemplateDraft } from '../utils/template';
 
 function buildInitialFromTemplate(
@@ -127,9 +124,9 @@ export function CreateMatchScreen({
     [players],
   );
 
-  const canStart =
-    players.length >= playerLimits.min &&
-    players.length <= playerLimits.max;
+  const canStart = players.length <= playerLimits.max;
+  const soloHint =
+    'Si no eliges a nadie, se usará un jugador «Yo» solo para este registro.';
   const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
   const atPlayerCap = players.length >= playerLimits.max;
 
@@ -178,14 +175,15 @@ export function CreateMatchScreen({
 
   const handleStart = () => {
     if (!canStart) return;
+    const roster = ensureMatchPlayers(players, onCreateNewPlayer);
     if (isPelusas) {
-      onStartPelusas(players);
+      onStartPelusas(roster);
     } else if (isSkullKing) {
-      onStartSkullKing(players);
+      onStartSkullKing(roster);
     } else if (isAventurerosTren) {
-      onStartAventurerosTren(players, aventurerosSubmode);
+      onStartAventurerosTren(roster, aventurerosSubmode);
     } else {
-      onStartStandard(players, settings, matchName.trim() || null);
+      onStartStandard(roster, settings, matchName.trim() || null);
     }
   };
 
@@ -234,24 +232,20 @@ export function CreateMatchScreen({
             onSelect={setAventurerosSubmode}
           />
           <Text style={styles.specialHint}>
-            Dos fases: construcción de vías y comprobación de destinos. Elige
-            entre {AVENTUREROS_TREN_MIN_PLAYERS} y{' '}
+            Dos fases: construcción de vías y comprobación de destinos. De 1 a{' '}
             {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
           </Text>
         </>
       )}
 
-      <View style={styles.playersSection}>
-        <Text style={styles.playersTitle}>Jugadores</Text>
-        <Text style={styles.playersHint}>Guardados</Text>
-        <SavedPlayerPicker
-          players={savedPlayers}
-          selectedIds={selectedIds}
-          onSelect={handleAddSaved}
-        />
-        <Text style={styles.playersHint}>Nuevo nombre</Text>
-        <AddPlayerInput onAdd={handleAddNew} />
-      </View>
+      <MatchPlayerRoster
+        savedPlayers={savedPlayers}
+        selectedIds={selectedIds}
+        onSelectSaved={handleAddSaved}
+        onAddNew={handleAddNew}
+        soloHint={soloHint}
+        atPlayerCap={atPlayerCap}
+      />
     </View>
   );
 
@@ -266,9 +260,11 @@ export function CreateMatchScreen({
         >
           {header}
           <Text style={styles.empty}>
-            {isSpecialGame
-              ? `Añade entre ${playerLimits.min} y ${playerLimits.max} jugadores`
-              : 'Añade al menos 2 jugadores'}
+            {players.length === 0
+              ? 'Puedes empezar ya en solitario o elegir jugadores arriba.'
+              : isSpecialGame
+                ? `Máximo ${playerLimits.max} jugadores`
+                : 'Añade jugadores o empieza en solitario.'}
           </Text>
           <Button
             label={startLabel}
@@ -350,20 +346,6 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     lineHeight: 20,
     paddingHorizontal: 4,
-  },
-  playersSection: {
-    gap: 10,
-  },
-  playersTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: theme.text,
-  },
-  playersHint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textMuted,
-    marginTop: 2,
   },
   list: {
     gap: 12,
