@@ -138,7 +138,12 @@ export function formatWinnerLabel(match: Match): string | null {
 export function formatMatchSubtitle(match: Match): string {
   const m = normalizeMatchRounds(match);
   if (match.status === 'finished') return 'Finalizada';
-  return `Ronda ${m.activeRoundIndex + 1}`;
+  const current = m.activeRoundIndex + 1;
+  const maxRounds = normalizeSettings(match.settings).maxRounds;
+  if (maxRounds != null) {
+    return `Ronda ${current}/${maxRounds}`;
+  }
+  return `Ronda ${current}`;
 }
 
 export function formatMatchListMeta(match: Match): string {
