@@ -29,28 +29,46 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
   const [pointsText, setPointsText] = useState(
     () => String(settings.maxPointsToWin ?? DEFAULT_MAX_POINTS),
   );
+  const [roundsFocused, setRoundsFocused] = useState(false);
+  const [pointsFocused, setPointsFocused] = useState(false);
 
   useEffect(() => {
-    if (settings.maxRounds != null) {
+    if (!roundsFocused && settings.maxRounds != null) {
       setRoundsText(String(settings.maxRounds));
     }
-  }, [settings.maxRounds]);
+  }, [settings.maxRounds, roundsFocused]);
 
   useEffect(() => {
-    if (settings.maxPointsToWin != null) {
+    if (!pointsFocused && settings.maxPointsToWin != null) {
       setPointsText(String(settings.maxPointsToWin));
     }
-  }, [settings.maxPointsToWin]);
+  }, [settings.maxPointsToWin, pointsFocused]);
 
-  const commitRounds = (text: string) => {
+  const handleRoundsTextChange = (text: string) => {
+    setRoundsText(text);
     const parsed = parseLimit(text);
+    if (parsed != null) {
+      onChange({ ...settings, maxRounds: parsed });
+    }
+  };
+
+  const commitRounds = () => {
+    const parsed = parseLimit(roundsText);
     const value = parsed ?? settings.maxRounds ?? DEFAULT_MAX_ROUNDS;
     onChange({ ...settings, maxRounds: value });
     setRoundsText(String(value));
   };
 
-  const commitPoints = (text: string) => {
+  const handlePointsTextChange = (text: string) => {
+    setPointsText(text);
     const parsed = parseLimit(text);
+    if (parsed != null) {
+      onChange({ ...settings, maxPointsToWin: parsed });
+    }
+  };
+
+  const commitPoints = () => {
+    const parsed = parseLimit(pointsText);
     const value = parsed ?? settings.maxPointsToWin ?? DEFAULT_MAX_POINTS;
     onChange({ ...settings, maxPointsToWin: value });
     setPointsText(String(value));
@@ -85,9 +103,13 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
         <TextInput
           style={styles.input}
           value={roundsText}
-          onChangeText={setRoundsText}
-          onBlur={() => commitRounds(roundsText)}
-          onSubmitEditing={() => commitRounds(roundsText)}
+          onChangeText={handleRoundsTextChange}
+          onFocus={() => setRoundsFocused(true)}
+          onBlur={() => {
+            setRoundsFocused(false);
+            commitRounds();
+          }}
+          onSubmitEditing={commitRounds}
           keyboardType="number-pad"
           placeholder="Número de rondas"
           placeholderTextColor={theme.textMuted}
@@ -125,9 +147,13 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
         <TextInput
           style={styles.input}
           value={pointsText}
-          onChangeText={setPointsText}
-          onBlur={() => commitPoints(pointsText)}
-          onSubmitEditing={() => commitPoints(pointsText)}
+          onChangeText={handlePointsTextChange}
+          onFocus={() => setPointsFocused(true)}
+          onBlur={() => {
+            setPointsFocused(false);
+            commitPoints();
+          }}
+          onSubmitEditing={commitPoints}
           keyboardType="number-pad"
           placeholder="Puntos objetivo"
           placeholderTextColor={theme.textMuted}
