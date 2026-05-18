@@ -126,9 +126,37 @@ export function canAddRound(match: Match): boolean {
   return m.settings.maxRounds == null;
 }
 
+function roundHasRecordedScores(
+  round: RoundScores,
+  breakdown: RoundBreakdown,
+): boolean {
+  if (Object.values(round).some((score) => score !== 0)) return true;
+  return Object.values(breakdown).some(
+    (items) => items != null && items.length > 0,
+  );
+}
+
+/** True si hay rondas posteriores a la activa con puntuación ya registrada. */
+export function hasLaterRoundsWithScores(
+  activeRoundIndex: number,
+  rounds: RoundScores[],
+  roundBreakdowns: RoundBreakdown[],
+): boolean {
+  for (let i = activeRoundIndex + 1; i < rounds.length; i++) {
+    const round = rounds[i] ?? {};
+    const breakdown = roundBreakdowns[i] ?? {};
+    if (roundHasRecordedScores(round, breakdown)) return true;
+  }
+  return false;
+}
+
 export function hasLaterRounds(match: Match): boolean {
   const m = normalizeMatchRounds(match);
-  return m.activeRoundIndex < m.rounds.length - 1;
+  return hasLaterRoundsWithScores(
+    m.activeRoundIndex,
+    m.rounds,
+    m.roundBreakdowns,
+  );
 }
 
 export function truncateLaterRounds(match: Match): Match {

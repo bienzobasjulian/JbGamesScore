@@ -26,6 +26,7 @@ import {
   sortPlayersByScore,
 } from '../utils/game';
 import { getMatchRankingFromState, RankedPlayer } from '../utils/match';
+import { hasLaterRoundsWithScores } from '../utils/rounds';
 import {
   getPlayerBreakdownItems,
   getPlayerScoringMode,
@@ -108,8 +109,11 @@ export function GameScreen({
   const activeRound = getActiveRoundScores(state);
   const activeBreakdown =
     state.roundBreakdowns[state.activeRoundIndex] ?? {};
-  const hasLaterRounds =
-    state.activeRoundIndex < state.rounds.length - 1;
+  const hasLaterRounds = hasLaterRoundsWithScores(
+    state.activeRoundIndex,
+    state.rounds,
+    state.roundBreakdowns,
+  );
 
   const ranking = useMemo(() => {
     if (resultsRanking) return resultsRanking;
