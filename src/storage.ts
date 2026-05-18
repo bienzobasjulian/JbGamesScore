@@ -27,7 +27,9 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                 ? 'pelusas'
                 : m.gameMode === 'skull_king'
                   ? 'skull_king'
-                  : 'standard',
+                  : m.gameMode === 'aventureros_tren'
+                    ? 'aventureros_tren'
+                    : 'standard',
             pelusasRevolution:
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),

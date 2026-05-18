@@ -1,4 +1,34 @@
-export type CreateMatchGameType = 'standard' | 'pelusas' | 'skull_king';
+export type CreateMatchGameType =
+  | 'standard'
+  | 'pelusas'
+  | 'skull_king'
+  | 'aventureros_tren';
+
+export type CreateMatchPlayerLimits = {
+  min: number;
+  max: number;
+};
+
+export function getCreateMatchPlayerLimits(
+  gameType: CreateMatchGameType,
+): CreateMatchPlayerLimits {
+  switch (gameType) {
+    case 'skull_king':
+      return { min: 2, max: 6 };
+    case 'aventureros_tren':
+      return { min: 2, max: 5 };
+    case 'pelusas':
+      return { min: 2, max: Number.POSITIVE_INFINITY };
+    default:
+      return { min: 2, max: Number.POSITIVE_INFINITY };
+  }
+}
+
+export function isDedicatedCreateMatchGame(
+  gameType: CreateMatchGameType,
+): boolean {
+  return gameType !== 'standard';
+}
 
 export type CreateMatchGameOption = {
   id: CreateMatchGameType;
@@ -21,5 +51,10 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     id: 'skull_king',
     name: 'Skull King',
     description: 'Bazas a 10 rondas con apuestas y bonificaciones',
+  },
+  {
+    id: 'aventureros_tren',
+    name: 'Aventureros al tren',
+    description: 'Fases de construcción y destinos (2–5 jugadores)',
   },
 ];

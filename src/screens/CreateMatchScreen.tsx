@@ -17,11 +17,15 @@ import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
-import { CreateMatchGameType } from '../utils/games';
 import {
-  SKULL_KING_MAX_PLAYERS,
-  SKULL_KING_MIN_PLAYERS,
-} from '../utils/skullKing';
+  CreateMatchGameType,
+  getCreateMatchPlayerLimits,
+  isDedicatedCreateMatchGame,
+} from '../utils/games';
+import {
+  AVENTUREROS_TREN_MAX_PLAYERS,
+  AVENTUREROS_TREN_MIN_PLAYERS,
+} from '../utils/aventurerosTren';
 import { defaultSettings } from '../utils/game';
 import { applyTemplateDraft } from '../utils/template';
 
@@ -69,6 +73,7 @@ type Props = {
   ) => void;
   onStartPelusas: (players: Player[]) => void;
   onStartSkullKing: (players: Player[]) => void;
+  onStartAventurerosTren: (players: Player[]) => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
@@ -82,6 +87,7 @@ export function CreateMatchScreen({
   onStartStandard,
   onStartPelusas,
   onStartSkullKing,
+  onStartAventurerosTren,
   onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
@@ -100,19 +106,20 @@ export function CreateMatchScreen({
 
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
-  const isSpecialGame = isPelusas || isSkullKing;
+  const isAventurerosTren = gameType === 'aventureros_tren';
+  const isSpecialGame = isDedicatedCreateMatchGame(gameType);
+  const playerLimits = getCreateMatchPlayerLimits(gameType);
 
   const selectedIds = useMemo(
     () => new Set(players.map((p) => p.id)),
     [players],
   );
 
-  const canStart = isSkullKing
-    ? players.length >= SKULL_KING_MIN_PLAYERS &&
-      players.length <= SKULL_KING_MAX_PLAYERS
-    : players.length >= 2;
+  const canStart =
+    players.length >= playerLimits.min &&
+    players.length <= playerLimits.max;
   const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
-  const atPlayerCap = isSkullKing && players.length >= SKULL_KING_MAX_PLAYERS;
+  const atPlayerCap = players.length >= playerLimits.max;
 
   const handleAddSaved = (saved: SavedPlayer) => {
     if (selectedIds.has(saved.id) || atPlayerCap) return;
@@ -135,7 +142,7 @@ export function CreateMatchScreen({
 
   const handleSelectGame = (next: CreateMatchGameType) => {
     setGameType(next);
-    if (next === 'pelusas' || next === 'skull_king') {
+    if (isDedicatedCreateMatchGame(next)) {
       setLoadedTemplateId(null);
       setSettings(defaultSettings());
       setMatchName('');
@@ -163,6 +170,8 @@ export function CreateMatchScreen({
       onStartPelusas(players);
     } else if (isSkullKing) {
       onStartSkullKing(players);
+    } else if (isAventurerosTren) {
+      onStartAventurerosTren(players);
     } else {
       onStartStandard(players, settings, matchName.trim() || null);
     }
@@ -201,11 +210,16 @@ export function CreateMatchScreen({
           Solo necesitas elegir quién juega. El conteo de cartas y el modo
           Revolution se configuran en la siguiente pantalla.
         </Text>
+      ) : isSkullKing ? (
+        <Text style={styles.specialHint}>
+          Partida a 10 rondas de bazas. Elige entre {playerLimits.min} y{' '}
+          {playerLimits.max} jugadores.
+        </Text>
       ) : (
         <Text style={styles.specialHint}>
-          Partida a 10 rondas de bazas. Elige entre {SKULL_KING_MIN_PLAYERS} y{' '}
-          {SKULL_KING_MAX_PLAYERS} jugadores. En cada ronda registrarás apuesta,
-          bazas ganadas y bonificaciones.
+          Dos fases: construcción de vías y comprobación de destinos. Elige
+          entre {AVENTUREROS_TREN_MIN_PLAYERS} y {AVENTUREROS_TREN_MAX_PLAYERS}{' '}
+          jugadores.
         </Text>
       )}
 
@@ -234,8 +248,8 @@ export function CreateMatchScreen({
         >
           {header}
           <Text style={styles.empty}>
-            {isSkullKing
-              ? `Añade entre ${SKULL_KING_MIN_PLAYERS} y ${SKULL_KING_MAX_PLAYERS} jugadores`
+            {isSpecialGame
+              ? `Añade entre ${playerLimits.min} y ${playerLimits.max} jugadores`
               : 'Añade al menos 2 jugadores'}
           </Text>
           <Button

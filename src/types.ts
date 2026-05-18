@@ -21,7 +21,11 @@ export type GameSettings = {
 
 export type MatchStatus = 'in_progress' | 'finished';
 
-export type MatchGameMode = 'standard' | 'pelusas' | 'skull_king';
+export type MatchGameMode =
+  | 'standard'
+  | 'pelusas'
+  | 'skull_king'
+  | 'aventureros_tren';
 
 export type Match = {
   id: string;
@@ -89,6 +93,32 @@ export type SkullKingSession = {
   rounds: Record<string, SkullKingRoundEntry>[];
 };
 
+export type AventurerosTrenPhase = 'construccion' | 'destinos';
+
+export type AventurerosTrenRouteEntry = {
+  id: string;
+  origin: string;
+  destination: string;
+  useCustomPoints: boolean;
+  length: number;
+  customPoints: number;
+};
+
+export type AventurerosTrenDestinationEntry = {
+  id: string;
+  origin: string;
+  destination: string;
+  points: number;
+  completed: boolean;
+};
+
+export type AventurerosTrenSession = {
+  players: Player[];
+  activePhase: AventurerosTrenPhase;
+  construccion: Record<string, AventurerosTrenRouteEntry[]>;
+  destinos: Record<string, AventurerosTrenDestinationEntry[]>;
+};
+
 export type AppData = {
   players: SavedPlayer[];
   matches: Match[];
@@ -106,4 +136,5 @@ export type AppScreen =
   | { type: 'editTemplate'; templateId?: string }
   | { type: 'pelusasSetup' }
   | { type: 'pelusasCount' }
-  | { type: 'skullKingCount' };
+  | { type: 'skullKingCount' }
+  | { type: 'aventurerosTrenCount' };

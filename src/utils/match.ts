@@ -43,6 +43,7 @@ export function formatMatchTitle(match: Match): string {
   if (custom) return custom;
   if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
+  if (match.gameMode === 'aventureros_tren') return 'Aventureros al tren';
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
   if (names.length === 1) return names[0];
@@ -135,6 +136,9 @@ export function formatMatchListMeta(match: Match): string {
   }
   if (match.gameMode === 'skull_king') {
     parts.push('Skull King · 10 rondas');
+  }
+  if (match.gameMode === 'aventureros_tren') {
+    parts.push('Aventureros al tren');
   }
   if (match.status === 'in_progress') {
     parts.push(formatMatchSubtitle(match));

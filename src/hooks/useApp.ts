@@ -7,6 +7,10 @@ import {
 import {
   AppData,
   AppScreen,
+  AventurerosTrenDestinationEntry,
+  AventurerosTrenPhase,
+  AventurerosTrenRouteEntry,
+  AventurerosTrenSession,
   GameSettings,
   Match,
   MatchTemplate,
@@ -55,6 +59,14 @@ import {
   createSkullKingSession,
   emptySkullKingRoundEntry,
 } from '../utils/skullKing';
+import {
+  createAventurerosTrenDestinationEntry,
+  createAventurerosTrenRouteEntry,
+  createAventurerosTrenSession,
+  createFinishedAventurerosTrenMatch,
+  AVENTUREROS_TREN_MAX_PLAYERS,
+  AVENTUREROS_TREN_MIN_PLAYERS,
+} from '../utils/aventurerosTren';
 
 function patchActiveRound(
   match: Match,
@@ -134,6 +146,8 @@ export function useApp() {
   );
   const [skullKingSession, setSkullKingSession] =
     useState<SkullKingSession | null>(null);
+  const [aventurerosTrenSession, setAventurerosTrenSession] =
+    useState<AventurerosTrenSession | null>(null);
   const previousScreenRef = useRef<AppScreen>({ type: 'home' });
 
   useEffect(() => {
@@ -378,6 +392,141 @@ export function useApp() {
     setSkullKingSession((prev) => {
       if (!prev) return null;
       const match = createFinishedSkullKingMatch(prev);
+      setData((data) => ({
+        ...data,
+        players: prev.players.reduce(
+          (acc, p) => upsertSavedPlayer(acc, p),
+          data.players,
+        ),
+        matches: [...data.matches, match],
+      }));
+      setScreen({ type: 'game', matchId: match.id });
+      return null;
+    });
+  }, []);
+
+  const startAventurerosTrenSession = useCallback((players: Player[]) => {
+    if (
+      players.length < AVENTUREROS_TREN_MIN_PLAYERS ||
+      players.length > AVENTUREROS_TREN_MAX_PLAYERS
+    ) {
+      return;
+    }
+    setData((prev) => ({
+      ...prev,
+      players: players.reduce(
+        (acc, p) => upsertSavedPlayer(acc, p),
+        prev.players,
+      ),
+    }));
+    setAventurerosTrenSession(createAventurerosTrenSession(players));
+    setScreen({ type: 'aventurerosTrenCount' });
+  }, []);
+
+  const exitAventurerosTren = useCallback(() => {
+    setAventurerosTrenSession(null);
+    setScreen({ type: 'home' });
+    setMenuOpen(false);
+  }, []);
+
+  const setAventurerosTrenPhase = useCallback((phase: AventurerosTrenPhase) => {
+    setAventurerosTrenSession((prev) =>
+      prev ? { ...prev, activePhase: phase } : null,
+    );
+  }, []);
+
+  const addAventurerosTrenRoute = useCallback((playerId: string) => {
+    setAventurerosTrenSession((prev) => {
+      if (!prev) return null;
+      const construccion = { ...prev.construccion };
+      construccion[playerId] = [
+        ...(construccion[playerId] ?? []),
+        createAventurerosTrenRouteEntry(),
+      ];
+      return { ...prev, construccion };
+    });
+  }, []);
+
+  const updateAventurerosTrenRoute = useCallback(
+    (
+      playerId: string,
+      routeId: string,
+      patch: Partial<AventurerosTrenRouteEntry>,
+    ) => {
+      setAventurerosTrenSession((prev) => {
+        if (!prev) return null;
+        const construccion = { ...prev.construccion };
+        construccion[playerId] = (construccion[playerId] ?? []).map((r) =>
+          r.id === routeId ? { ...r, ...patch } : r,
+        );
+        return { ...prev, construccion };
+      });
+    },
+    [],
+  );
+
+  const removeAventurerosTrenRoute = useCallback(
+    (playerId: string, routeId: string) => {
+      setAventurerosTrenSession((prev) => {
+        if (!prev) return null;
+        const construccion = { ...prev.construccion };
+        construccion[playerId] = (construccion[playerId] ?? []).filter(
+          (r) => r.id !== routeId,
+        );
+        return { ...prev, construccion };
+      });
+    },
+    [],
+  );
+
+  const addAventurerosTrenDestination = useCallback((playerId: string) => {
+    setAventurerosTrenSession((prev) => {
+      if (!prev) return null;
+      const destinos = { ...prev.destinos };
+      destinos[playerId] = [
+        ...(destinos[playerId] ?? []),
+        createAventurerosTrenDestinationEntry(),
+      ];
+      return { ...prev, destinos };
+    });
+  }, []);
+
+  const updateAventurerosTrenDestination = useCallback(
+    (
+      playerId: string,
+      destId: string,
+      patch: Partial<AventurerosTrenDestinationEntry>,
+    ) => {
+      setAventurerosTrenSession((prev) => {
+        if (!prev) return null;
+        const destinos = { ...prev.destinos };
+        destinos[playerId] = (destinos[playerId] ?? []).map((d) =>
+          d.id === destId ? { ...d, ...patch } : d,
+        );
+        return { ...prev, destinos };
+      });
+    },
+    [],
+  );
+
+  const removeAventurerosTrenDestination = useCallback(
+    (playerId: string, destId: string) => {
+      setAventurerosTrenSession((prev) => {
+        if (!prev) return null;
+        const destinos = { ...prev.destinos };
+        destinos[playerId] = (destinos[playerId] ?? []).filter(
+          (d) => d.id !== destId,
+        );
+        return { ...prev, destinos };
+      });
+    },
+    [],
+  );
+
+  const finishAventurerosTrenSession = useCallback(() => {
+    setAventurerosTrenSession((prev) => {
+      if (!prev) return null;
+      const match = createFinishedAventurerosTrenMatch(prev);
       setData((data) => ({
         ...data,
         players: prev.players.reduce(
@@ -832,6 +981,19 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'aventureros_tren') {
+        setData((prev) => ({
+          ...prev,
+          players: source.players.reduce(
+            (acc, p) => upsertSavedPlayer(acc, p),
+            prev.players,
+          ),
+        }));
+        setAventurerosTrenSession(createAventurerosTrenSession(source.players));
+        setScreen({ type: 'aventurerosTrenCount' });
+        return;
+      }
+
       const newMatch = createMatch(source.players, source.settings, source.name);
       setData((prev) => ({
         ...prev,
@@ -910,6 +1072,17 @@ export function useApp() {
     goSkullKingRound,
     updateSkullKingRoundEntry,
     finishSkullKingSession,
+    aventurerosTrenSession,
+    startAventurerosTrenSession,
+    exitAventurerosTren,
+    setAventurerosTrenPhase,
+    addAventurerosTrenRoute,
+    updateAventurerosTrenRoute,
+    removeAventurerosTrenRoute,
+    addAventurerosTrenDestination,
+    updateAventurerosTrenDestination,
+    removeAventurerosTrenDestination,
+    finishAventurerosTrenSession,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

@@ -14,6 +14,7 @@ import { MatchesListScreen } from './src/screens/MatchesListScreen';
 import { PlayersListScreen } from './src/screens/PlayersListScreen';
 import { PelusasCounterScreen } from './src/screens/PelusasCounterScreen';
 import { PelusasSetupScreen } from './src/screens/PelusasSetupScreen';
+import { AventurerosTrenCounterScreen } from './src/screens/AventurerosTrenCounterScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import { checkGameOver } from './src/utils/game';
@@ -98,6 +99,9 @@ export default function App() {
             onStartSkullKing={(players) => {
               app.startSkullKingSession(players);
             }}
+            onStartAventurerosTren={(players) => {
+              app.startAventurerosTrenSession(players);
+            }}
             onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}
           />
@@ -180,7 +184,9 @@ export default function App() {
             matchTitle={formatMatchTitle(match)}
             isMatchFinished={match.status === 'finished'}
             isDedicatedGameMatch={
-              match.gameMode === 'pelusas' || match.gameMode === 'skull_king'
+              match.gameMode === 'pelusas' ||
+              match.gameMode === 'skull_king' ||
+              match.gameMode === 'aventureros_tren'
             }
             onAddBreakdownItem={(playerId, value, truncateLater) =>
               app.addBreakdownItem(match.id, playerId, value, truncateLater)
@@ -252,6 +258,24 @@ export default function App() {
             onFinishMatch={app.finishSkullKingSession}
             onGoToRound={app.goSkullKingRound}
             onUpdateRoundEntry={app.updateSkullKingRoundEntry}
+          />
+        );
+      }
+
+      case 'aventurerosTrenCount': {
+        if (!app.aventurerosTrenSession) return null;
+        return (
+          <AventurerosTrenCounterScreen
+            session={app.aventurerosTrenSession}
+            onBack={app.exitAventurerosTren}
+            onFinishMatch={app.finishAventurerosTrenSession}
+            onSetPhase={app.setAventurerosTrenPhase}
+            onAddRoute={app.addAventurerosTrenRoute}
+            onUpdateRoute={app.updateAventurerosTrenRoute}
+            onRemoveRoute={app.removeAventurerosTrenRoute}
+            onAddDestination={app.addAventurerosTrenDestination}
+            onUpdateDestination={app.updateAventurerosTrenDestination}
+            onRemoveDestination={app.removeAventurerosTrenDestination}
           />
         );
       }
