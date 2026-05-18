@@ -64,6 +64,7 @@ import {
   createAventurerosTrenDestinationEntry,
   createAventurerosTrenRouteEntry,
   createAventurerosTrenSession,
+  createDefaultPlayerScoring,
   createFinishedAventurerosTrenMatch,
   AVENTUREROS_TREN_MAX_PLAYERS,
   AVENTUREROS_TREN_MIN_PLAYERS,
@@ -532,22 +533,15 @@ export function useApp() {
       setAventurerosTrenSession((prev) => {
         if (!prev) return null;
         const scoring = { ...prev.scoring };
-        const current = scoring[playerId] ?? {
-          hasLongestRouteBonus: false,
-          longestRouteLength: 0,
-          unusedStations: 0,
-        };
+        const current =
+          scoring[playerId] ?? createDefaultPlayerScoring(prev.submode);
         const next = { ...current, ...patch };
 
         if (patch.hasLongestRouteBonus === true) {
           for (const id of prev.players.map((p) => p.id)) {
             if (id === playerId) continue;
             scoring[id] = {
-              ...(scoring[id] ?? {
-                hasLongestRouteBonus: false,
-                longestRouteLength: 0,
-                unusedStations: 0,
-              }),
+              ...(scoring[id] ?? createDefaultPlayerScoring(prev.submode)),
               hasLongestRouteBonus: false,
             };
           }

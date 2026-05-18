@@ -1,13 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
-import { AventurerosTrenRouteEntry } from '../types';
-import { AventurerosTrenSubmode } from '../types';
+import { AventurerosTrenRouteEntry, AventurerosTrenSubmode } from '../types';
 import {
+  formatRouteCollapsedMeta,
+  formatRoutePlaces,
   getRouteEntryPoints,
   getRouteLengthOptions,
   getRoutePointsByLength,
 } from '../utils/aventurerosTren';
 import { CardCountStepper } from './CardCountStepper';
+import { CollapsibleTrenEntryCard } from './CollapsibleTrenEntryCard';
 import { OriginDestinationInputs } from './OriginDestinationInputs';
 
 type Props = {
@@ -28,9 +30,20 @@ export function AventurerosTrenRouteRow({
   const lengthOptions = getRouteLengthOptions(submode);
   const pointsByLength = getRoutePointsByLength(submode);
   const points = getRouteEntryPoints(entry, submode);
+  const places = formatRoutePlaces(entry);
+  const meta = formatRouteCollapsedMeta(entry, submode);
 
   return (
-    <View style={styles.row}>
+    <CollapsibleTrenEntryCard
+      collapsed={entry.collapsed === true}
+      onToggleCollapsed={() => onChange({ collapsed: !entry.collapsed })}
+      places={places}
+      subtitle={meta}
+      pointsLabel={`+${points}`}
+      pointsPositive
+      accentColor={color}
+      onRemove={onRemove}
+    >
       <OriginDestinationInputs
         origin={entry.origin}
         destination={entry.destination}
@@ -81,26 +94,11 @@ export function AventurerosTrenRouteRow({
           })}
         </View>
       )}
-
-      <View style={styles.footer}>
-        <Text style={styles.points}>+{points} pts</Text>
-        <Pressable onPress={onRemove} hitSlop={8}>
-          <Text style={styles.remove}>Quitar</Text>
-        </Pressable>
-      </View>
-    </View>
+    </CollapsibleTrenEntryCard>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
   modeToggle: {
     alignSelf: 'flex-start',
   },
@@ -143,20 +141,5 @@ const styles = StyleSheet.create({
   lengthPts: {
     fontSize: 10,
     color: theme.textMuted,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  points: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: theme.accent,
-  },
-  remove: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.danger,
   },
 });

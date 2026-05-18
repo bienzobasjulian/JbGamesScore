@@ -1,8 +1,12 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { AventurerosTrenDestinationEntry } from '../types';
-import { getDestinationEntryPoints } from '../utils/aventurerosTren';
+import {
+  formatDestinationPlaces,
+  getDestinationEntryPoints,
+} from '../utils/aventurerosTren';
 import { CardCountStepper } from './CardCountStepper';
+import { CollapsibleTrenEntryCard } from './CollapsibleTrenEntryCard';
 import { OriginDestinationInputs } from './OriginDestinationInputs';
 
 type Props = {
@@ -19,9 +23,19 @@ export function AventurerosTrenDestinationRow({
   onRemove,
 }: Props) {
   const net = getDestinationEntryPoints(entry);
+  const places = formatDestinationPlaces(entry);
+  const pointsLabel = `${net > 0 ? '+' : ''}${net} pts`;
 
   return (
-    <View style={styles.row}>
+    <CollapsibleTrenEntryCard
+      collapsed={entry.collapsed === true}
+      onToggleCollapsed={() => onChange({ collapsed: !entry.collapsed })}
+      places={places}
+      pointsLabel={pointsLabel}
+      pointsPositive={net >= 0}
+      accentColor={color}
+      onRemove={onRemove}
+    >
       <OriginDestinationInputs
         origin={entry.origin}
         destination={entry.destination}
@@ -53,31 +67,11 @@ export function AventurerosTrenDestinationRow({
           thumbColor={entry.completed ? theme.accent : theme.textMuted}
         />
       </View>
-
-      <View style={styles.footer}>
-        <Text
-          style={[styles.points, net < 0 && styles.pointsNegative]}
-        >
-          {net > 0 ? '+' : ''}
-          {net} pts
-        </Text>
-        <Pressable onPress={onRemove} hitSlop={8}>
-          <Text style={styles.remove}>Quitar</Text>
-        </Pressable>
-      </View>
-    </View>
+    </CollapsibleTrenEntryCard>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
   fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -103,23 +97,5 @@ const styles = StyleSheet.create({
   switchHint: {
     fontSize: 12,
     color: theme.textMuted,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  points: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: theme.success,
-  },
-  pointsNegative: {
-    color: theme.danger,
-  },
-  remove: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.danger,
   },
 });

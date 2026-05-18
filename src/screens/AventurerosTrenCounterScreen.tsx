@@ -14,6 +14,7 @@ import {
   AventurerosTrenSession,
 } from '../types';
 import {
+  createDefaultPlayerScoring,
   getSubmodeLabel,
   sortPlayersByAventurerosTrenTotal,
 } from '../utils/aventurerosTren';
@@ -149,11 +150,10 @@ export function AventurerosTrenCounterScreen({
             phase={phase}
             routes={session.construccion[player.id] ?? []}
             destinations={session.destinos[player.id] ?? []}
-            scoring={session.scoring[player.id] ?? {
-              hasLongestRouteBonus: false,
-              longestRouteLength: 0,
-              unusedStations: 0,
-            }}
+            scoring={
+              session.scoring[player.id] ??
+              createDefaultPlayerScoring(session.submode)
+            }
             expanded={expandedPlayers.has(player.id)}
             onToggle={() => togglePlayer(player.id)}
             onAddRoute={() => onAddRoute(player.id)}

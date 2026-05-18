@@ -123,6 +123,8 @@ export type AventurerosTrenRouteEntry = {
   useCustomPoints: boolean;
   length: number;
   customPoints: number;
+  /** Vista compacta en fase de construcción */
+  collapsed?: boolean;
 };
 
 export type AventurerosTrenDestinationEntry = {
@@ -131,6 +133,7 @@ export type AventurerosTrenDestinationEntry = {
   destination: string;
   points: number;
   completed: boolean;
+  collapsed?: boolean;
 };
 
 export type AventurerosTrenSession = {

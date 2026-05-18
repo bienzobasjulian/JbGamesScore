@@ -70,11 +70,13 @@ export function getSubmodeLabel(submode: AventurerosTrenSubmode): string {
     : 'Aventureros al tren';
 }
 
-export function createDefaultPlayerScoring(): AventurerosTrenPlayerScoring {
+export function createDefaultPlayerScoring(
+  submode: AventurerosTrenSubmode = 'base',
+): AventurerosTrenPlayerScoring {
   return {
     hasLongestRouteBonus: false,
     longestRouteLength: 0,
-    unusedStations: 0,
+    unusedStations: submode === 'europa' ? EUROPA_MAX_STATIONS : 0,
   };
 }
 
@@ -112,7 +114,7 @@ export function createAventurerosTrenSession(
   for (const player of players) {
     construccion[player.id] = [];
     destinos[player.id] = [];
-    scoring[player.id] = createDefaultPlayerScoring();
+    scoring[player.id] = createDefaultPlayerScoring(submode);
   }
   return {
     players,
@@ -134,6 +136,40 @@ export function getRouteEntryPoints(
   return getRoutePointsByLength(submode)[entry.length] ?? 0;
 }
 
+/** Origen/destino para fila compacta (solo texto no vacío). */
+export function formatOriginDestinationPlaces(
+  origin: string,
+  destination: string,
+): string | null {
+  const o = origin.trim();
+  const d = destination.trim();
+  if (o && d) return `${o} → ${d}`;
+  if (o) return `Origen: ${o}`;
+  if (d) return `Destino: ${d}`;
+  return null;
+}
+
+export function formatRoutePlaces(entry: AventurerosTrenRouteEntry): string | null {
+  return formatOriginDestinationPlaces(entry.origin, entry.destination);
+}
+
+export function formatDestinationPlaces(
+  entry: AventurerosTrenDestinationEntry,
+): string | null {
+  return formatOriginDestinationPlaces(entry.origin, entry.destination);
+}
+
+export function formatRouteCollapsedMeta(
+  entry: AventurerosTrenRouteEntry,
+  submode: AventurerosTrenSubmode,
+): string {
+  const points = getRouteEntryPoints(entry, submode);
+  if (entry.useCustomPoints) {
+    return `Puntos directos · +${points} pts`;
+  }
+  return `Longitud ${entry.length} · +${points} pts`;
+}
+
 export function getDestinationEntryPoints(
   entry: AventurerosTrenDestinationEntry,
 ): number {
@@ -152,7 +188,7 @@ export function getPlayerScoring(
   session: AventurerosTrenSession,
   playerId: string,
 ): AventurerosTrenPlayerScoring {
-  return session.scoring[playerId] ?? createDefaultPlayerScoring();
+  return session.scoring[playerId] ?? createDefaultPlayerScoring(session.submode);
 }
 
 export function getEndgameBonusPoints(
