@@ -15,8 +15,15 @@ import { GameTypePicker } from '../components/GameTypePicker';
 import { PlayerCard } from '../components/PlayerCard';
 import { SavedPlayerPicker } from '../components/SavedPlayerPicker';
 import { TemplatePicker } from '../components/TemplatePicker';
+import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
 import { theme } from '../constants';
-import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
+import {
+  AventurerosTrenSubmode,
+  GameSettings,
+  MatchTemplate,
+  Player,
+  SavedPlayer,
+} from '../types';
 import {
   CreateMatchGameType,
   getCreateMatchPlayerLimits,
@@ -73,7 +80,10 @@ type Props = {
   ) => void;
   onStartPelusas: (players: Player[]) => void;
   onStartSkullKing: (players: Player[]) => void;
-  onStartAventurerosTren: (players: Player[]) => void;
+  onStartAventurerosTren: (
+    players: Player[],
+    submode: AventurerosTrenSubmode,
+  ) => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
@@ -103,6 +113,8 @@ export function CreateMatchScreen({
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
     initial.loadedTemplateId,
   );
+  const [aventurerosSubmode, setAventurerosSubmode] =
+    useState<AventurerosTrenSubmode>('base');
 
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
@@ -171,7 +183,7 @@ export function CreateMatchScreen({
     } else if (isSkullKing) {
       onStartSkullKing(players);
     } else if (isAventurerosTren) {
-      onStartAventurerosTren(players);
+      onStartAventurerosTren(players, aventurerosSubmode);
     } else {
       onStartStandard(players, settings, matchName.trim() || null);
     }
@@ -216,11 +228,17 @@ export function CreateMatchScreen({
           {playerLimits.max} jugadores.
         </Text>
       ) : (
-        <Text style={styles.specialHint}>
-          Dos fases: construcción de vías y comprobación de destinos. Elige
-          entre {AVENTUREROS_TREN_MIN_PLAYERS} y {AVENTUREROS_TREN_MAX_PLAYERS}{' '}
-          jugadores.
-        </Text>
+        <>
+          <AventurerosTrenSubmodePicker
+            selected={aventurerosSubmode}
+            onSelect={setAventurerosSubmode}
+          />
+          <Text style={styles.specialHint}>
+            Dos fases: construcción de vías y comprobación de destinos. Elige
+            entre {AVENTUREROS_TREN_MIN_PLAYERS} y{' '}
+            {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
+          </Text>
+        </>
       )}
 
       <View style={styles.playersSection}>

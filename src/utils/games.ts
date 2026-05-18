@@ -55,6 +55,7 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
   {
     id: 'aventureros_tren',
     name: 'Aventureros al tren',
-    description: 'Fases de construcción y destinos (2–5 jugadores)',
+    description:
+      'Base o Europa: construcción, destinos y desempates (2–5 jugadores)',
   },
 ];

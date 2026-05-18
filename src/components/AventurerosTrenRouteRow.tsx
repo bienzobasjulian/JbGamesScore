@@ -1,15 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { AventurerosTrenRouteEntry } from '../types';
+import { AventurerosTrenSubmode } from '../types';
 import {
   getRouteEntryPoints,
-  ROUTE_LENGTH_OPTIONS,
-  ROUTE_POINTS_BY_LENGTH,
+  getRouteLengthOptions,
+  getRoutePointsByLength,
 } from '../utils/aventurerosTren';
 import { CardCountStepper } from './CardCountStepper';
 import { OriginDestinationInputs } from './OriginDestinationInputs';
 
 type Props = {
+  submode: AventurerosTrenSubmode;
   entry: AventurerosTrenRouteEntry;
   color: string;
   onChange: (patch: Partial<AventurerosTrenRouteEntry>) => void;
@@ -17,12 +19,15 @@ type Props = {
 };
 
 export function AventurerosTrenRouteRow({
+  submode,
   entry,
   color,
   onChange,
   onRemove,
 }: Props) {
-  const points = getRouteEntryPoints(entry);
+  const lengthOptions = getRouteLengthOptions(submode);
+  const pointsByLength = getRoutePointsByLength(submode);
+  const points = getRouteEntryPoints(entry, submode);
 
   return (
     <View style={styles.row}>
@@ -54,7 +59,7 @@ export function AventurerosTrenRouteRow({
         </View>
       ) : (
         <View style={styles.lengthGrid}>
-          {ROUTE_LENGTH_OPTIONS.map((len) => {
+          {lengthOptions.map((len) => {
             const selected = entry.length === len;
             return (
               <Pressable
@@ -69,7 +74,7 @@ export function AventurerosTrenRouteRow({
                   {len}
                 </Text>
                 <Text style={styles.lengthPts}>
-                  {ROUTE_POINTS_BY_LENGTH[len]} pt
+                  {pointsByLength[len]} pt
                 </Text>
               </Pressable>
             );

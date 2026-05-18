@@ -15,6 +15,10 @@ import {
   sortPlayersByScore,
 } from './game';
 import {
+  getAventurerosTrenMatchRanking,
+  getAventurerosTrenMatchWinners,
+} from './aventurerosTren';
+import {
   createInitialRounds,
   normalizeMatchRounds,
 } from './rounds';
@@ -43,7 +47,9 @@ export function formatMatchTitle(match: Match): string {
   if (custom) return custom;
   if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
-  if (match.gameMode === 'aventureros_tren') return 'Aventureros al tren';
+  if (match.gameMode === 'aventureros_tren') {
+    return match.name?.trim() || 'Aventureros al tren';
+  }
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
   if (names.length === 1) return names[0];
@@ -94,7 +100,18 @@ export function getMatchRankingFromState(state: GameState): RankedPlayer[] {
   });
 }
 
+export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
+  if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
+    return getAventurerosTrenMatchRanking(match);
+  }
+  return getMatchRankingFromState(matchToGameState(match));
+}
+
 export function getMatchWinners(match: Match): Player[] {
+  if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
+    return getAventurerosTrenMatchWinners(match);
+  }
+
   const state = matchToGameState(match);
   const over = checkGameOver(state);
   if (over.winners.length > 0) return over.winners;
@@ -138,7 +155,7 @@ export function formatMatchListMeta(match: Match): string {
     parts.push('Skull King · 10 rondas');
   }
   if (match.gameMode === 'aventureros_tren') {
-    parts.push('Aventureros al tren');
+    parts.push(formatMatchTitle(match));
   }
   if (match.status === 'in_progress') {
     parts.push(formatMatchSubtitle(match));

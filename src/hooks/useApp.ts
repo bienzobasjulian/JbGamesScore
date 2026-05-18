@@ -9,8 +9,10 @@ import {
   AppScreen,
   AventurerosTrenDestinationEntry,
   AventurerosTrenPhase,
+  AventurerosTrenPlayerScoring,
   AventurerosTrenRouteEntry,
   AventurerosTrenSession,
+  AventurerosTrenSubmode,
   GameSettings,
   Match,
   MatchTemplate,
@@ -405,23 +407,26 @@ export function useApp() {
     });
   }, []);
 
-  const startAventurerosTrenSession = useCallback((players: Player[]) => {
-    if (
-      players.length < AVENTUREROS_TREN_MIN_PLAYERS ||
-      players.length > AVENTUREROS_TREN_MAX_PLAYERS
-    ) {
-      return;
-    }
-    setData((prev) => ({
-      ...prev,
-      players: players.reduce(
-        (acc, p) => upsertSavedPlayer(acc, p),
-        prev.players,
-      ),
-    }));
-    setAventurerosTrenSession(createAventurerosTrenSession(players));
-    setScreen({ type: 'aventurerosTrenCount' });
-  }, []);
+  const startAventurerosTrenSession = useCallback(
+    (players: Player[], submode: AventurerosTrenSubmode = 'base') => {
+      if (
+        players.length < AVENTUREROS_TREN_MIN_PLAYERS ||
+        players.length > AVENTUREROS_TREN_MAX_PLAYERS
+      ) {
+        return;
+      }
+      setData((prev) => ({
+        ...prev,
+        players: players.reduce(
+          (acc, p) => upsertSavedPlayer(acc, p),
+          prev.players,
+        ),
+      }));
+      setAventurerosTrenSession(createAventurerosTrenSession(players, submode));
+      setScreen({ type: 'aventurerosTrenCount' });
+    },
+    [],
+  );
 
   const exitAventurerosTren = useCallback(() => {
     setAventurerosTrenSession(null);
@@ -441,7 +446,7 @@ export function useApp() {
       const construccion = { ...prev.construccion };
       construccion[playerId] = [
         ...(construccion[playerId] ?? []),
-        createAventurerosTrenRouteEntry(),
+        createAventurerosTrenRouteEntry(prev.submode),
       ];
       return { ...prev, construccion };
     });
@@ -518,6 +523,39 @@ export function useApp() {
           (d) => d.id !== destId,
         );
         return { ...prev, destinos };
+      });
+    },
+    [],
+  );
+
+  const updateAventurerosTrenPlayerScoring = useCallback(
+    (playerId: string, patch: Partial<AventurerosTrenPlayerScoring>) => {
+      setAventurerosTrenSession((prev) => {
+        if (!prev) return null;
+        const scoring = { ...prev.scoring };
+        const current = scoring[playerId] ?? {
+          hasLongestRouteBonus: false,
+          longestRouteLength: 0,
+          unusedStations: 0,
+        };
+        const next = { ...current, ...patch };
+
+        if (patch.hasLongestRouteBonus === true) {
+          for (const id of prev.players.map((p) => p.id)) {
+            if (id === playerId) continue;
+            scoring[id] = {
+              ...(scoring[id] ?? {
+                hasLongestRouteBonus: false,
+                longestRouteLength: 0,
+                unusedStations: 0,
+              }),
+              hasLongestRouteBonus: false,
+            };
+          }
+        }
+
+        scoring[playerId] = next;
+        return { ...prev, scoring };
       });
     },
     [],
@@ -989,7 +1027,12 @@ export function useApp() {
             prev.players,
           ),
         }));
-        setAventurerosTrenSession(createAventurerosTrenSession(source.players));
+        setAventurerosTrenSession(
+          createAventurerosTrenSession(
+            source.players,
+            source.aventurerosTrenSubmode ?? 'base',
+          ),
+        );
         setScreen({ type: 'aventurerosTrenCount' });
         return;
       }
@@ -1082,6 +1125,7 @@ export function useApp() {
     addAventurerosTrenDestination,
     updateAventurerosTrenDestination,
     removeAventurerosTrenDestination,
+    updateAventurerosTrenPlayerScoring,
     finishAventurerosTrenSession,
     goMatchesList,
     goPlayersList,

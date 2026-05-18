@@ -25,7 +25,7 @@ import {
   getRoundScore,
   sortPlayersByScore,
 } from '../utils/game';
-import { getMatchRankingFromState } from '../utils/match';
+import { getMatchRankingFromState, RankedPlayer } from '../utils/match';
 import {
   getPlayerBreakdownItems,
   getPlayerScoringMode,
@@ -36,6 +36,7 @@ type ScoreMutation = (truncateLater: boolean) => void;
 type Props = {
   state: GameState;
   matchTitle?: string;
+  resultsRanking?: RankedPlayer[];
   isMatchFinished?: boolean;
   isDedicatedGameMatch?: boolean;
   onAdjust: (playerId: string, delta: number, truncateLater?: boolean) => void;
@@ -67,6 +68,7 @@ type Props = {
 export function GameScreen({
   state,
   matchTitle,
+  resultsRanking,
   isMatchFinished = false,
   isDedicatedGameMatch = false,
   onAdjust,
@@ -109,10 +111,10 @@ export function GameScreen({
   const hasLaterRounds =
     state.activeRoundIndex < state.rounds.length - 1;
 
-  const ranking = useMemo(
-    () => getMatchRankingFromState(state),
-    [state.players, state.rounds, state.activeRoundIndex],
-  );
+  const ranking = useMemo(() => {
+    if (resultsRanking) return resultsRanking;
+    return getMatchRankingFromState(state);
+  }, [resultsRanking, state.players, state.rounds, state.activeRoundIndex]);
 
   const rankedPlayers = sortPlayersByScore(state.players, state);
   const leader = rankedPlayers[0];

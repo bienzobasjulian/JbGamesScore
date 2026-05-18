@@ -1,24 +1,32 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from './Button';
 import { AventurerosTrenDestinationRow } from './AventurerosTrenDestinationRow';
+import { AventurerosTrenEndgameFields } from './AventurerosTrenEndgameFields';
 import { AventurerosTrenRouteRow } from './AventurerosTrenRouteRow';
 import { theme } from '../constants';
 import {
   AventurerosTrenDestinationEntry,
   AventurerosTrenPhase,
+  AventurerosTrenPlayerScoring,
   AventurerosTrenRouteEntry,
+  AventurerosTrenSubmode,
   Player,
 } from '../types';
 import {
+  EUROPA_MAX_STATIONS,
+  EUROPA_STATION_BONUS_PER_UNUSED,
+  LONGEST_ROUTE_BONUS_POINTS,
   getDestinationEntryPoints,
   getRouteEntryPoints,
 } from '../utils/aventurerosTren';
 
 type Props = {
   player: Player;
+  submode: AventurerosTrenSubmode;
   phase: AventurerosTrenPhase;
   routes: AventurerosTrenRouteEntry[];
   destinations: AventurerosTrenDestinationEntry[];
+  scoring: AventurerosTrenPlayerScoring;
   expanded: boolean;
   onToggle: () => void;
   onAddRoute: () => void;
@@ -33,13 +41,16 @@ type Props = {
     patch: Partial<AventurerosTrenDestinationEntry>,
   ) => void;
   onRemoveDestination: (destId: string) => void;
+  onUpdateScoring: (patch: Partial<AventurerosTrenPlayerScoring>) => void;
 };
 
 export function AventurerosTrenPlayerPanel({
   player,
+  submode,
   phase,
   routes,
   destinations,
+  scoring,
   expanded,
   onToggle,
   onAddRoute,
@@ -48,16 +59,28 @@ export function AventurerosTrenPlayerPanel({
   onAddDestination,
   onUpdateDestination,
   onRemoveDestination,
+  onUpdateScoring,
 }: Props) {
   const constrTotal = routes.reduce(
-    (sum, entry) => sum + getRouteEntryPoints(entry),
+    (sum, entry) => sum + getRouteEntryPoints(entry, submode),
     0,
   );
-  const destTotal = destinations.reduce(
+  const destCardsTotal = destinations.reduce(
     (sum, entry) => sum + getDestinationEntryPoints(entry),
     0,
   );
-  const phaseTotal = phase === 'construccion' ? constrTotal : destTotal;
+  const bonusTotal =
+    phase === 'destinos'
+      ? (scoring.hasLongestRouteBonus ? LONGEST_ROUTE_BONUS_POINTS : 0) +
+        (submode === 'europa'
+          ? Math.min(
+              EUROPA_MAX_STATIONS,
+              Math.max(0, scoring.unusedStations),
+            ) * EUROPA_STATION_BONUS_PER_UNUSED
+          : 0)
+      : 0;
+  const phaseTotal =
+    phase === 'construccion' ? constrTotal : destCardsTotal + bonusTotal;
 
   return (
     <View style={styles.panel}>
@@ -109,6 +132,7 @@ export function AventurerosTrenPlayerPanel({
                 routes.map((route) => (
                   <AventurerosTrenRouteRow
                     key={route.id}
+                    submode={submode}
                     entry={route}
                     color={player.color}
                     onChange={(patch) => onUpdateRoute(route.id, patch)}
@@ -143,6 +167,12 @@ export function AventurerosTrenPlayerPanel({
                 label="Añadir destino"
                 onPress={onAddDestination}
                 variant="secondary"
+              />
+              <AventurerosTrenEndgameFields
+                submode={submode}
+                scoring={scoring}
+                color={player.color}
+                onChange={onUpdateScoring}
               />
             </>
           )}

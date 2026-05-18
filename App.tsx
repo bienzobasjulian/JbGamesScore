@@ -21,6 +21,7 @@ import { checkGameOver } from './src/utils/game';
 import {
   formatMatchTitle,
   getAllMatchesSorted,
+  getMatchRankingFromMatch,
   matchToGameState,
 } from './src/utils/match';
 
@@ -99,8 +100,8 @@ export default function App() {
             onStartSkullKing={(players) => {
               app.startSkullKingSession(players);
             }}
-            onStartAventurerosTren={(players) => {
-              app.startAventurerosTrenSession(players);
+            onStartAventurerosTren={(players, submode) => {
+              app.startAventurerosTrenSession(players, submode);
             }}
             onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}
@@ -178,10 +179,15 @@ export default function App() {
         const match = app.getMatch(app.screen.matchId);
         if (!match) return null;
         const state = matchToGameState(match);
+        const resultsRanking =
+          match.status === 'finished'
+            ? getMatchRankingFromMatch(match)
+            : undefined;
         return (
           <GameScreen
             state={state}
             matchTitle={formatMatchTitle(match)}
+            resultsRanking={resultsRanking}
             isMatchFinished={match.status === 'finished'}
             isDedicatedGameMatch={
               match.gameMode === 'pelusas' ||
@@ -276,6 +282,7 @@ export default function App() {
             onAddDestination={app.addAventurerosTrenDestination}
             onUpdateDestination={app.updateAventurerosTrenDestination}
             onRemoveDestination={app.removeAventurerosTrenDestination}
+            onUpdatePlayerScoring={app.updateAventurerosTrenPlayerScoring}
           />
         );
       }

@@ -32,6 +32,8 @@ export type Match = {
   name: string | null;
   gameMode?: MatchGameMode;
   pelusasRevolution?: boolean;
+  aventurerosTrenSubmode?: AventurerosTrenSubmode;
+  aventurerosTrenTiebreak?: Record<string, AventurerosTrenTiebreakSnapshot>;
   settings: GameSettings;
   players: Player[];
   rounds: RoundScores[];
@@ -95,6 +97,23 @@ export type SkullKingSession = {
 
 export type AventurerosTrenPhase = 'construccion' | 'destinos';
 
+export type AventurerosTrenSubmode = 'base' | 'europa';
+
+export type AventurerosTrenPlayerScoring = {
+  /** Bonificación manual de ruta más larga (+10) */
+  hasLongestRouteBonus: boolean;
+  /** Longitud de la ruta continua más larga (desempate) */
+  longestRouteLength: number;
+  /** Estaciones sin usar en Europa (0–3, +4 pts c/u) */
+  unusedStations: number;
+};
+
+export type AventurerosTrenTiebreakSnapshot = {
+  completedTickets: number;
+  longestRouteLength: number;
+  unusedStations: number;
+};
+
 export type AventurerosTrenRouteEntry = {
   id: string;
   origin: string;
@@ -114,9 +133,11 @@ export type AventurerosTrenDestinationEntry = {
 
 export type AventurerosTrenSession = {
   players: Player[];
+  submode: AventurerosTrenSubmode;
   activePhase: AventurerosTrenPhase;
   construccion: Record<string, AventurerosTrenRouteEntry[]>;
   destinos: Record<string, AventurerosTrenDestinationEntry[]>;
+  scoring: Record<string, AventurerosTrenPlayerScoring>;
 };
 
 export type AppData = {
