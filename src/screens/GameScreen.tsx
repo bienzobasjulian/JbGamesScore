@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -9,7 +8,7 @@ import {
 import { Button } from '../components/Button';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
-import { MatchRanking } from '../components/MatchRanking';
+import { MatchResultsPager } from '../components/MatchResultsPager';
 import { PlayerCard } from '../components/PlayerCard';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
@@ -139,17 +138,11 @@ export function GameScreen({
 
       <View style={styles.body}>
         {showResults ? (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <MatchRanking ranking={ranking} />
-            {state.rounds.length > 0 && (
-              <RoundHistory players={state.players} rounds={state.rounds} />
-            )}
-          </ScrollView>
+          <MatchResultsPager
+            ranking={ranking}
+            players={state.players}
+            rounds={state.rounds}
+          />
         ) : (
           <FlatList
             style={styles.scroll}
