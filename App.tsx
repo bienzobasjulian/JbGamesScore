@@ -194,24 +194,24 @@ export default function App() {
               match.gameMode === 'skull_king' ||
               match.gameMode === 'aventureros_tren'
             }
-            onAddBreakdownItem={(playerId, value, truncateLater) =>
-              app.addBreakdownItem(match.id, playerId, value, truncateLater)
+            onAddBreakdownItem={(playerId, value) =>
+              app.addBreakdownItem(match.id, playerId, value)
             }
-            onRemoveBreakdownItem={(playerId, index, truncateLater) =>
-              app.removeBreakdownItem(match.id, playerId, index, truncateLater)
+            onRemoveBreakdownItem={(playerId, index) =>
+              app.removeBreakdownItem(match.id, playerId, index)
             }
             onGoToRound={(roundIndex) =>
               app.goToRound(match.id, roundIndex)
             }
             onAddRound={() => app.addNextRound(match.id)}
-            onAdjust={(playerId, delta, truncateLater) =>
-              app.adjustRoundScore(match.id, playerId, delta, truncateLater)
+            onAdjust={(playerId, delta) =>
+              app.adjustRoundScore(match.id, playerId, delta)
             }
-            onSetScore={(playerId, value, truncateLater) =>
-              app.setRoundScore(match.id, playerId, value, truncateLater)
+            onSetScore={(playerId, value) =>
+              app.setRoundScore(match.id, playerId, value)
             }
-            onScoringModeChange={(playerId, mode, truncateLater) =>
-              app.setRoundScoringMode(match.id, playerId, mode, truncateLater)
+            onScoringModeChange={(playerId, mode) =>
+              app.setRoundScoringMode(match.id, playerId, mode)
             }
             onBack={app.goHome}
             onFinishMatch={() => app.finishMatch(match.id)}

@@ -47,7 +47,6 @@ import {
   emptyRoundBreakdown,
   emptyRoundScores,
   normalizeMatchRounds,
-  truncateLaterRounds,
 } from '../utils/rounds';
 import {
   createFinishedPelusasMatch,
@@ -761,13 +760,6 @@ export function useApp() {
         if (match.status === 'finished') return match;
         let m = normalizeMatchRounds(match);
         if (roundIndex < 0 || roundIndex >= m.rounds.length) return m;
-        const maxRounds = m.settings.maxRounds;
-        if (
-          maxRounds != null &&
-          roundIndex > m.activeRoundIndex + 1
-        ) {
-          return m;
-        }
 
         if (roundIndex > m.activeRoundIndex) {
           const pointsEnd = checkGameOver(matchToGameState(m), {
@@ -778,8 +770,8 @@ export function useApp() {
           }
 
           if (
-            maxRounds != null &&
-            roundIndex >= maxRounds
+            m.settings.maxRounds != null &&
+            roundIndex >= m.settings.maxRounds
           ) {
             return { ...m, activeRoundIndex: roundIndex };
           }
@@ -838,11 +830,10 @@ export function useApp() {
   );
 
   const adjustRoundScore = useCallback(
-    (matchId: string, playerId: string, delta: number, truncateLater = false) => {
+    (matchId: string, playerId: string, delta: number) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
-        let m = normalizeMatchRounds(match);
-        if (truncateLater) m = truncateLaterRounds(m);
+        const m = normalizeMatchRounds(match);
         return {
           ...patchActiveRound(m, (round, breakdown) => {
             const nextBreakdown = { ...breakdown };
@@ -866,11 +857,10 @@ export function useApp() {
   );
 
   const setRoundScore = useCallback(
-    (matchId: string, playerId: string, value: number, truncateLater = false) => {
+    (matchId: string, playerId: string, value: number) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
-        let m = normalizeMatchRounds(match);
-        if (truncateLater) m = truncateLaterRounds(m);
+        const m = normalizeMatchRounds(match);
         return {
           ...patchActiveRound(m, (round, breakdown) => {
             const nextBreakdown = { ...breakdown };
@@ -891,11 +881,10 @@ export function useApp() {
   );
 
   const setRoundScoringMode = useCallback(
-    (matchId: string, playerId: string, mode: ScoringMode, truncateLater = false) => {
+    (matchId: string, playerId: string, mode: ScoringMode) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
-        let m = normalizeMatchRounds(match);
-        if (truncateLater) m = truncateLaterRounds(m);
+        const m = normalizeMatchRounds(match);
 
         if (mode === 'breakdown') {
           return {
@@ -934,11 +923,10 @@ export function useApp() {
   );
 
   const addBreakdownItem = useCallback(
-    (matchId: string, playerId: string, value: number, truncateLater = false) => {
+    (matchId: string, playerId: string, value: number) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
-        let m = normalizeMatchRounds(match);
-        if (truncateLater) m = truncateLaterRounds(m);
+        const m = normalizeMatchRounds(match);
         return {
           ...patchActiveRound(m, (round, breakdown) => {
             const items = [...(breakdown[playerId] ?? []), value];
@@ -959,11 +947,10 @@ export function useApp() {
   );
 
   const removeBreakdownItem = useCallback(
-    (matchId: string, playerId: string, index: number, truncateLater = false) => {
+    (matchId: string, playerId: string, index: number) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
-        let m = normalizeMatchRounds(match);
-        if (truncateLater) m = truncateLaterRounds(m);
+        const m = normalizeMatchRounds(match);
         return {
           ...patchActiveRound(m, (round, breakdown) => {
             const items = [...(breakdown[playerId] ?? [])];

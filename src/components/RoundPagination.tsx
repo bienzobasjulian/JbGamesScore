@@ -1,11 +1,15 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
+import { RoundBreakdown, RoundScores } from '../types';
 import { isRoundSelectable } from '../utils/rounds';
 
 type Props = {
   roundCount: number;
   activeIndex: number;
   maxRounds: number | null;
+  /** Si no se pasan, todas las rondas del contador son seleccionables. */
+  rounds?: RoundScores[];
+  roundBreakdowns?: RoundBreakdown[];
   disabled?: boolean;
   onSelectRound: (index: number) => void;
   onAddRound: () => void;
@@ -15,6 +19,8 @@ export function RoundPagination({
   roundCount,
   activeIndex,
   maxRounds,
+  rounds,
+  roundBreakdowns,
   disabled,
   onSelectRound,
   onAddRound,
@@ -38,12 +44,16 @@ export function RoundPagination({
       >
         {Array.from({ length: displayCount }, (_, index) => {
           const active = index === activeIndex;
-          const selectable = isRoundSelectable(
-            activeIndex,
-            index,
-            maxRounds,
-            roundCount,
-          );
+          const selectable =
+            rounds == null || roundBreakdowns == null
+              ? index >= 0 && index < roundCount
+              : isRoundSelectable(
+                  activeIndex,
+                  index,
+                  roundCount,
+                  rounds,
+                  roundBreakdowns,
+                );
           const pageDisabled = disabled || !selectable;
 
           return (

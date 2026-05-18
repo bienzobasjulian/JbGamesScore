@@ -38,17 +38,55 @@ export function padRoundsToMax(match: Match): Match {
   return { ...match, rounds, roundBreakdowns };
 }
 
+export function roundHasRecordedScores(
+  round: RoundScores,
+  breakdown: RoundBreakdown,
+): boolean {
+  if (Object.values(round).some((score) => score !== 0)) return true;
+  return Object.values(breakdown).some(
+    (items) => items != null && items.length > 0,
+  );
+}
+
+export function getHighestRoundWithDataIndex(
+  rounds: RoundScores[],
+  roundBreakdowns: RoundBreakdown[],
+): number {
+  let highest = -1;
+  for (let i = 0; i < rounds.length; i++) {
+    if (
+      roundHasRecordedScores(rounds[i] ?? {}, roundBreakdowns[i] ?? {})
+    ) {
+      highest = i;
+    }
+  }
+  return highest;
+}
+
 export function isRoundSelectable(
   activeIndex: number,
   roundIndex: number,
-  maxRounds: number | null,
   roundCount: number,
+  rounds: RoundScores[],
+  roundBreakdowns: RoundBreakdown[],
 ): boolean {
   if (roundIndex < 0 || roundIndex >= roundCount) return false;
-  if (maxRounds != null) {
-    return roundIndex <= activeIndex + 1;
+  if (roundIndex === activeIndex) return true;
+
+  if (
+    roundHasRecordedScores(
+      rounds[roundIndex] ?? {},
+      roundBreakdowns[roundIndex] ?? {},
+    )
+  ) {
+    return true;
   }
-  return true;
+
+  const highestWithData = getHighestRoundWithDataIndex(
+    rounds,
+    roundBreakdowns,
+  );
+  return roundIndex === highestWithData + 1;
 }
 
 export function normalizeMatchRounds(match: Match): Match {
@@ -126,45 +164,3 @@ export function canAddRound(match: Match): boolean {
   return m.settings.maxRounds == null;
 }
 
-function roundHasRecordedScores(
-  round: RoundScores,
-  breakdown: RoundBreakdown,
-): boolean {
-  if (Object.values(round).some((score) => score !== 0)) return true;
-  return Object.values(breakdown).some(
-    (items) => items != null && items.length > 0,
-  );
-}
-
-/** True si hay rondas posteriores a la activa con puntuación ya registrada. */
-export function hasLaterRoundsWithScores(
-  activeRoundIndex: number,
-  rounds: RoundScores[],
-  roundBreakdowns: RoundBreakdown[],
-): boolean {
-  for (let i = activeRoundIndex + 1; i < rounds.length; i++) {
-    const round = rounds[i] ?? {};
-    const breakdown = roundBreakdowns[i] ?? {};
-    if (roundHasRecordedScores(round, breakdown)) return true;
-  }
-  return false;
-}
-
-export function hasLaterRounds(match: Match): boolean {
-  const m = normalizeMatchRounds(match);
-  return hasLaterRoundsWithScores(
-    m.activeRoundIndex,
-    m.rounds,
-    m.roundBreakdowns,
-  );
-}
-
-export function truncateLaterRounds(match: Match): Match {
-  const m = normalizeMatchRounds(match);
-  const end = m.activeRoundIndex + 1;
-  return {
-    ...m,
-    rounds: m.rounds.slice(0, end),
-    roundBreakdowns: m.roundBreakdowns.slice(0, end),
-  };
-}
