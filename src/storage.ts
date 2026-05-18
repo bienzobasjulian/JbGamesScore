@@ -22,7 +22,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
             players: m.players ?? [],
             roundScoringMode: m.roundScoringMode ?? {},
             status: m.status === 'finished' ? 'finished' : 'in_progress',
-            gameMode: m.gameMode === 'pelusas' ? 'pelusas' : 'standard',
+            gameMode:
+              m.gameMode === 'pelusas'
+                ? 'pelusas'
+                : m.gameMode === 'skull_king'
+                  ? 'skull_king'
+                  : 'standard',
             pelusasRevolution:
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),

@@ -18,6 +18,10 @@ import { TemplatePicker } from '../components/TemplatePicker';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { CreateMatchGameType } from '../utils/games';
+import {
+  SKULL_KING_MAX_PLAYERS,
+  SKULL_KING_MIN_PLAYERS,
+} from '../utils/skullKing';
 import { defaultSettings } from '../utils/game';
 import { applyTemplateDraft } from '../utils/template';
 
@@ -64,6 +68,7 @@ type Props = {
     name?: string | null,
   ) => void;
   onStartPelusas: (players: Player[]) => void;
+  onStartSkullKing: (players: Player[]) => void;
   onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
@@ -76,6 +81,7 @@ export function CreateMatchScreen({
   onBack,
   onStartStandard,
   onStartPelusas,
+  onStartSkullKing,
   onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
@@ -93,22 +99,29 @@ export function CreateMatchScreen({
   );
 
   const isPelusas = gameType === 'pelusas';
+  const isSkullKing = gameType === 'skull_king';
+  const isSpecialGame = isPelusas || isSkullKing;
 
   const selectedIds = useMemo(
     () => new Set(players.map((p) => p.id)),
     [players],
   );
 
-  const canStart = players.length >= 2;
+  const canStart = isSkullKing
+    ? players.length >= SKULL_KING_MIN_PLAYERS &&
+      players.length <= SKULL_KING_MAX_PLAYERS
+    : players.length >= 2;
   const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
+  const atPlayerCap = isSkullKing && players.length >= SKULL_KING_MAX_PLAYERS;
 
   const handleAddSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) return;
+    if (selectedIds.has(saved.id) || atPlayerCap) return;
     const player = onAddFromSaved(saved);
     setPlayers((prev) => [...prev, player]);
   };
 
   const handleAddNew = (name: string) => {
+    if (atPlayerCap) return false;
     const player = onCreateNewPlayer(name, players);
     if (!player) return false;
     if (players.some((p) => p.id === player.id)) return false;
@@ -122,7 +135,7 @@ export function CreateMatchScreen({
 
   const handleSelectGame = (next: CreateMatchGameType) => {
     setGameType(next);
-    if (next === 'pelusas') {
+    if (next === 'pelusas' || next === 'skull_king') {
       setLoadedTemplateId(null);
       setSettings(defaultSettings());
       setMatchName('');
@@ -148,6 +161,8 @@ export function CreateMatchScreen({
     if (!canStart) return;
     if (isPelusas) {
       onStartPelusas(players);
+    } else if (isSkullKing) {
+      onStartSkullKing(players);
     } else {
       onStartStandard(players, settings, matchName.trim() || null);
     }
@@ -157,7 +172,7 @@ export function CreateMatchScreen({
     <View style={styles.headerBlock}>
       <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
 
-      {!isPelusas ? (
+      {!isSpecialGame ? (
         <>
           <View style={styles.namePanel}>
             <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
@@ -181,10 +196,16 @@ export function CreateMatchScreen({
 
           <GameSettingsPanel settings={settings} onChange={setSettings} />
         </>
-      ) : (
-        <Text style={styles.pelusasHint}>
+      ) : isPelusas ? (
+        <Text style={styles.specialHint}>
           Solo necesitas elegir quién juega. El conteo de cartas y el modo
           Revolution se configuran en la siguiente pantalla.
+        </Text>
+      ) : (
+        <Text style={styles.specialHint}>
+          Partida a 10 rondas de bazas. Elige entre {SKULL_KING_MIN_PLAYERS} y{' '}
+          {SKULL_KING_MAX_PLAYERS} jugadores. En cada ronda registrarás apuesta,
+          bazas ganadas y bonificaciones.
         </Text>
       )}
 
@@ -212,7 +233,11 @@ export function CreateMatchScreen({
           keyboardShouldPersistTaps="handled"
         >
           {header}
-          <Text style={styles.empty}>Añade al menos 2 jugadores</Text>
+          <Text style={styles.empty}>
+            {isSkullKing
+              ? `Añade entre ${SKULL_KING_MIN_PLAYERS} y ${SKULL_KING_MAX_PLAYERS} jugadores`
+              : 'Añade al menos 2 jugadores'}
+          </Text>
           <Button
             label={startLabel}
             onPress={handleStart}
@@ -288,7 +313,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.text,
   },
-  pelusasHint: {
+  specialHint: {
     fontSize: 14,
     color: theme.textMuted,
     lineHeight: 20,

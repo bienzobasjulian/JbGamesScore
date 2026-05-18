@@ -12,6 +12,8 @@ import {
   MatchTemplate,
   PelusasSession,
   Player,
+  SkullKingRoundEntry,
+  SkullKingSession,
   RoundBreakdown,
   RoundScores,
   SavedPlayer,
@@ -48,6 +50,11 @@ import {
   getPelusasCardValues,
   pelusasCardKey,
 } from '../utils/pelusas';
+import {
+  createFinishedSkullKingMatch,
+  createSkullKingSession,
+  emptySkullKingRoundEntry,
+} from '../utils/skullKing';
 
 function patchActiveRound(
   match: Match,
@@ -125,6 +132,8 @@ export function useApp() {
   const [pelusasSession, setPelusasSession] = useState<PelusasSession | null>(
     null,
   );
+  const [skullKingSession, setSkullKingSession] =
+    useState<SkullKingSession | null>(null);
   const previousScreenRef = useRef<AppScreen>({ type: 'home' });
 
   useEffect(() => {
@@ -282,6 +291,93 @@ export function useApp() {
     setPelusasSession((prev) => {
       if (!prev) return null;
       const match = createFinishedPelusasMatch(prev);
+      setData((data) => ({
+        ...data,
+        players: prev.players.reduce(
+          (acc, p) => upsertSavedPlayer(acc, p),
+          data.players,
+        ),
+        matches: [...data.matches, match],
+      }));
+      setScreen({ type: 'game', matchId: match.id });
+      return null;
+    });
+  }, []);
+
+  const startSkullKingSession = useCallback((players: Player[]) => {
+    if (
+      players.length < 2 ||
+      players.length > 6
+    ) {
+      return;
+    }
+    setData((prev) => ({
+      ...prev,
+      players: players.reduce(
+        (acc, p) => upsertSavedPlayer(acc, p),
+        prev.players,
+      ),
+    }));
+    setSkullKingSession(createSkullKingSession(players));
+    setScreen({ type: 'skullKingCount' });
+  }, []);
+
+  const exitSkullKing = useCallback(() => {
+    setSkullKingSession(null);
+    setScreen({ type: 'home' });
+    setMenuOpen(false);
+  }, []);
+
+  const goSkullKingRound = useCallback((roundIndex: number) => {
+    setSkullKingSession((prev) => {
+      if (!prev) return null;
+      if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+      return { ...prev, activeRoundIndex: roundIndex };
+    });
+  }, []);
+
+  const updateSkullKingRoundEntry = useCallback(
+    (
+      roundIndex: number,
+      playerId: string,
+      patch: Partial<SkullKingRoundEntry>,
+    ) => {
+      setSkullKingSession((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        const round = { ...rounds[roundIndex] };
+        const entry = {
+          ...(round[playerId] ?? emptySkullKingRoundEntry()),
+          ...patch,
+          entered: true,
+        };
+        const roundNumber = roundIndex + 1;
+        entry.bid = Math.min(
+          Math.max(0, Math.floor(entry.bid)),
+          roundNumber,
+        );
+        entry.tricksWon = Math.min(
+          Math.max(0, Math.floor(entry.tricksWon)),
+          roundNumber,
+        );
+        entry.goldBonusPoints = Math.max(
+          0,
+          Math.floor(entry.goldBonusPoints),
+        );
+        entry.pirateCount = Math.max(0, Math.floor(entry.pirateCount));
+        round[playerId] = entry;
+        rounds[roundIndex] = round;
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const finishSkullKingSession = useCallback(() => {
+    setSkullKingSession((prev) => {
+      if (!prev) return null;
+      const match = createFinishedSkullKingMatch(prev);
       setData((data) => ({
         ...data,
         players: prev.players.reduce(
@@ -723,6 +819,19 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'skull_king') {
+        setData((prev) => ({
+          ...prev,
+          players: source.players.reduce(
+            (acc, p) => upsertSavedPlayer(acc, p),
+            prev.players,
+          ),
+        }));
+        setSkullKingSession(createSkullKingSession(source.players));
+        setScreen({ type: 'skullKingCount' });
+        return;
+      }
+
       const newMatch = createMatch(source.players, source.settings, source.name);
       setData((prev) => ({
         ...prev,
@@ -795,6 +904,12 @@ export function useApp() {
     setPelusasCardCount,
     resetPelusasCounts,
     finishPelusasSession,
+    skullKingSession,
+    startSkullKingSession,
+    exitSkullKing,
+    goSkullKingRound,
+    updateSkullKingRoundEntry,
+    finishSkullKingSession,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

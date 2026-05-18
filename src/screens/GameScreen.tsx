@@ -37,7 +37,7 @@ type Props = {
   state: GameState;
   matchTitle?: string;
   isMatchFinished?: boolean;
-  isPelusasMatch?: boolean;
+  isDedicatedGameMatch?: boolean;
   onAdjust: (playerId: string, delta: number, truncateLater?: boolean) => void;
   onSetScore: (playerId: string, value: number, truncateLater?: boolean) => void;
   onScoringModeChange: (
@@ -68,7 +68,7 @@ export function GameScreen({
   state,
   matchTitle,
   isMatchFinished = false,
-  isPelusasMatch = false,
+  isDedicatedGameMatch = false,
   onAdjust,
   onSetScore,
   onScoringModeChange,
@@ -251,7 +251,7 @@ export function GameScreen({
         {showResults ? (
           <>
             <Button label="Repetir partida" onPress={onRepeatMatch} />
-            {!isPelusasMatch ? (
+            {!isDedicatedGameMatch ? (
               <Button
                 label="Retomar partida"
                 onPress={handleResumeMatch}

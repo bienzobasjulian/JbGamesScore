@@ -14,6 +14,7 @@ import { MatchesListScreen } from './src/screens/MatchesListScreen';
 import { PlayersListScreen } from './src/screens/PlayersListScreen';
 import { PelusasCounterScreen } from './src/screens/PelusasCounterScreen';
 import { PelusasSetupScreen } from './src/screens/PelusasSetupScreen';
+import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import { checkGameOver } from './src/utils/game';
 import {
@@ -93,6 +94,9 @@ export default function App() {
             }}
             onStartPelusas={(players) => {
               app.startPelusasSession(players);
+            }}
+            onStartSkullKing={(players) => {
+              app.startSkullKingSession(players);
             }}
             onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}
@@ -175,7 +179,9 @@ export default function App() {
             state={state}
             matchTitle={formatMatchTitle(match)}
             isMatchFinished={match.status === 'finished'}
-            isPelusasMatch={match.gameMode === 'pelusas'}
+            isDedicatedGameMatch={
+              match.gameMode === 'pelusas' || match.gameMode === 'skull_king'
+            }
             onAddBreakdownItem={(playerId, value, truncateLater) =>
               app.addBreakdownItem(match.id, playerId, value, truncateLater)
             }
@@ -233,6 +239,19 @@ export default function App() {
             onSetRevolutionMode={app.setPelusasRevolutionMode}
             onSetCardCount={app.setPelusasCardCount}
             onResetCounts={app.resetPelusasCounts}
+          />
+        );
+      }
+
+      case 'skullKingCount': {
+        if (!app.skullKingSession) return null;
+        return (
+          <SkullKingCounterScreen
+            session={app.skullKingSession}
+            onBack={app.exitSkullKing}
+            onFinishMatch={app.finishSkullKingSession}
+            onGoToRound={app.goSkullKingRound}
+            onUpdateRoundEntry={app.updateSkullKingRoundEntry}
           />
         );
       }

@@ -21,7 +21,7 @@ export type GameSettings = {
 
 export type MatchStatus = 'in_progress' | 'finished';
 
-export type MatchGameMode = 'standard' | 'pelusas';
+export type MatchGameMode = 'standard' | 'pelusas' | 'skull_king';
 
 export type Match = {
   id: string;
@@ -71,6 +71,24 @@ export type PelusasSession = {
   countsByPlayer: Record<string, PelusasPlayerCounts>;
 };
 
+export type SkullKingRoundEntry = {
+  bid: number;
+  tricksWon: number;
+  /** Ronda registrada por el usuario (si no, no suma puntos) */
+  entered: boolean;
+  /** Total de puntos por cartas de oro (solo si cumple la apuesta) */
+  goldBonusPoints: number;
+  /** Piratas en baza con Skull King (30 pts c/u, Scary Mary cuenta) */
+  pirateCount: number;
+  mermaidCapturesKing: boolean;
+};
+
+export type SkullKingSession = {
+  players: Player[];
+  activeRoundIndex: number;
+  rounds: Record<string, SkullKingRoundEntry>[];
+};
+
 export type AppData = {
   players: SavedPlayer[];
   matches: Match[];
@@ -87,4 +105,5 @@ export type AppScreen =
   | { type: 'templatesList' }
   | { type: 'editTemplate'; templateId?: string }
   | { type: 'pelusasSetup' }
-  | { type: 'pelusasCount' };
+  | { type: 'pelusasCount' }
+  | { type: 'skullKingCount' };
