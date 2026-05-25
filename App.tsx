@@ -373,11 +373,7 @@ export default function App() {
               {
                 label: 'Plantillas de partida',
                 onPress: app.goTemplatesList,
-              },
-              {
-                label: 'Contador de pelusas',
-                onPress: () => app.goPelusasSetup(false),
-              },
+              }
             ]}
           />
         )}
