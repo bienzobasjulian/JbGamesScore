@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { HamburgerMenu } from './src/components/HamburgerMenu';
 import { theme } from './src/constants';
@@ -58,6 +58,71 @@ export default function App() {
       app.closeMenu();
     }
   }, [isHome]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !app.loaded) return;
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (isHome && app.menuOpen) {
+          app.closeMenu();
+          return true;
+        }
+
+        switch (app.screen.type) {
+          case 'home':
+            return false;
+
+          case 'createMatch':
+          case 'matchesList':
+          case 'playersList':
+          case 'game':
+            app.goHome();
+            return true;
+
+          case 'templatesList':
+            app.goHome();
+            return true;
+
+          case 'editTemplate':
+            app.goTemplatesList();
+            return true;
+
+          case 'createPlayer':
+            app.backFromCreatePlayer();
+            return true;
+
+          case 'pelusasSetup':
+            app.exitPelusas();
+            return true;
+
+          case 'pelusasCount':
+            app.goPelusasSetup(true);
+            return true;
+
+          case 'skullKingCount':
+            app.exitSkullKing();
+            return true;
+
+          case 'aventurerosTrenCount':
+            app.exitAventurerosTren();
+            return true;
+
+          default:
+            return false;
+        }
+      },
+    );
+
+    return () => subscription.remove();
+  }, [
+    app,
+    app.loaded,
+    app.menuOpen,
+    app.screen.type,
+    isHome,
+  ]);
 
   if (!app.loaded) {
     return (
