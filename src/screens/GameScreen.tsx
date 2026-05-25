@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  BackHandler,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Button } from '../components/Button';
+import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
 import { MatchResultsPager } from '../components/MatchResultsPager';
@@ -69,6 +72,7 @@ export function GameScreen({
   onDeleteMatch,
 }: Props) {
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const [exitModalVisible, setExitModalVisible] = useState(false);
   const [viewingResults, setViewingResults] = useState(isMatchFinished);
 
   useEffect(() => {
@@ -78,6 +82,35 @@ export function GameScreen({
   }, [isMatchFinished]);
   const gameOver = checkGameOver(state);
   const showResults = gameOver.isOver || isMatchFinished || viewingResults;
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (finishModalVisible) {
+          setFinishModalVisible(false);
+          return true;
+        }
+
+        if (exitModalVisible) {
+          setExitModalVisible(false);
+          return true;
+        }
+
+        if (showResults) {
+          onBack();
+          return true;
+        }
+
+        setExitModalVisible(true);
+        return true;
+      },
+    );
+
+    return () => subscription.remove();
+  }, [exitModalVisible, finishModalVisible, onBack, showResults]);
 
   const pastRounds =
     state.activeRoundIndex > 0
@@ -107,6 +140,16 @@ export function GameScreen({
     onResumeMatch();
   };
 
+  const handleSaveAndExit = () => {
+    setExitModalVisible(false);
+    onBack();
+  };
+
+  const handleDeleteAndExit = () => {
+    setExitModalVisible(false);
+    onDeleteMatch();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -133,7 +176,18 @@ export function GameScreen({
             <Text style={styles.finishedBadge}>Partida finalizada</Text>
           )}
         </View>
-        <Button label="Salir" onPress={onBack} variant="ghost" style={styles.exitBtn} />
+        <Button
+          label="Salir"
+          onPress={() => {
+            if (showResults) {
+              onBack();
+              return;
+            }
+            setExitModalVisible(true);
+          }}
+          variant="ghost"
+          style={styles.exitBtn}
+        />
       </View>
 
       <View style={styles.body}>
@@ -226,13 +280,22 @@ export function GameScreen({
       </View>
 
       {!showResults && (
-        <FinishMatchModal
-          visible={finishModalVisible}
-          matchTitle={matchTitle}
-          onClose={() => setFinishModalVisible(false)}
-          onSaveFinished={handleSaveFinished}
-          onDelete={onDeleteMatch}
-        />
+        <>
+          <FinishMatchModal
+            visible={finishModalVisible}
+            matchTitle={matchTitle}
+            onClose={() => setFinishModalVisible(false)}
+            onSaveFinished={handleSaveFinished}
+            onDelete={onDeleteMatch}
+          />
+          <ExitMatchModal
+            visible={exitModalVisible}
+            matchTitle={matchTitle}
+            onClose={() => setExitModalVisible(false)}
+            onSaveAndExit={handleSaveAndExit}
+            onDeleteAndExit={handleDeleteAndExit}
+          />
+        </>
       )}
 
     </View>
