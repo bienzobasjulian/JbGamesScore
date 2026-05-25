@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   LayoutChangeEvent,
@@ -35,6 +35,17 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
   const listRef = useRef<FlatList<PageKey>>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const pages = rounds.length > 1 ? PAGES : [PAGES[0]];
+  const hasMultiplePages = pages.length > 1;
+
+  useEffect(() => {
+    if (activeIndex >= pages.length) {
+      setActiveIndex(0);
+      if (pageWidth > 0) {
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }
+    }
+  }, [activeIndex, pageWidth, pages.length]);
 
   const onPagerLayout = (e: LayoutChangeEvent) => {
     setPageWidth(e.nativeEvent.layout.width);
@@ -86,28 +97,30 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
 
   return (
     <View style={styles.wrap} onLayout={onPagerLayout}>
-      <View style={styles.tabs}>
-        {PAGES.map((page, index) => {
-          const active = activeIndex === index;
-          return (
-            <Pressable
-              key={page.key}
-              onPress={() => goToPage(index)}
-              style={[styles.tab, active && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {page.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {hasMultiplePages ? (
+        <View style={styles.tabs}>
+          {pages.map((page, index) => {
+            const active = activeIndex === index;
+            return (
+              <Pressable
+                key={page.key}
+                onPress={() => goToPage(index)}
+                style={[styles.tab, active && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {page.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
 
       {pageWidth > 0 ? (
         <FlatList
           ref={listRef}
           style={styles.pager}
-          data={PAGES.map((p) => p.key)}
+          data={pages.map((p) => p.key)}
           keyExtractor={(key) => key}
           horizontal
           pagingEnabled
@@ -130,18 +143,22 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
         <View style={styles.placeholder} />
       )}
 
-      <View style={styles.dots}>
-        {PAGES.map((page, index) => (
-          <Pressable
-            key={page.key}
-            onPress={() => goToPage(index)}
-            style={[styles.dot, activeIndex === index && styles.dotActive]}
-            accessibilityLabel={page.label}
-          />
-        ))}
-      </View>
+      {hasMultiplePages ? (
+        <>
+          <View style={styles.dots}>
+            {pages.map((page, index) => (
+              <Pressable
+                key={page.key}
+                onPress={() => goToPage(index)}
+                style={[styles.dot, activeIndex === index && styles.dotActive]}
+                accessibilityLabel={page.label}
+              />
+            ))}
+          </View>
 
-      <Text style={styles.hint}>Desliza para cambiar de sección</Text>
+          <Text style={styles.hint}>Desliza para cambiar de sección</Text>
+        </>
+      ) : null}
     </View>
   );
 }
