@@ -82,6 +82,7 @@ export function GameScreen({
   }, [isMatchFinished]);
   const gameOver = checkGameOver(state);
   const showResults = gameOver.isOver || isMatchFinished || viewingResults;
+  const showingUnsavedResults = viewingResults && !isMatchFinished;
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -100,7 +101,11 @@ export function GameScreen({
         }
 
         if (showResults) {
-          onBack();
+          if (showingUnsavedResults) {
+            setExitModalVisible(true);
+          } else {
+            onBack();
+          }
           return true;
         }
 
@@ -110,7 +115,13 @@ export function GameScreen({
     );
 
     return () => subscription.remove();
-  }, [exitModalVisible, finishModalVisible, onBack, showResults]);
+  }, [
+    exitModalVisible,
+    finishModalVisible,
+    onBack,
+    showResults,
+    showingUnsavedResults,
+  ]);
 
   const pastRounds =
     state.activeRoundIndex > 0
@@ -140,8 +151,16 @@ export function GameScreen({
     onResumeMatch();
   };
 
+  const handleViewResults = () => {
+    setFinishModalVisible(false);
+    setViewingResults(true);
+  };
+
   const handleSaveAndExit = () => {
     setExitModalVisible(false);
+    if (showingUnsavedResults) {
+      onFinishMatch();
+    }
     onBack();
   };
 
@@ -179,7 +198,7 @@ export function GameScreen({
         <Button
           label="Salir"
           onPress={() => {
-            if (showResults) {
+            if (showResults && !showingUnsavedResults) {
               onBack();
               return;
             }
@@ -248,19 +267,40 @@ export function GameScreen({
       <View style={styles.footer}>
         {showResults ? (
           <>
-            <Button label="Repetir partida" onPress={onRepeatMatch} />
-            {!isDedicatedGameMatch ? (
-              <Button
-                label="Retomar partida"
-                onPress={handleResumeMatch}
-                variant="secondary"
-              />
-            ) : null}
-            <Button
-              label="Eliminar partida"
-              onPress={onDeleteMatch}
-              variant="danger"
-            />
+            {showingUnsavedResults ? (
+              <>
+                <Button
+                  label="Guardar partida"
+                  onPress={handleSaveFinished}
+                />
+                <Button
+                  label="Retomar partida"
+                  onPress={handleResumeMatch}
+                  variant="secondary"
+                />
+                <Button
+                  label="Salir sin guardar"
+                  onPress={onDeleteMatch}
+                  variant="danger"
+                />
+              </>
+            ) : (
+              <>
+                <Button label="Repetir partida" onPress={onRepeatMatch} />
+                {!isDedicatedGameMatch ? (
+                  <Button
+                    label="Retomar partida"
+                    onPress={handleResumeMatch}
+                    variant="secondary"
+                  />
+                ) : null}
+                <Button
+                  label="Eliminar partida"
+                  onPress={onDeleteMatch}
+                  variant="danger"
+                />
+              </>
+            )}
           </>
         ) : (
           <>
@@ -285,6 +325,7 @@ export function GameScreen({
             visible={finishModalVisible}
             matchTitle={matchTitle}
             onClose={() => setFinishModalVisible(false)}
+            onViewResults={handleViewResults}
             onSaveFinished={handleSaveFinished}
             onDelete={onDeleteMatch}
           />

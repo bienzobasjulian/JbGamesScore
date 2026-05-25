@@ -152,6 +152,7 @@ export function SkullKingCounterScreen({
         visible={finishModalVisible}
         matchTitle="Skull King"
         onClose={() => setFinishModalVisible(false)}
+        onViewResults={handleSaveFinished}
         onSaveFinished={handleSaveFinished}
         onDelete={() => {
           setFinishModalVisible(false);

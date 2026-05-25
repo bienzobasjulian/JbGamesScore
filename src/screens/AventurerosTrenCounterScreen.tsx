@@ -195,6 +195,10 @@ export function AventurerosTrenCounterScreen({
         visible={finishModalVisible}
         matchTitle={title}
         onClose={() => setFinishModalVisible(false)}
+        onViewResults={() => {
+          setFinishModalVisible(false);
+          onFinishMatch();
+        }}
         onSaveFinished={() => {
           setFinishModalVisible(false);
           onFinishMatch();

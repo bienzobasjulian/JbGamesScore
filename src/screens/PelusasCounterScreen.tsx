@@ -163,6 +163,7 @@ export function PelusasCounterScreen({
         visible={finishModalVisible}
         matchTitle="Pelusas"
         onClose={() => setFinishModalVisible(false)}
+        onViewResults={handleSaveFinished}
         onSaveFinished={handleSaveFinished}
         onDelete={() => {
           setFinishModalVisible(false);

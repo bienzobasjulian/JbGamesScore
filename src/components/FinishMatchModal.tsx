@@ -14,6 +14,7 @@ type Props = {
   visible: boolean;
   matchTitle?: string;
   onClose: () => void;
+  onViewResults: () => void;
   onSaveFinished: () => void;
   onDelete: () => void;
 };
@@ -22,6 +23,7 @@ export function FinishMatchModal({
   visible,
   matchTitle,
   onClose,
+  onViewResults,
   onSaveFinished,
   onDelete,
 }: Props) {
@@ -39,6 +41,11 @@ export function FinishMatchModal({
   const handleSave = () => {
     handleClose();
     onSaveFinished();
+  };
+
+  const handleViewResults = () => {
+    handleClose();
+    onViewResults();
   };
 
   const handleDelete = () => {
@@ -69,6 +76,25 @@ export function FinishMatchModal({
               <Text style={styles.subtitle}>
                 Elige qué hacer con esta partida
               </Text>
+
+              <Pressable
+                onPress={handleViewResults}
+                style={({ pressed }) => [
+                  styles.option,
+                  styles.optionResults,
+                  pressed && styles.optionPressed,
+                ]}
+              >
+                <View style={[styles.optionIcon, styles.optionIconResults]}>
+                  <Text style={styles.optionIconText}>📊</Text>
+                </View>
+                <View style={styles.optionTexts}>
+                  <Text style={styles.optionTitle}>Ver podio y estadísticas</Text>
+                  <Text style={styles.optionHint}>
+                    Revisa el resultado antes de decidir si quieres guardar
+                  </Text>
+                </View>
+              </Pressable>
 
               <Pressable
                 onPress={handleSave}
@@ -222,6 +248,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent + '14',
     borderColor: theme.accent + '50',
   },
+  optionResults: {
+    backgroundColor: theme.warning + '12',
+    borderColor: theme.warning + '40',
+  },
   optionDelete: {
     backgroundColor: theme.danger + '10',
     borderColor: theme.danger + '40',
@@ -238,6 +268,9 @@ const styles = StyleSheet.create({
   },
   optionIconSave: {
     backgroundColor: theme.accent,
+  },
+  optionIconResults: {
+    backgroundColor: theme.warning,
   },
   optionIconDelete: {
     backgroundColor: theme.danger,
