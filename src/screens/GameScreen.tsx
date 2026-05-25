@@ -210,6 +210,7 @@ export function GameScreen({
           </>
         ) : (
           <>
+            <Text style={styles.roundsLabel}>Rondas</Text>
             <RoundPagination
               roundCount={state.rounds.length}
               activeIndex={state.activeRoundIndex}
@@ -307,5 +308,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: theme.border,
+  },
+  roundsLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });
