@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -136,6 +135,14 @@ export function CreateMatchScreen({
     setPlayers((prev) => [...prev, player]);
   };
 
+  const handleToggleSaved = (saved: SavedPlayer) => {
+    if (selectedIds.has(saved.id)) {
+      handleRemove(saved.id);
+      return;
+    }
+    handleAddSaved(saved);
+  };
+
   const handleAddNew = (name: string) => {
     if (atPlayerCap) return false;
     const player = onCreateNewPlayer(name, players);
@@ -241,7 +248,7 @@ export function CreateMatchScreen({
       <MatchPlayerRoster
         savedPlayers={savedPlayers}
         selectedIds={selectedIds}
-        onSelectSaved={handleAddSaved}
+        onToggleSaved={handleToggleSaved}
         onAddNew={handleAddNew}
         soloHint={soloHint}
         atPlayerCap={atPlayerCap}
@@ -253,54 +260,38 @@ export function CreateMatchScreen({
     <View style={styles.container}>
       <AppHeader title="Nueva partida" onBack={onBack} />
 
-      {players.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {header}
+      <FlatList
+        data={players}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={header}
+        ListEmptyComponent={
           <Text style={styles.empty}>
-            {players.length === 0
-              ? 'Puedes empezar ya en solitario o elegir jugadores arriba.'
-              : isSpecialGame
-                ? `Máximo ${playerLimits.max} jugadores`
-                : 'Añade jugadores o empieza en solitario.'}
+            Puedes empezar ya en solitario o elegir jugadores arriba.
           </Text>
-          <Button
-            label={startLabel}
-            onPress={handleStart}
-            disabled={!canStart}
-          />
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={players}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={header}
-          ListFooterComponent={
-            <View style={styles.footer}>
-              <Button
-                label={startLabel}
-                onPress={handleStart}
-                disabled={!canStart}
-              />
-            </View>
-          }
-          renderItem={({ item }) => (
-            <PlayerCard
-              player={item}
-              total={0}
-              roundScore={0}
-              onAdjust={() => {}}
-              onRemove={() => handleRemove(item.id)}
-              showRoundControls={false}
-              showTotal={false}
+        }
+        ListFooterComponent={
+          <View style={styles.footer}>
+            <Button
+              label={startLabel}
+              onPress={handleStart}
+              disabled={!canStart}
             />
-          )}
-        />
-      )}
+          </View>
+        }
+        renderItem={({ item }) => (
+          <PlayerCard
+            player={item}
+            total={0}
+            roundScore={0}
+            onAdjust={() => {}}
+            onRemove={() => handleRemove(item.id)}
+            showRoundControls={false}
+            showTotal={false}
+          />
+        )}
+      />
     </View>
   );
 }
@@ -309,10 +300,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  scroll: {
-    gap: 16,
-    paddingBottom: 24,
   },
   headerBlock: {
     gap: 16,

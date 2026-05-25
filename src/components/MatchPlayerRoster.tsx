@@ -7,7 +7,7 @@ import { SavedPlayerPicker } from './SavedPlayerPicker';
 type Props = {
   savedPlayers: SavedPlayer[];
   selectedIds: Set<string>;
-  onSelectSaved: (player: SavedPlayer) => void;
+  onToggleSaved: (player: SavedPlayer) => void;
   onAddNew: (name: string) => boolean;
   title?: string;
   intro?: string;
@@ -18,7 +18,7 @@ type Props = {
 export function MatchPlayerRoster({
   savedPlayers,
   selectedIds,
-  onSelectSaved,
+  onToggleSaved,
   onAddNew,
   title = 'Jugadores',
   intro,
@@ -38,7 +38,8 @@ export function MatchPlayerRoster({
       <SavedPlayerPicker
         players={savedPlayers}
         selectedIds={selectedIds}
-        onSelect={onSelectSaved}
+        onToggle={onToggleSaved}
+        atPlayerCap={atPlayerCap}
       />
     </View>
   );

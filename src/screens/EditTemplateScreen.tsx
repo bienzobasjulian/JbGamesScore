@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -72,6 +71,14 @@ export function EditTemplateScreen({
     setPlayerIds((prev) => [...prev, saved.id]);
   };
 
+  const handleToggleSaved = (saved: SavedPlayer) => {
+    if (selectedIds.has(saved.id)) {
+      handleRemove(saved.id);
+      return;
+    }
+    handleAddSaved(saved);
+  };
+
   const handleAddNew = (playerName: string) => {
     const player = onCreateNewPlayer(playerName, rosterPlayers);
     if (!player) return false;
@@ -129,7 +136,7 @@ export function EditTemplateScreen({
         intro="Opcional. Se cargarán al usar esta plantilla en una partida nueva."
         savedPlayers={savedPlayers}
         selectedIds={selectedIds}
-        onSelectSaved={handleAddSaved}
+        onToggleSaved={handleToggleSaved}
         onAddNew={handleAddNew}
       />
     </View>
@@ -142,53 +149,36 @@ export function EditTemplateScreen({
         onBack={onBack}
       />
 
-      {rosterPlayers.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {formBlock}
-          <Button label="Guardar plantilla" onPress={handleSave} />
-          {!isNew && onDelete ? (
-            <Button
-              label="Eliminar plantilla"
-              onPress={() => setDeleteVisible(true)}
-              variant="danger"
-            />
-          ) : null}
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={rosterPlayers}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={formBlock}
-          ListFooterComponent={
-            <View style={styles.footer}>
-              <Button label="Guardar plantilla" onPress={handleSave} />
-              {!isNew && onDelete ? (
-                <Button
-                  label="Eliminar plantilla"
-                  onPress={() => setDeleteVisible(true)}
-                  variant="danger"
-                />
-              ) : null}
-            </View>
-          }
-          renderItem={({ item }) => (
-            <PlayerCard
-              player={item}
-              total={0}
-              roundScore={0}
-              onAdjust={() => {}}
-              onRemove={() => handleRemove(item.id)}
-              showRoundControls={false}
-              showTotal={false}
-            />
-          )}
-        />
-      )}
+      <FlatList
+        data={rosterPlayers}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={formBlock}
+        ListFooterComponent={
+          <View style={styles.footer}>
+            <Button label="Guardar plantilla" onPress={handleSave} />
+            {!isNew && onDelete ? (
+              <Button
+                label="Eliminar plantilla"
+                onPress={() => setDeleteVisible(true)}
+                variant="danger"
+              />
+            ) : null}
+          </View>
+        }
+        renderItem={({ item }) => (
+          <PlayerCard
+            player={item}
+            total={0}
+            roundScore={0}
+            onAdjust={() => {}}
+            onRemove={() => handleRemove(item.id)}
+            showRoundControls={false}
+            showTotal={false}
+          />
+        )}
+      />
 
       <ConfirmModal
         visible={deleteVisible}
@@ -214,10 +204,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  scroll: {
-    gap: 16,
-    paddingBottom: 24,
   },
   headerBlock: {
     gap: 16,

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -44,6 +43,14 @@ export function PelusasSetupScreen({
     setPlayers((prev) => [...prev, player]);
   };
 
+  const handleToggleSaved = (saved: SavedPlayer) => {
+    if (selectedIds.has(saved.id)) {
+      setPlayers((prev) => prev.filter((p) => p.id !== saved.id));
+      return;
+    }
+    handleAddSaved(saved);
+  };
+
   const handleAddNew = (name: string) => {
     const player = onCreateNewPlayer(name, players);
     if (!player) return false;
@@ -61,7 +68,7 @@ export function PelusasSetupScreen({
       intro="Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al 10 tiene cada jugador (y las de Revolution, si las activáis)."
       savedPlayers={savedPlayers}
       selectedIds={selectedIds}
-      onSelectSaved={handleAddSaved}
+      onToggleSaved={handleToggleSaved}
       onAddNew={handleAddNew}
       soloHint="Sin jugadores seleccionados se usará un jugador «Yo» solo para este conteo."
     />
@@ -71,44 +78,36 @@ export function PelusasSetupScreen({
     <View style={styles.container}>
       <AppHeader title="Contador de pelusas" onBack={onBack} />
 
-      {players.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {rosterBlock}
+      <FlatList
+        data={players}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={rosterBlock}
+        ListEmptyComponent={
           <Text style={styles.empty}>
             Puedes contar puntos en solitario o elegir jugadores arriba.
           </Text>
-          <Button label="Contar puntos" onPress={handleStart} />
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={players}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={rosterBlock}
-          ListFooterComponent={
-            <View style={styles.footer}>
-              <Button label="Contar puntos" onPress={handleStart} />
-            </View>
-          }
-          renderItem={({ item }) => (
-            <PlayerCard
-              player={item}
-              total={0}
-              roundScore={0}
-              onAdjust={() => {}}
-              onRemove={() =>
-                setPlayers((prev) => prev.filter((p) => p.id !== item.id))
-              }
-              showRoundControls={false}
-              showTotal={false}
-            />
-          )}
-        />
-      )}
+        }
+        ListFooterComponent={
+          <View style={styles.footer}>
+            <Button label="Contar puntos" onPress={handleStart} />
+          </View>
+        }
+        renderItem={({ item }) => (
+          <PlayerCard
+            player={item}
+            total={0}
+            roundScore={0}
+            onAdjust={() => {}}
+            onRemove={() =>
+              setPlayers((prev) => prev.filter((p) => p.id !== item.id))
+            }
+            showRoundControls={false}
+            showTotal={false}
+          />
+        )}
+      />
     </View>
   );
 }
@@ -117,10 +116,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  scroll: {
-    gap: 16,
-    paddingBottom: 24,
   },
   list: {
     gap: 12,
