@@ -35,6 +35,7 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
   const listRef = useRef<FlatList<PageKey>>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [pagerScrollEnabled, setPagerScrollEnabled] = useState(true);
   const pages = rounds.length > 1 ? PAGES : [PAGES[0]];
   const hasMultiplePages = pages.length > 1;
 
@@ -85,7 +86,12 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
           <>
             <MatchRanking ranking={ranking} />
             {rounds.length > 0 && (
-              <RoundHistory players={players} rounds={rounds} />
+              <RoundHistory
+                players={players}
+                rounds={rounds}
+                onHorizontalScrollStart={() => setPagerScrollEnabled(false)}
+                onHorizontalScrollEnd={() => setPagerScrollEnabled(true)}
+              />
             )}
           </>
         ) : (
@@ -125,6 +131,7 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          scrollEnabled={hasMultiplePages && pagerScrollEnabled}
           decelerationRate="fast"
           snapToInterval={pageWidth}
           snapToAlignment="start"

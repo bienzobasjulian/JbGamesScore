@@ -6,6 +6,8 @@ import { getRoundScore } from '../utils/game';
 type Props = {
   players: Player[];
   rounds: RoundScores[];
+  onHorizontalScrollStart?: () => void;
+  onHorizontalScrollEnd?: () => void;
 };
 
 function getCumulativeAtRound(
@@ -56,7 +58,12 @@ function ScoreCell({ roundScore, cumulative }: ScoreCellProps) {
   );
 }
 
-export function RoundHistory({ players, rounds }: Props) {
+export function RoundHistory({
+  players,
+  rounds,
+  onHorizontalScrollStart,
+  onHorizontalScrollEnd,
+}: Props) {
   if (rounds.length === 0) return null;
 
   const matchTotals = getMatchTotals(rounds, players);
@@ -67,7 +74,17 @@ export function RoundHistory({ players, rounds }: Props) {
         <Text style={styles.title}>Historial de rondas</Text>
         <Text style={styles.legend}>+ronda · total tras la ronda</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        onTouchStart={onHorizontalScrollStart}
+        onTouchEnd={onHorizontalScrollEnd}
+        onTouchCancel={onHorizontalScrollEnd}
+        onScrollBeginDrag={onHorizontalScrollStart}
+        onScrollEndDrag={onHorizontalScrollEnd}
+        onMomentumScrollEnd={onHorizontalScrollEnd}
+      >
         <View style={styles.table}>
           <View style={styles.headerRow}>
             <Text style={[styles.cell, styles.headerCell, styles.roundCol]}>
