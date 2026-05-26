@@ -633,6 +633,19 @@ export function useApp() {
     }));
   }, []);
 
+  const removeSavedPlayers = useCallback((playerIds: string[]) => {
+    const ids = new Set(playerIds);
+    if (ids.size === 0) return;
+    setData((prev) => ({
+      ...prev,
+      players: prev.players.filter((p) => !ids.has(p.id)),
+      templates: prev.templates.map((t) => ({
+        ...t,
+        playerIds: t.playerIds.filter((id) => !ids.has(id)),
+      })),
+    }));
+  }, []);
+
   const getTemplate = useCallback(
     (templateId: string) =>
       data.templates.find((t) => t.id === templateId),
@@ -730,6 +743,21 @@ export function useApp() {
     }));
     setScreen((current) => {
       if (current.type === 'game' && current.matchId === matchId) {
+        return { type: 'home' };
+      }
+      return current;
+    });
+  }, []);
+
+  const deleteMatches = useCallback((matchIds: string[]) => {
+    const ids = new Set(matchIds);
+    if (ids.size === 0) return;
+    setData((prev) => ({
+      ...prev,
+      matches: prev.matches.filter((m) => !ids.has(m.id)),
+    }));
+    setScreen((current) => {
+      if (current.type === 'game' && ids.has(current.matchId)) {
         return { type: 'home' };
       }
       return current;
@@ -1153,8 +1181,10 @@ export function useApp() {
     openMatch,
     addSavedPlayer,
     removeSavedPlayer,
+    removeSavedPlayers,
     createAndStartMatch,
     deleteMatch,
+    deleteMatches,
     getMatch,
     goToRound,
     addNextRound,

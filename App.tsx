@@ -182,6 +182,7 @@ export default function App() {
             onCreateMatch={app.goCreateMatch}
             onOpenMatch={app.openMatch}
             onDeleteMatch={app.deleteMatch}
+            onDeleteMatches={app.deleteMatches}
           />
         );
 
@@ -229,6 +230,7 @@ export default function App() {
             onBack={app.goHome}
             onCreatePlayer={app.goCreatePlayer}
             onRemovePlayer={app.removeSavedPlayer}
+            onRemovePlayers={app.removeSavedPlayers}
           />
         );
 

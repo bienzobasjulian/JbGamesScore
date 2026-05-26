@@ -6,16 +6,31 @@ import { formatMatchListSubtitle, formatMatchTitle } from '../utils/match';
 type Props = {
   match: Match;
   onPress?: () => void;
+  onLongPress?: () => void;
   onRemove?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
 };
 
-export function MatchListRow({ match, onPress, onRemove }: Props) {
+export function MatchListRow({
+  match,
+  onPress,
+  onLongPress,
+  onRemove,
+  selectionMode = false,
+  selected = false,
+}: Props) {
   const isFinished = match.status === 'finished';
   const subtitle = formatMatchListSubtitle(match);
   const subtitleLines = subtitle.split('\n');
 
   const content = (
     <>
+      {selectionMode ? (
+        <View style={[styles.selector, selected && styles.selectorActive]}>
+          {selected ? <View style={styles.selectorDot} /> : null}
+        </View>
+      ) : null}
       <View style={styles.texts}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>
@@ -47,23 +62,24 @@ export function MatchListRow({ match, onPress, onRemove }: Props) {
           </Text>
         ))}
       </View>
-      {onRemove ? (
+      {onRemove && !selectionMode ? (
         <Pressable onPress={onRemove} hitSlop={12} style={styles.remove}>
-          <Text style={styles.removeText}>✕</Text>
+          <Text style={styles.removeText}>x</Text>
         </Pressable>
-      ) : onPress ? (
+      ) : onPress && !selectionMode ? (
         <Text style={styles.chevron}>›</Text>
       ) : null}
     </>
   );
 
-  if (!onPress) {
+  if (!onPress && !onLongPress) {
     return <View style={styles.row}>{content}</View>;
   }
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
@@ -83,6 +99,25 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  selector: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surfaceLight,
+  },
+  selectorActive: {
+    borderColor: theme.accent,
+  },
+  selectorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.accent,
   },
   texts: {
     flex: 1,

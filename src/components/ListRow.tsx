@@ -6,7 +6,10 @@ type Props = {
   subtitle?: string;
   color?: string;
   onPress?: () => void;
+  onLongPress?: () => void;
   onRemove?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
 };
 
 export function ListRow({
@@ -14,10 +17,18 @@ export function ListRow({
   subtitle,
   color,
   onPress,
+  onLongPress,
   onRemove,
+  selectionMode = false,
+  selected = false,
 }: Props) {
   const content = (
     <>
+      {selectionMode ? (
+        <View style={[styles.selector, selected && styles.selectorActive]}>
+          {selected ? <View style={styles.selectorDot} /> : null}
+        </View>
+      ) : null}
       {color ? (
         <View style={[styles.dot, { backgroundColor: color }]} />
       ) : null}
@@ -31,23 +42,24 @@ export function ListRow({
           </Text>
         ) : null}
       </View>
-      {onRemove ? (
+      {onRemove && !selectionMode ? (
         <Pressable onPress={onRemove} hitSlop={12} style={styles.remove}>
-          <Text style={styles.removeText}>✕</Text>
+          <Text style={styles.removeText}>x</Text>
         </Pressable>
-      ) : onPress ? (
+      ) : onPress && !selectionMode ? (
         <Text style={styles.chevron}>›</Text>
       ) : null}
     </>
   );
 
-  if (!onPress) {
+  if (!onPress && !onLongPress) {
     return <View style={styles.row}>{content}</View>;
   }
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
@@ -67,6 +79,25 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  selector: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surfaceLight,
+  },
+  selectorActive: {
+    borderColor: theme.accent,
+  },
+  selectorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.accent,
   },
   dot: {
     width: 36,
