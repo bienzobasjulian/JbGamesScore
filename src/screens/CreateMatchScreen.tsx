@@ -11,7 +11,7 @@ import { Button } from '../components/Button';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { GameTypePicker } from '../components/GameTypePicker';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
-import { PlayerCard } from '../components/PlayerCard';
+import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
 import { theme } from '../constants';
@@ -260,18 +260,20 @@ export function CreateMatchScreen({
     <View style={styles.container}>
       <AppHeader title="Nueva partida" onBack={onBack} />
 
-      <FlatList
-        data={players}
-        keyExtractor={(item) => item.id}
+      <ReorderablePlayersList
+        players={players}
         contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={header}
-        ListEmptyComponent={
+        listHeaderComponent={
+          <>
+            {header}
+          </>
+        }
+        listEmptyComponent={
           <Text style={styles.empty}>
             Puedes empezar ya en solitario o elegir jugadores arriba.
           </Text>
         }
-        ListFooterComponent={
+        listFooterComponent={
           <View style={styles.footer}>
             <Button
               label={startLabel}
@@ -280,17 +282,8 @@ export function CreateMatchScreen({
             />
           </View>
         }
-        renderItem={({ item }) => (
-          <PlayerCard
-            player={item}
-            total={0}
-            roundScore={0}
-            onAdjust={() => {}}
-            onRemove={() => handleRemove(item.id)}
-            showRoundControls={false}
-            showTotal={false}
-          />
-        )}
+        onChange={setPlayers}
+        onRemove={handleRemove}
       />
     </View>
   );

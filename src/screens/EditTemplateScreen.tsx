@@ -11,7 +11,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
-import { PlayerCard } from '../components/PlayerCard';
+import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { theme } from '../constants';
 import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
@@ -149,13 +149,15 @@ export function EditTemplateScreen({
         onBack={onBack}
       />
 
-      <FlatList
-        data={rosterPlayers}
-        keyExtractor={(item) => item.id}
+      <ReorderablePlayersList
+        players={rosterPlayers}
         contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={formBlock}
-        ListFooterComponent={
+        listHeaderComponent={
+          <>
+            {formBlock}
+          </>
+        }
+        listFooterComponent={
           <View style={styles.footer}>
             <Button label="Guardar plantilla" onPress={handleSave} />
             {!isNew && onDelete ? (
@@ -167,17 +169,8 @@ export function EditTemplateScreen({
             ) : null}
           </View>
         }
-        renderItem={({ item }) => (
-          <PlayerCard
-            player={item}
-            total={0}
-            roundScore={0}
-            onAdjust={() => {}}
-            onRemove={() => handleRemove(item.id)}
-            showRoundControls={false}
-            showTotal={false}
-          />
-        )}
+        onChange={(players) => setPlayerIds(players.map((player) => player.id))}
+        onRemove={handleRemove}
       />
 
       <ConfirmModal

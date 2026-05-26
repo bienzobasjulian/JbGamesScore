@@ -8,7 +8,7 @@ import {
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
-import { PlayerCard } from '../components/PlayerCard';
+import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { theme } from '../constants';
 import { Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers } from '../utils/players';
@@ -78,35 +78,28 @@ export function PelusasSetupScreen({
     <View style={styles.container}>
       <AppHeader title="Contador de pelusas" onBack={onBack} />
 
-      <FlatList
-        data={players}
-        keyExtractor={(item) => item.id}
+      <ReorderablePlayersList
+        players={players}
         contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={rosterBlock}
-        ListEmptyComponent={
+        listHeaderComponent={
+          <>
+            {rosterBlock}
+          </>
+        }
+        listEmptyComponent={
           <Text style={styles.empty}>
             Puedes contar puntos en solitario o elegir jugadores arriba.
           </Text>
         }
-        ListFooterComponent={
+        listFooterComponent={
           <View style={styles.footer}>
             <Button label="Contar puntos" onPress={handleStart} />
           </View>
         }
-        renderItem={({ item }) => (
-          <PlayerCard
-            player={item}
-            total={0}
-            roundScore={0}
-            onAdjust={() => {}}
-            onRemove={() =>
-              setPlayers((prev) => prev.filter((p) => p.id !== item.id))
-            }
-            showRoundControls={false}
-            showTotal={false}
-          />
-        )}
+        onChange={setPlayers}
+        onRemove={(playerId) =>
+          setPlayers((prev) => prev.filter((p) => p.id !== playerId))
+        }
       />
     </View>
   );
