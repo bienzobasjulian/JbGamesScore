@@ -872,15 +872,34 @@ export function useApp() {
         let m = normalizeMatchRounds(match);
         const closingIndex = m.activeRoundIndex;
 
+        const finalize = (): Match => ({
+          ...normalizeMatchRounds(m),
+          status: 'finished',
+          editingAfterFinish: false,
+        });
+
+        if (checkGameOver(matchToGameState(m)).isOver) {
+          return finalize();
+        }
+
         const pointsEnd = checkGameOver(matchToGameState(m), {
           pointsThroughRoundIndex: closingIndex,
         });
+        if (pointsEnd.isOver && pointsEnd.reason === 'points') {
+          return finalize();
+        }
 
-        const advanceActiveRound = () => {
-          if (m.activeRoundIndex < m.rounds.length - 1) {
-            m = { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
-            return;
+        if (m.settings.maxRounds != null) {
+          const nextIndex = m.activeRoundIndex + 1;
+          if (nextIndex >= m.settings.maxRounds) {
+            m = { ...m, activeRoundIndex: nextIndex };
+            return finalize();
           }
+        }
+
+        if (m.activeRoundIndex < m.rounds.length - 1) {
+          m = { ...m, activeRoundIndex: m.activeRoundIndex + 1 };
+        } else {
           m = {
             ...m,
             rounds: [...m.rounds, emptyRoundScores(m.players)],
@@ -890,21 +909,12 @@ export function useApp() {
             ],
             activeRoundIndex: m.rounds.length,
           };
-        };
-
-        if (pointsEnd.isOver && pointsEnd.reason === 'points') {
-          advanceActiveRound();
-          return m;
         }
 
-        if (m.settings.maxRounds != null) {
-          const nextIndex = m.activeRoundIndex + 1;
-          if (nextIndex >= m.settings.maxRounds) {
-            return { ...m, activeRoundIndex: nextIndex };
-          }
+        if (checkGameOver(matchToGameState(m)).isOver) {
+          return finalize();
         }
 
-        advanceActiveRound();
         return m;
       });
     },
@@ -1058,6 +1068,7 @@ export function useApp() {
       updateMatch(matchId, (match) => ({
         ...match,
         status: 'finished',
+        editingAfterFinish: false,
       }));
     },
     [updateMatch],
@@ -1068,6 +1079,7 @@ export function useApp() {
       updateMatch(matchId, (match) => ({
         ...normalizeMatchRounds(match),
         status: 'finished',
+        editingAfterFinish: false,
       }));
     },
     [updateMatch],
@@ -1078,6 +1090,7 @@ export function useApp() {
       updateMatch(matchId, (match) => ({
         ...match,
         status: 'in_progress',
+        editingAfterFinish: true,
       }));
     },
     [updateMatch],

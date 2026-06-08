@@ -39,6 +39,7 @@ type Props = {
   matchTitle?: string;
   resultsRanking?: RankedPlayer[];
   isMatchFinished?: boolean;
+  editingAfterFinish?: boolean;
   isDedicatedGameMatch?: boolean;
   onAdjust: (playerId: string, delta: number) => void;
   onSetScore: (playerId: string, value: number) => void;
@@ -60,6 +61,7 @@ export function GameScreen({
   matchTitle,
   resultsRanking,
   isMatchFinished = false,
+  editingAfterFinish = false,
   isDedicatedGameMatch = false,
   onAdjust,
   onSetScore,
@@ -86,8 +88,10 @@ export function GameScreen({
       setViewingResults(true);
     }
   }, [isMatchFinished]);
-  const gameOver = checkGameOver(state);
-  const showResults = gameOver.isOver || isMatchFinished || viewingResults;
+
+  const objectivesReached = checkGameOver(state).isOver;
+  const showResults =
+    viewingResults || (objectivesReached && !editingAfterFinish);
   const showingUnsavedResults = viewingResults && !isMatchFinished;
 
   useEffect(() => {

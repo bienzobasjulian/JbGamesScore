@@ -48,6 +48,8 @@ export type Match = {
   currentRoundBreakdown?: RoundBreakdown;
   roundScoringMode: Record<string, ScoringMode>;
   status: MatchStatus;
+  /** Partida retomada tras finalizar: permite editar sin bloquear la UI. */
+  editingAfterFinish?: boolean;
   createdAt: number;
   updatedAt: number;
 };

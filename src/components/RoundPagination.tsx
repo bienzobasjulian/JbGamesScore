@@ -11,6 +11,7 @@ type Props = {
   rounds?: RoundScores[];
   roundBreakdowns?: RoundBreakdown[];
   disabled?: boolean;
+  allowAddRound?: boolean;
   onSelectRound: (index: number) => void;
   onAddRound: () => void;
 };
@@ -22,6 +23,7 @@ export function RoundPagination({
   rounds,
   roundBreakdowns,
   disabled,
+  allowAddRound = true,
   onSelectRound,
   onAddRound,
 }: Props) {
@@ -30,6 +32,7 @@ export function RoundPagination({
   const onLastFixedRound =
     fixedTabs && maxRounds != null && activeIndex === maxRounds - 1;
   const showAddButton =
+    allowAddRound &&
     !disabled &&
     (onLastFixedRound ||
       (!fixedTabs && activeIndex === roundCount - 1));

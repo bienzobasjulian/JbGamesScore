@@ -43,7 +43,11 @@ export default function App() {
       return;
     }
     const state = matchToGameState(activeMatch);
-    if (checkGameOver(state).isOver && activeMatch.status === 'in_progress') {
+    if (
+      checkGameOver(state).isOver &&
+      activeMatch.status === 'in_progress' &&
+      !activeMatch.editingAfterFinish
+    ) {
       app.markMatchFinished(activeMatch.id);
     }
   }, [
@@ -51,6 +55,7 @@ export default function App() {
     app.screen.type,
     app.screen.type === 'game' ? app.screen.matchId : null,
     activeMatch?.status,
+    activeMatch?.editingAfterFinish,
     activeMatch?.rounds,
     activeMatch?.activeRoundIndex,
   ]);
@@ -262,6 +267,7 @@ export default function App() {
             matchTitle={formatMatchTitle(match)}
             resultsRanking={resultsRanking}
             isMatchFinished={match.status === 'finished'}
+            editingAfterFinish={Boolean(match.editingAfterFinish)}
             isDedicatedGameMatch={
               match.gameMode === 'pelusas' ||
               match.gameMode === 'skull_king' ||
