@@ -10,6 +10,7 @@ import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
 import { CreatePlayerScreen } from './src/screens/CreatePlayerScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { EditMatchScreen } from './src/screens/EditMatchScreen';
 import { EditTemplateScreen } from './src/screens/EditTemplateScreen';
 import { MatchesListScreen } from './src/screens/MatchesListScreen';
 import { PlayersListScreen } from './src/screens/PlayersListScreen';
@@ -88,6 +89,10 @@ export default function App() {
 
           case 'editTemplate':
             app.goTemplatesList();
+            return true;
+
+          case 'editMatch':
+            app.openMatch(app.screen.matchId);
             return true;
 
           case 'createPlayer':
@@ -282,10 +287,29 @@ export default function App() {
               app.setRoundScoringMode(match.id, playerId, mode)
             }
             onBack={app.goHome}
+            onEditMatch={() => app.goEditMatch(match.id)}
             onFinishMatch={() => app.finishMatch(match.id)}
             onResumeMatch={() => app.resumeMatch(match.id)}
             onRepeatMatch={() => app.repeatMatch(match.id)}
             onDeleteMatch={() => app.deleteMatch(match.id)}
+          />
+        );
+      }
+
+      case 'editMatch': {
+        const match = app.getMatch(app.screen.matchId);
+        if (!match || match.status === 'finished') return null;
+        if (match.gameMode && match.gameMode !== 'standard') return null;
+        return (
+          <EditMatchScreen
+            match={match}
+            savedPlayers={app.data.players}
+            onBack={() => app.openMatch(match.id)}
+            onSave={(players, settings, name) =>
+              app.updateMatchConfiguration(match.id, players, settings, name)
+            }
+            onAddFromSaved={app.addPlayerFromSaved}
+            onCreateNewPlayer={app.createPlayerForMatch}
           />
         );
       }

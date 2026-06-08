@@ -155,6 +155,7 @@ export type AppScreen =
   | { type: 'home' }
   | { type: 'createMatch'; templateId?: string }
   | { type: 'game'; matchId: string }
+  | { type: 'editMatch'; matchId: string }
   | { type: 'matchesList' }
   | { type: 'playersList' }
   | { type: 'createPlayer' }

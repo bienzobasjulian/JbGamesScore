@@ -776,6 +776,66 @@ export function useApp() {
     [],
   );
 
+  const goEditMatch = useCallback((matchId: string) => {
+    setScreen({ type: 'editMatch', matchId });
+  }, []);
+
+  const updateMatchConfiguration = useCallback(
+    (
+      matchId: string,
+      players: Player[],
+      settings: GameSettings,
+      name: string | null,
+    ) => {
+      updateMatch(matchId, (match) => {
+        if (match.status === 'finished') return match;
+        const m = normalizeMatchRounds(match);
+        const normalizedSettings = normalizeSettings(settings);
+
+        const rounds = m.rounds.map((round) => {
+          const next: RoundScores = {};
+          for (const player of players) {
+            next[player.id] = round[player.id] ?? 0;
+          }
+          return next;
+        });
+
+        const roundBreakdowns = m.roundBreakdowns.map((breakdown) => {
+          const next: RoundBreakdown = {};
+          for (const player of players) {
+            if (breakdown[player.id]) {
+              next[player.id] = breakdown[player.id];
+            }
+          }
+          return next;
+        });
+
+        const roundScoringMode: Record<string, ScoringMode> = {};
+        for (const player of players) {
+          if (m.roundScoringMode[player.id]) {
+            roundScoringMode[player.id] = m.roundScoringMode[player.id];
+          }
+        }
+
+        return {
+          ...m,
+          name,
+          settings: normalizedSettings,
+          players,
+          rounds,
+          roundBreakdowns,
+          roundScoringMode,
+          activeRoundIndex: Math.min(
+            m.activeRoundIndex,
+            Math.max(0, rounds.length - 1),
+          ),
+        };
+      });
+      setScreen({ type: 'game', matchId });
+    },
+    [updateMatch],
+  );
+
   const goToRound = useCallback(
     (matchId: string, roundIndex: number) => {
       updateMatch(matchId, (match) => {
@@ -1179,6 +1239,8 @@ export function useApp() {
     saveTemplate,
     deleteTemplate,
     openMatch,
+    goEditMatch,
+    updateMatchConfiguration,
     addSavedPlayer,
     removeSavedPlayer,
     removeSavedPlayers,

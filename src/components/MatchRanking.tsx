@@ -4,75 +4,91 @@ import { RankedPlayer } from '../utils/match';
 
 type Props = {
   ranking: RankedPlayer[];
+  showPodium?: boolean;
 };
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export function MatchRanking({ ranking }: Props) {
+export function MatchRanking({ ranking, showPodium = true }: Props) {
   if (ranking.length === 0) return null;
 
-  const podiumOrder =
-    ranking.length >= 3
+  const podiumOrder = showPodium
+    ? ranking.length >= 3
       ? [ranking[1], ranking[0], ranking[2]]
       : ranking.length === 2
         ? [ranking[1], ranking[0]]
-        : [ranking[0]];
+        : [ranking[0]]
+    : [];
 
-  const podiumHeights =
-    ranking.length >= 3 ? [72, 96, 56] : ranking.length === 2 ? [72, 96] : [88];
+  const podiumHeights = showPodium
+    ? ranking.length >= 3
+      ? [72, 96, 56]
+      : ranking.length === 2
+        ? [72, 96]
+        : [88]
+    : [];
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.heading}>Resultado</Text>
+      {showPodium ? (
+        <>
+          <Text style={styles.heading}>Resultado</Text>
 
-      <View style={styles.podiumRow}>
-        {podiumOrder.map((entry, index) => {
-          const place =
-            ranking.length >= 3
-              ? index === 0
-                ? 2
-                : index === 1
-                  ? 1
-                  : 3
-              : ranking.length === 2
-                ? index === 0
-                  ? 2
-                  : 1
-                : 1;
-          const height = podiumHeights[index];
+          <View style={styles.podiumRow}>
+            {podiumOrder.map((entry, index) => {
+              const place =
+                ranking.length >= 3
+                  ? index === 0
+                    ? 2
+                    : index === 1
+                      ? 1
+                      : 3
+                  : ranking.length === 2
+                    ? index === 0
+                      ? 2
+                      : 1
+                    : 1;
+              const height = podiumHeights[index];
 
-          return (
-            <View key={entry.player.id} style={styles.podiumCol}>
-              <Text style={styles.medal}>
-                {place <= 3 ? MEDAL[place - 1] : `#${place}`}
-              </Text>
-              <View
-                style={[
-                  styles.pedestal,
-                  { height, borderColor: entry.player.color + '88' },
-                  place === 1 && styles.pedestalFirst,
-                ]}
-              >
-                <Text style={styles.pedestalScore}>{entry.total}</Text>
-                <Text style={styles.pedestalPts}>pts</Text>
-              </View>
-              <View
-                style={[styles.avatar, { backgroundColor: entry.player.color }]}
-              >
-                <Text style={styles.avatarText}>
-                  {entry.player.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <Text style={styles.podiumName} numberOfLines={1}>
-                {entry.player.name}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+              return (
+                <View key={entry.player.id} style={styles.podiumCol}>
+                  <Text style={styles.medal}>
+                    {place <= 3 ? MEDAL[place - 1] : `#${place}`}
+                  </Text>
+                  <View
+                    style={[
+                      styles.pedestal,
+                      { height, borderColor: entry.player.color + '88' },
+                      place === 1 && styles.pedestalFirst,
+                    ]}
+                  >
+                    <Text style={styles.pedestalScore}>{entry.total}</Text>
+                    <Text style={styles.pedestalPts}>pts</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: entry.player.color },
+                    ]}
+                  >
+                    <Text style={styles.avatarText}>
+                      {entry.player.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.podiumName} numberOfLines={1}>
+                    {entry.player.name}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
 
-      <View style={styles.list}>
-        <Text style={styles.listTitle}>Clasificación</Text>
+      <View style={[styles.list, !showPodium && styles.listOnly]}>
+        {showPodium ? (
+          <Text style={styles.listTitle}>Clasificación</Text>
+        ) : null}
         {ranking.map((entry) => (
           <View key={entry.player.id} style={styles.listRow}>
             <Text style={styles.listRank}>#{entry.rank}</Text>
@@ -167,6 +183,10 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: theme.border,
+  },
+  listOnly: {
+    paddingTop: 0,
+    borderTopWidth: 0,
   },
   listTitle: {
     fontSize: 13,

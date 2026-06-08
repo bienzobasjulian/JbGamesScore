@@ -3,14 +3,16 @@ import {
   BackHandler,
   FlatList,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Button } from '../components/Button';
+import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
-import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { MatchResultsPager } from '../components/MatchResultsPager';
 import { PlayerCard } from '../components/PlayerCard';
 import { RoundHistory } from '../components/RoundHistory';
@@ -46,6 +48,7 @@ type Props = {
   onGoToRound: (roundIndex: number) => void;
   onAddRound: () => void;
   onBack: () => void;
+  onEditMatch?: () => void;
   onFinishMatch: () => void;
   onResumeMatch: () => void;
   onRepeatMatch: () => void;
@@ -66,6 +69,7 @@ export function GameScreen({
   onGoToRound,
   onAddRound,
   onBack,
+  onEditMatch,
   onFinishMatch,
   onResumeMatch,
   onRepeatMatch,
@@ -73,6 +77,8 @@ export function GameScreen({
 }: Props) {
   const [finishModalVisible, setFinishModalVisible] = useState(false);
   const [exitModalVisible, setExitModalVisible] = useState(false);
+  const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
+  const [rankingModalVisible, setRankingModalVisible] = useState(false);
   const [viewingResults, setViewingResults] = useState(isMatchFinished);
 
   useEffect(() => {
@@ -92,6 +98,16 @@ export function GameScreen({
       () => {
         if (finishModalVisible) {
           setFinishModalVisible(false);
+          return true;
+        }
+
+        if (rankingModalVisible) {
+          setRankingModalVisible(false);
+          return true;
+        }
+
+        if (actionsMenuVisible) {
+          setActionsMenuVisible(false);
           return true;
         }
 
@@ -118,6 +134,8 @@ export function GameScreen({
   }, [
     exitModalVisible,
     finishModalVisible,
+    actionsMenuVisible,
+    rankingModalVisible,
     onBack,
     showResults,
     showingUnsavedResults,
@@ -169,9 +187,31 @@ export function GameScreen({
     onDeleteMatch();
   };
 
+  const handleBackPress = () => {
+    if (showResults && !showingUnsavedResults) {
+      onBack();
+      return;
+    }
+    setExitModalVisible(true);
+  };
+
+  const canEditMatch =
+    !isDedicatedGameMatch && Boolean(onEditMatch) && !showResults;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <Pressable
+          onPress={handleBackPress}
+          hitSlop={12}
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && styles.backBtnPressed,
+          ]}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </Pressable>
+
         <View style={styles.headerInfo}>
           {matchTitle ? (
             <Text style={styles.matchTitle} numberOfLines={1}>
@@ -195,18 +235,21 @@ export function GameScreen({
             <Text style={styles.finishedBadge}>Partida finalizada</Text>
           )}
         </View>
-        <Button
-          label="Salir"
-          onPress={() => {
-            if (showResults && !showingUnsavedResults) {
-              onBack();
-              return;
-            }
-            setExitModalVisible(true);
-          }}
-          variant="ghost"
-          style={styles.exitBtn}
-        />
+
+        {!showResults ? (
+          <Pressable
+            onPress={() => setActionsMenuVisible(true)}
+            hitSlop={12}
+            style={({ pressed }) => [
+              styles.menuBtn,
+              pressed && styles.backBtnPressed,
+            ]}
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.menuPlaceholder} />
+        )}
       </View>
 
       <View style={styles.body}>
@@ -314,13 +357,25 @@ export function GameScreen({
               onSelectRound={onGoToRound}
               onAddRound={onAddRound}
             />
-            <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
           </>
         )}
       </View>
 
       {!showResults && (
         <>
+          <MatchActionsMenu
+            visible={actionsMenuVisible}
+            onClose={() => setActionsMenuVisible(false)}
+            onViewRanking={() => setRankingModalVisible(true)}
+            onEditMatch={() => onEditMatch?.()}
+            onFinishMatch={() => setFinishModalVisible(true)}
+            canEditMatch={canEditMatch}
+          />
+          <CurrentRankingModal
+            visible={rankingModalVisible}
+            ranking={ranking}
+            onClose={() => setRankingModalVisible(false)}
+          />
           <FinishMatchModal
             visible={finishModalVisible}
             matchTitle={matchTitle}
@@ -352,18 +407,56 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
     marginBottom: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginTop: 2,
+  },
+  backBtnPressed: {
+    opacity: 0.8,
+  },
+  backIcon: {
+    fontSize: 22,
+    color: theme.text,
+    fontWeight: '600',
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginTop: 2,
+  },
+  menuIcon: {
+    fontSize: 22,
+    color: theme.text,
+    fontWeight: '800',
+    lineHeight: 24,
+  },
+  menuPlaceholder: {
+    width: 40,
   },
   headerInfo: {
     flex: 1,
     gap: 2,
   },
   matchTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.textMuted,
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.text,
     marginBottom: 2,
   },
   roundBadge: {
@@ -385,10 +478,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.textMuted,
     marginTop: 2,
-  },
-  exitBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
   },
   body: {
     flex: 1,
