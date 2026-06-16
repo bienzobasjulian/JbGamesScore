@@ -151,7 +151,7 @@ export function SkullKingCounterScreen({
           activeIndex={roundIndex}
           maxRounds={SKULL_KING_TOTAL_ROUNDS}
           onSelectRound={onGoToRound}
-          onAddRound={() => {}}
+          onAddRound={() => setFinishModalVisible(true)}
         />
       </View>
 
