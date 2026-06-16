@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { AppHeader } from '../components/AppHeader';
-import { FinishMatchButton } from '../components/FinishMatchButton';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { MatchActionsMenu } from '../components/MatchActionsMenu';
+import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { SkullKingPlayerRoundPanel } from '../components/SkullKingPlayerRoundPanel';
 import { theme } from '../constants';
 import { SkullKingRoundEntry, SkullKingSession } from '../types';
 import {
+  calculateSkullKingRoundScore,
   emptySkullKingRoundEntry,
   getSkullKingCardsDealt,
   getSkullKingRoundNumber,
@@ -38,23 +40,33 @@ export function SkullKingCounterScreen({
     () => new Set(),
   );
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
+  const [rankingModalVisible, setRankingModalVisible] = useState(false);
 
   const roundIndex = session.activeRoundIndex;
   const roundNumber = getSkullKingRoundNumber(roundIndex);
   const cardsDealt = getSkullKingCardsDealt(roundIndex);
   const roundByPlayer = session.rounds[roundIndex] ?? {};
 
-  const completedRounds = roundIndex;
+  const completedRounds = useMemo(
+    () =>
+      session.rounds.slice(0, roundIndex).map((roundByPlayerAtRound, index) => {
+        const roundNumberAtIndex = getSkullKingRoundNumber(index);
+        const scores: Record<string, number> = {};
+        for (const player of session.players) {
+          const entry =
+            roundByPlayerAtRound[player.id] ?? emptySkullKingRoundEntry();
+          scores[player.id] = calculateSkullKingRoundScore(roundNumberAtIndex, entry);
+        }
+        return scores;
+      }),
+    [session.players, session.rounds, roundIndex],
+  );
+
   const ranking = useMemo(
     () => sortPlayersBySkullKingTotal(session, roundIndex),
     [session, roundIndex],
   );
-  const rankingHint =
-    completedRounds === 0
-      ? 'Se actualiza al pasar a la siguiente ronda'
-      : completedRounds === 1
-        ? 'Suma de la ronda 1'
-        : `Suma de las rondas 1 a ${completedRounds}`;
 
   const togglePlayer = (playerId: string) => {
     setExpandedPlayers((prev) => {
@@ -75,7 +87,23 @@ export function SkullKingCounterScreen({
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Skull King" onBack={onBack} />
+      <View style={styles.header}>
+        <Pressable
+          onPress={onBack}
+          hitSlop={12}
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Skull King</Text>
+        <Pressable
+          onPress={() => setActionsMenuVisible(true)}
+          hitSlop={12}
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+        >
+          <Text style={styles.menuIcon}>⋮</Text>
+        </Pressable>
+      </View>
 
       <ScrollView
         style={styles.scroll}
@@ -93,29 +121,9 @@ export function SkullKingCounterScreen({
           </Text>
         </View>
 
-        <View style={styles.rankingPanel}>
-          <Text style={styles.rankingTitle}>Clasificación total</Text>
-          <Text style={styles.rankingHint}>{rankingHint}</Text>
-          {ranking.map(({ player, total }, index) => (
-            <View key={player.id} style={styles.rankingRow}>
-              <Text style={styles.rankingPos}>{index + 1}.</Text>
-              <View
-                style={[styles.rankingDot, { backgroundColor: player.color }]}
-              />
-              <Text style={styles.rankingName} numberOfLines={1}>
-                {player.name}
-              </Text>
-              <Text
-                style={[
-                  styles.rankingScore,
-                  total < 0 && styles.rankingScoreNegative,
-                ]}
-              >
-                {total} pts
-              </Text>
-            </View>
-          ))}
-        </View>
+        {completedRounds.length > 0 ? (
+          <RoundHistory players={session.players} rounds={completedRounds} />
+        ) : null}
 
         <Text style={styles.sectionHint}>
           Toca un jugador para registrar apuesta, bazas ganadas y bonificaciones
@@ -145,7 +153,6 @@ export function SkullKingCounterScreen({
           onSelectRound={onGoToRound}
           onAddRound={() => {}}
         />
-        <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
       </View>
 
       <FinishMatchModal
@@ -159,6 +166,25 @@ export function SkullKingCounterScreen({
           onBack();
         }}
       />
+
+      <MatchActionsMenu
+        visible={actionsMenuVisible}
+        onClose={() => setActionsMenuVisible(false)}
+        onViewRanking={() => setRankingModalVisible(true)}
+        onEditMatch={() => {}}
+        onFinishMatch={() => setFinishModalVisible(true)}
+        canEditMatch={false}
+      />
+
+      <CurrentRankingModal
+        visible={rankingModalVisible}
+        onClose={() => setRankingModalVisible(false)}
+        ranking={ranking.map((entry, index) => ({
+          player: entry.player,
+          total: entry.total,
+          rank: index + 1,
+        }))}
+      />
     </View>
   );
 }
@@ -167,6 +193,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.text,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  iconBtnPressed: {
+    opacity: 0.8,
+  },
+  backIcon: {
+    fontSize: 22,
+    color: theme.text,
+    fontWeight: '600',
+  },
+  menuIcon: {
+    fontSize: 22,
+    color: theme.text,
+    fontWeight: '800',
+    lineHeight: 24,
   },
   scroll: {
     flex: 1,
@@ -192,55 +254,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.textMuted,
     lineHeight: 20,
-  },
-  rankingPanel: {
-    backgroundColor: theme.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-    gap: 8,
-  },
-  rankingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.textMuted,
-  },
-  rankingHint: {
-    fontSize: 12,
-    color: theme.textMuted,
-    marginBottom: 6,
-  },
-  rankingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  rankingPos: {
-    width: 22,
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.textMuted,
-  },
-  rankingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  rankingName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  rankingScore: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: theme.accent,
-  },
-  rankingScoreNegative: {
-    color: theme.danger,
   },
   sectionHint: {
     fontSize: 13,
