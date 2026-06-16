@@ -11,8 +11,8 @@ type Props = {
 };
 
 const CHART_HEIGHT = 220;
-const PAD_LEFT = 36;
-const PAD_RIGHT = 12;
+const PAD_LEFT = 40;
+const PAD_RIGHT = 24;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 28;
 
