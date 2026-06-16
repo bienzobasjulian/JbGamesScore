@@ -45,10 +45,6 @@ export function calculateSkullKingRoundScore(
   roundNumber: number,
   entry: SkullKingRoundEntry,
 ): number {
-  if (!entry.entered) {
-    return 0;
-  }
-
   const { bid, tricksWon, goldBonusPoints, pirateCount, mermaidCapturesKing } =
     entry;
 
