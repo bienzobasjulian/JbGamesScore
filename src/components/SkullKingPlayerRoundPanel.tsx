@@ -102,19 +102,6 @@ export function SkullKingPlayerRoundPanel({
 
           <View style={styles.fieldRow}>
             <View style={styles.fieldInfo}>
-              <Text style={styles.fieldLabel}>Puntos oro</Text>
-              <Text style={styles.fieldHint}>Cartas con moneda de oro</Text>
-            </View>
-            <CardCountStepper
-              value={entry.goldBonusPoints}
-              onChange={(goldBonusPoints) => onChange({ goldBonusPoints })}
-              color={player.color}
-              max={999}
-            />
-          </View>
-
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldInfo}>
               <Text style={styles.fieldLabel}>Piratas (×30)</Text>
               <Text style={styles.fieldHint}>Baza con Skull King jugado</Text>
             </View>

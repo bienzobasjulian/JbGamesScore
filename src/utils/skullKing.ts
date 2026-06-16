@@ -45,12 +45,10 @@ export function calculateSkullKingRoundScore(
   roundNumber: number,
   entry: SkullKingRoundEntry,
 ): number {
-  const { bid, tricksWon, goldBonusPoints, pirateCount, mermaidCapturesKing } =
-    entry;
+  const { bid, tricksWon, pirateCount, mermaidCapturesKing } = entry;
 
   if (bid === tricksWon) {
     let score = bid === 0 ? roundNumber * 10 : tricksWon * 20;
-    score += Math.max(0, goldBonusPoints);
     score += Math.max(0, pirateCount) * 30;
     if (mermaidCapturesKing) {
       score += 50;
