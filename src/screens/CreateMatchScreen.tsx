@@ -111,6 +111,7 @@ export function CreateMatchScreen({
   );
   const [aventurerosSubmode, setAventurerosSubmode] =
     useState<AventurerosTrenSubmode>('base');
+  const [randomStarterName, setRandomStarterName] = useState<string | null>(null);
 
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
@@ -154,10 +155,24 @@ export function CreateMatchScreen({
 
   const handleRemove = (id: string) => {
     setPlayers((prev) => prev.filter((p) => p.id !== id));
+    setRandomStarterName(null);
+  };
+
+  const handlePickRandomStarter = () => {
+    if (players.length < 2) return;
+    const randomIndex = Math.floor(Math.random() * players.length);
+    const picked = players[randomIndex];
+    const rotated = [
+      ...players.slice(randomIndex),
+      ...players.slice(0, randomIndex),
+    ];
+    setPlayers(rotated);
+    setRandomStarterName(picked.name);
   };
 
   const handleSelectGame = (next: CreateMatchGameType) => {
     setGameType(next);
+    setRandomStarterName(null);
     if (isDedicatedCreateMatchGame(next)) {
       setLoadedTemplateId(null);
       setSettings(defaultSettings());
@@ -171,6 +186,7 @@ export function CreateMatchScreen({
       setSettings(defaultSettings());
       setPlayers([]);
       setMatchName('');
+      setRandomStarterName(null);
       return;
     }
     const draft = applyTemplateDraft(template, savedPlayers);
@@ -178,6 +194,7 @@ export function CreateMatchScreen({
     setSettings(draft.settings);
     setPlayers(draft.players);
     setMatchName(draft.suggestedMatchName);
+    setRandomStarterName(null);
   };
 
   const handleStart = () => {
@@ -275,6 +292,20 @@ export function CreateMatchScreen({
         }
         listFooterComponent={
           <View style={styles.footer}>
+            {players.length > 1 ? (
+              <>
+                <Button
+                  label="Elegir inicio aleatorio"
+                  onPress={handlePickRandomStarter}
+                  variant="secondary"
+                />
+                {randomStarterName ? (
+                  <Text style={styles.randomStarterText}>
+                    Empieza: {randomStarterName}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
             <Button
               label={startLabel}
               onPress={handleStart}
@@ -340,5 +371,10 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: 16,
     gap: 10,
+  },
+  randomStarterText: {
+    fontSize: 13,
+    color: theme.textMuted,
+    textAlign: 'center',
   },
 });
