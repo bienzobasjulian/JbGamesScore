@@ -2,7 +2,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { HamburgerMenu } from './src/components/HamburgerMenu';
 import { theme } from './src/constants';
 import { useApp } from './src/hooks/useApp';
@@ -28,8 +32,19 @@ import {
 } from './src/utils/match';
 
 export default function App() {
+  return (
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <AppShell />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function AppShell() {
   const app = useApp();
   const isHome = app.screen.type === 'home';
+  const insets = useSafeAreaInsets();
 
   const activeMatch =
     app.screen.type === 'game'
@@ -137,7 +152,15 @@ export default function App() {
 
   if (!app.loaded) {
     return (
-      <View style={styles.loading}>
+      <View
+        style={[
+          styles.loading,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
@@ -391,29 +414,35 @@ export default function App() {
   };
 
   return (
-    <GestureHandlerRootView style={styles.gestureRoot}>
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-          <StatusBar style="light" />
-          {renderScreen()}
-          {isHome && (
-            <HamburgerMenu
-              visible={app.menuOpen}
-              onClose={app.closeMenu}
-              items={[
-                { label: 'Nueva partida', onPress: app.goCreateMatch },
-                { label: 'Lista de partidas', onPress: app.goMatchesList },
-                { label: 'Lista de jugadores', onPress: app.goPlayersList },
-                {
-                  label: 'Plantillas de partida',
-                  onPress: app.goTemplatesList,
-                }
-              ]}
-            />
-          )}
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <View
+      style={[
+        styles.root,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
+      <StatusBar style="light" />
+      {renderScreen()}
+      {isHome && (
+        <HamburgerMenu
+          visible={app.menuOpen}
+          onClose={app.closeMenu}
+          items={[
+            { label: 'Nueva partida', onPress: app.goCreateMatch },
+            { label: 'Lista de partidas', onPress: app.goMatchesList },
+            { label: 'Lista de jugadores', onPress: app.goPlayersList },
+            {
+              label: 'Plantillas de partida',
+              onPress: app.goTemplatesList,
+            },
+          ]}
+        />
+      )}
+    </View>
   );
 }
 

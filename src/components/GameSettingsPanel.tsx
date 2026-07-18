@@ -120,7 +120,7 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
 
       <View style={[styles.row, styles.rowSpaced]}>
         <View style={styles.rowInfo}>
-          <Text style={styles.label}>Puntos para ganar</Text>
+          <Text style={styles.label}>Puntos para ganar/perder</Text>
           <Text style={styles.hint}>
             {settings.lowestScoreWins
               ? 'Se comprueba al terminar cada ronda; gana el menor total'
