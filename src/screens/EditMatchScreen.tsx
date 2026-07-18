@@ -110,16 +110,15 @@ export function EditMatchScreen({
             Añade al menos un jugador para continuar.
           </Text>
         }
-        listFooterComponent={
-          <View style={styles.footer}>
-            <Button label="Guardar cambios" onPress={handleSave} />
-          </View>
-        }
         onChange={setPlayers}
         onRemove={(playerId) =>
           setPlayers((prev) => prev.filter((player) => player.id !== playerId))
         }
       />
+
+      <View style={styles.footer}>
+        <Button label="Guardar cambios" onPress={handleSave} />
+      </View>
     </View>
   );
 }
@@ -172,6 +171,8 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
   },
 });

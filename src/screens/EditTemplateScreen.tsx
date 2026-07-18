@@ -152,26 +152,21 @@ export function EditTemplateScreen({
       <ReorderablePlayersList
         players={rosterPlayers}
         contentContainerStyle={styles.list}
-        listHeaderComponent={
-          <>
-            {formBlock}
-          </>
-        }
-        listFooterComponent={
-          <View style={styles.footer}>
-            <Button label="Guardar plantilla" onPress={handleSave} />
-            {!isNew && onDelete ? (
-              <Button
-                label="Eliminar plantilla"
-                onPress={() => setDeleteVisible(true)}
-                variant="danger"
-              />
-            ) : null}
-          </View>
-        }
+        listHeaderComponent={formBlock}
         onChange={(players) => setPlayerIds(players.map((player) => player.id))}
         onRemove={handleRemove}
       />
+
+      <View style={styles.footer}>
+        <Button label="Guardar plantilla" onPress={handleSave} />
+        {!isNew && onDelete ? (
+          <Button
+            label="Eliminar plantilla"
+            onPress={() => setDeleteVisible(true)}
+            variant="danger"
+          />
+        ) : null}
+      </View>
 
       <ConfirmModal
         visible={deleteVisible}
@@ -248,7 +243,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
     gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
   },
 });

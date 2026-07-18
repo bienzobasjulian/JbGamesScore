@@ -280,42 +280,37 @@ export function CreateMatchScreen({
       <ReorderablePlayersList
         players={players}
         contentContainerStyle={styles.list}
-        listHeaderComponent={
-          <>
-            {header}
-          </>
-        }
+        listHeaderComponent={header}
         listEmptyComponent={
           <Text style={styles.empty}>
             Puedes empezar ya en solitario o elegir jugadores arriba.
           </Text>
         }
-        listFooterComponent={
-          <View style={styles.footer}>
-            {players.length > 1 ? (
-              <>
-                <Button
-                  label="Elegir inicio aleatorio"
-                  onPress={handlePickRandomStarter}
-                  variant="secondary"
-                />
-                {randomStarterName ? (
-                  <Text style={styles.randomStarterText}>
-                    Empieza: {randomStarterName}
-                  </Text>
-                ) : null}
-              </>
-            ) : null}
-            <Button
-              label={startLabel}
-              onPress={handleStart}
-              disabled={!canStart}
-            />
-          </View>
-        }
         onChange={setPlayers}
         onRemove={handleRemove}
       />
+
+      <View style={styles.footer}>
+        {players.length > 1 ? (
+          <>
+            <Button
+              label="Elegir inicio aleatorio"
+              onPress={handlePickRandomStarter}
+              variant="secondary"
+            />
+            {randomStarterName ? (
+              <Text style={styles.randomStarterText}>
+                Empieza: {randomStarterName}
+              </Text>
+            ) : null}
+          </>
+        ) : null}
+        <Button
+          label={startLabel}
+          onPress={handleStart}
+          disabled={!canStart}
+        />
+      </View>
     </View>
   );
 }
@@ -369,8 +364,10 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
     gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
   },
   randomStarterText: {
     fontSize: 13,

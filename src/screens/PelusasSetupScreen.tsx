@@ -1,10 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
@@ -81,26 +76,21 @@ export function PelusasSetupScreen({
       <ReorderablePlayersList
         players={players}
         contentContainerStyle={styles.list}
-        listHeaderComponent={
-          <>
-            {rosterBlock}
-          </>
-        }
+        listHeaderComponent={rosterBlock}
         listEmptyComponent={
           <Text style={styles.empty}>
             Puedes contar puntos en solitario o elegir jugadores arriba.
           </Text>
-        }
-        listFooterComponent={
-          <View style={styles.footer}>
-            <Button label="Contar puntos" onPress={handleStart} />
-          </View>
         }
         onChange={setPlayers}
         onRemove={(playerId) =>
           setPlayers((prev) => prev.filter((p) => p.id !== playerId))
         }
       />
+
+      <View style={styles.footer}>
+        <Button label="Contar puntos" onPress={handleStart} />
+      </View>
     </View>
   );
 }
@@ -121,6 +111,8 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
   },
 });

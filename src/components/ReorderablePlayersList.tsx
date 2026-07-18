@@ -28,6 +28,7 @@ export function ReorderablePlayersList({
 }: Props) {
   return (
     <DraggableFlatList
+      style={styles.list}
       data={players}
       keyExtractor={(item) => item.id}
       contentContainerStyle={contentContainerStyle}
@@ -50,3 +51,7 @@ export function ReorderablePlayersList({
     />
   );
 }
+
+const styles = {
+  list: { flex: 1 },
+};

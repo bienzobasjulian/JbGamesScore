@@ -43,6 +43,7 @@ export function ReorderablePlayersList({
 
   return (
     <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={contentContainerStyle}
       keyboardShouldPersistTaps="handled"
     >
