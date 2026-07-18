@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 
 type Props = {
@@ -6,15 +6,28 @@ type Props = {
   subtitle?: string;
   onMenuPress?: () => void;
   onBack?: () => void;
+  showLogo?: boolean;
 };
 
-export function AppHeader({ title, subtitle, onMenuPress, onBack }: Props) {
+export function AppHeader({
+  title,
+  subtitle,
+  onMenuPress,
+  onBack,
+  showLogo = false,
+}: Props) {
   return (
     <View style={styles.row}>
       {onBack ? (
         <Pressable onPress={onBack} hitSlop={12} style={styles.iconBtn}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
+      ) : showLogo ? (
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          accessibilityLabel="JbGamesScore"
+        />
       ) : (
         <View style={styles.iconPlaceholder} />
       )}
@@ -58,6 +71,11 @@ const styles = StyleSheet.create({
   },
   iconPlaceholder: {
     width: 40,
+  },
+  logo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   menuIcon: {
     fontSize: 20,

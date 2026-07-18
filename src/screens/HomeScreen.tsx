@@ -35,6 +35,7 @@ export function HomeScreen({
         title="Jb Games Score"
         subtitle="Contador de puntos para tus partidas"
         onMenuPress={onMenuPress}
+        showLogo
       />
 
       <ScrollView
