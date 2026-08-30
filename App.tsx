@@ -13,6 +13,7 @@ import { useApp } from './src/hooks/useApp';
 import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
 import { CreateSessionScreen } from './src/screens/CreateSessionScreen';
 import { CreateWinnerMatchScreen } from './src/screens/CreateWinnerMatchScreen';
+import { RegicideCounterScreen } from './src/screens/RegicideCounterScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EditMatchScreen } from './src/screens/EditMatchScreen';
@@ -168,6 +169,9 @@ function AppShell() {
             app.exitAventurerosTren();
             return true;
 
+          case 'regicideCount':
+            return false;
+
           default:
             return false;
         }
@@ -247,6 +251,9 @@ function AppShell() {
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
             }}
+            onStartRegicide={(sessionId) => {
+              app.startRegicideSession(sessionId);
+            }}
             onCreateNewPlayer={app.createPlayerForMatch}
           />
         );
@@ -282,6 +289,9 @@ function AppShell() {
             }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
+            }}
+            onStartRegicide={(sessionId) => {
+              app.startRegicideSession(sessionId);
             }}
             onCreateNewPlayer={app.createPlayerForMatch}
           />
@@ -618,6 +628,18 @@ function AppShell() {
             onUpdateDestination={app.updateAventurerosTrenDestination}
             onRemoveDestination={app.removeAventurerosTrenDestination}
             onUpdatePlayerScoring={app.updateAventurerosTrenPlayerScoring}
+          />
+        );
+      }
+
+      case 'regicideCount': {
+        if (!app.regicideSession) return null;
+        return (
+          <RegicideCounterScreen
+            session={app.regicideSession}
+            onSaveAndExit={app.saveRegicideAndExit}
+            onDeleteAndExit={app.deleteRegicideAndExit}
+            onUpdateSession={app.updateRegicideSession}
           />
         );
       }

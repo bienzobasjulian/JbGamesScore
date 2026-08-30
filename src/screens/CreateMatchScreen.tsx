@@ -94,6 +94,7 @@ type Props = {
     submode: AventurerosTrenSubmode,
     sessionId?: string | null,
   ) => void;
+  onStartRegicide: (sessionId?: string | null) => void;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
 
@@ -111,6 +112,7 @@ export function CreateMatchScreen({
   onStartPelusas,
   onStartSkullKing,
   onStartAventurerosTren,
+  onStartRegicide,
   onCreateNewPlayer,
 }: Props) {
   const templateInitial = buildInitialFromTemplate(
@@ -144,13 +146,20 @@ export function CreateMatchScreen({
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
   const isAventurerosTren = gameType === 'aventureros_tren';
+  const isRegicide = gameType === 'regicide';
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
 
-  const canStart = players.length <= playerLimits.max;
+  const canStart = isRegicide
+    ? true
+    : players.length <= playerLimits.max;
   const soloHint =
     'Si no eliges a nadie, se usará un jugador «Yo» solo para este registro.';
-  const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
+  const startLabel = isPelusas
+    ? 'Contar puntos'
+    : isRegicide
+      ? 'Abrir asistente'
+      : 'Comenzar partida';
 
   const buildDraft = useMemo(
     (): CreateMatchDraft => ({
@@ -234,6 +243,10 @@ export function CreateMatchScreen({
 
   const handleStart = () => {
     if (!canStart) return;
+    if (isRegicide) {
+      onStartRegicide(sessionId ?? null);
+      return;
+    }
     const roster = ensureMatchPlayers(players, onCreateNewPlayer);
     if (isPelusas) {
       onStartPelusas(roster, sessionId ?? null);
@@ -292,6 +305,14 @@ export function CreateMatchScreen({
           Partida a 10 rondas de bazas. Elige entre {playerLimits.min} y{' '}
           {playerLimits.max} jugadores.
         </Text>
+      ) : isRegicide ? (
+        <View style={styles.regicideHintBox}>
+          <Text style={styles.specialHint}>
+            Asistente cooperativo sin jugadores ni puntuación. Se puede jugar
+            con una baraja de póker normal (52 cartas + bufones). La pantalla se
+            mostrará en horizontal para gestionar vida y ataque de cada enemigo.
+          </Text>
+        </View>
       ) : (
         <>
           <AventurerosTrenSubmodePicker
@@ -305,16 +326,37 @@ export function CreateMatchScreen({
         </>
       )}
 
-      <MatchPlayerRoster
-        playerCount={players.length}
-        onChoosePlayers={handleChoosePlayers}
-        soloHint={soloHint}
-        maxPlayers={
-          Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
-        }
-      />
+      {!isRegicide ? (
+        <MatchPlayerRoster
+          playerCount={players.length}
+          onChoosePlayers={handleChoosePlayers}
+          soloHint={soloHint}
+          maxPlayers={
+            Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
+          }
+        />
+      ) : null}
     </View>
   );
+
+  if (isRegicide) {
+    return (
+      <View style={styles.container}>
+        <AppHeader
+          title={sessionName ? 'Partida en sesión' : 'Nueva partida'}
+          onBack={onBack}
+        />
+        <View style={styles.regicideBody}>{header}</View>
+        <View style={styles.footer}>
+          <Button
+            label={startLabel}
+            onPress={handleStart}
+            disabled={!canStart}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -403,6 +445,14 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     lineHeight: 20,
     paddingHorizontal: 4,
+  },
+  regicideBody: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  regicideHintBox: {
+    minHeight: 88,
+    justifyContent: 'flex-start',
   },
   list: {
     gap: 12,

@@ -87,6 +87,11 @@ import {
   AVENTUREROS_TREN_MAX_PLAYERS,
   AVENTUREROS_TREN_MIN_PLAYERS,
 } from '../utils/aventurerosTren';
+import {
+  createRegicideMatch,
+  createRegicideSession,
+  RegicideSession,
+} from '../utils/regicide';
 
 function patchActiveRound(
   match: Match,
@@ -202,7 +207,10 @@ export function useApp() {
     useState<SkullKingSession | null>(null);
   const [aventurerosTrenSession, setAventurerosTrenSession] =
     useState<AventurerosTrenSession | null>(null);
+  const [regicideSession, setRegicideSession] =
+    useState<RegicideSession | null>(null);
   const dedicatedMatchSessionIdRef = useRef<string | null>(null);
+  const regicideMatchIdRef = useRef<string | null>(null);
   const playerSelectionRef = useRef<PlayerSelectionConfig | null>(null);
   const returningDraftRef = useRef<{
     key: PlayerSelectionDraftKey;
@@ -651,6 +659,74 @@ export function useApp() {
     });
   }, []);
 
+  const startRegicideSession = useCallback((sessionId?: string | null) => {
+    if (sessionId !== undefined) {
+      dedicatedMatchSessionIdRef.current = sessionId;
+    }
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    const session = createRegicideSession();
+    const match = createRegicideMatch(session, playSessionId);
+    regicideMatchIdRef.current = match.id;
+    setRegicideSession(session);
+    setData((prev) => appendMatch(prev, match));
+    setScreen({ type: 'regicideCount' });
+    setMenuOpen(false);
+  }, []);
+
+  const saveRegicideAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    regicideMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setRegicideSession(null);
+    if (playSessionId) {
+      setScreen({ type: 'sessionDetail', sessionId: playSessionId });
+    } else {
+      setScreen({ type: 'home' });
+    }
+    setMenuOpen(false);
+  }, []);
+
+  const deleteRegicideAndExit = useCallback(() => {
+    const matchId = regicideMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    regicideMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setRegicideSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    if (playSessionId) {
+      setScreen({ type: 'sessionDetail', sessionId: playSessionId });
+    } else {
+      setScreen({ type: 'home' });
+    }
+    setMenuOpen(false);
+  }, []);
+
+  const updateRegicideSession = useCallback((session: RegicideSession) => {
+    setRegicideSession(session);
+    const matchId = regicideMatchIdRef.current;
+    if (!matchId) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) => ({
+        ...match,
+        regicideSession: session,
+        status: session.victory ? 'finished' : 'in_progress',
+        updatedAt: Date.now(),
+      })),
+    );
+  }, []);
+
   const goMatchesList = useCallback(() => {
     setScreen({ type: 'matchesList' });
     setMenuOpen(false);
@@ -810,10 +886,21 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const openMatch = useCallback((matchId: string) => {
-    setScreen({ type: 'game', matchId });
-    setMenuOpen(false);
-  }, []);
+  const openMatch = useCallback(
+    (matchId: string) => {
+      const match = data.matches.find((m) => m.id === matchId);
+      if (match?.gameMode === 'regicide' && match.regicideSession) {
+        regicideMatchIdRef.current = matchId;
+        dedicatedMatchSessionIdRef.current = match.sessionId ?? null;
+        setRegicideSession(match.regicideSession);
+        setScreen({ type: 'regicideCount' });
+      } else {
+        setScreen({ type: 'game', matchId });
+      }
+      setMenuOpen(false);
+    },
+    [data.matches],
+  );
 
   const removeSavedPlayer = useCallback((playerId: string) => {
     setData((prev) => ({
@@ -1066,6 +1153,13 @@ export function useApp() {
   );
 
   const deleteMatch = useCallback((matchId: string) => {
+    const isActiveRegicide =
+      regicideMatchIdRef.current === matchId;
+    if (isActiveRegicide) {
+      regicideMatchIdRef.current = null;
+      dedicatedMatchSessionIdRef.current = null;
+      setRegicideSession(null);
+    }
     setData((prev) => {
       const match = prev.matches.find((m) => m.id === matchId);
       let next: AppData = {
@@ -1079,6 +1173,9 @@ export function useApp() {
     });
     setScreen((current) => {
       if (current.type === 'game' && current.matchId === matchId) {
+        return { type: 'home' };
+      }
+      if (current.type === 'regicideCount' && isActiveRegicide) {
         return { type: 'home' };
       }
       return current;
@@ -1488,6 +1585,21 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'regicide') {
+        const session = createRegicideSession();
+        const match = createRegicideMatch(
+          session,
+          source.sessionId,
+          source.name,
+        );
+        regicideMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setRegicideSession(session);
+        setData((prev) => appendMatch(prev, match));
+        setScreen({ type: 'regicideCount' });
+        return;
+      }
+
       const newMatch = createMatch(source.players, source.settings, source.name);
       setData((prev) => ({
         ...prev,
@@ -1586,6 +1698,11 @@ export function useApp() {
     removeAventurerosTrenDestination,
     updateAventurerosTrenPlayerScoring,
     finishAventurerosTrenSession,
+    regicideSession,
+    startRegicideSession,
+    saveRegicideAndExit,
+    deleteRegicideAndExit,
+    updateRegicideSession,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

@@ -35,7 +35,8 @@ export type MatchGameMode =
   | 'standard'
   | 'pelusas'
   | 'skull_king'
-  | 'aventureros_tren';
+  | 'aventureros_tren'
+  | 'regicide';
 
 export type PlaySessionStatus = 'active' | 'closed';
 
@@ -74,6 +75,8 @@ export type Match = {
   status: MatchStatus;
   /** Partida retomada tras finalizar: permite editar sin bloquear la UI. */
   editingAfterFinish?: boolean;
+  /** Estado persistido del asistente Regicide. */
+  regicideSession?: import('./utils/regicide').RegicideSession;
   createdAt: number;
   updatedAt: number;
 };
@@ -192,6 +195,7 @@ export type AppScreen =
   | { type: 'pelusasCount' }
   | { type: 'skullKingCount' }
   | { type: 'aventurerosTrenCount' }
+  | { type: 'regicideCount' }
   | { type: 'sessionsList' }
   | { type: 'createSession'; returnTo?: 'home' | 'sessionsList' }
   | { type: 'sessionDetail'; sessionId: string }

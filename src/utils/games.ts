@@ -2,7 +2,8 @@ export type CreateMatchGameType =
   | 'standard'
   | 'pelusas'
   | 'skull_king'
-  | 'aventureros_tren';
+  | 'aventureros_tren'
+  | 'regicide';
 
 export type CreateMatchPlayerLimits = {
   min: number;
@@ -19,6 +20,8 @@ export function getCreateMatchPlayerLimits(
       return { min: 1, max: 5 };
     case 'pelusas':
       return { min: 1, max: Number.POSITIVE_INFINITY };
+    case 'regicide':
+      return { min: 0, max: 0 };
     default:
       return { min: 1, max: Number.POSITIVE_INFINITY };
   }
@@ -57,5 +60,11 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     name: 'Aventureros al tren',
     description:
       'Base o Europa: construcción, destinos y desempates (2–5 jugadores)',
+  },
+  {
+    id: 'regicide',
+    name: 'Regicide',
+    description:
+      'Asistente cooperativo: vida y ataque de J, Q y K (horizontal)',
   },
 ];

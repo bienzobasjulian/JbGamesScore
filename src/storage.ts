@@ -48,7 +48,9 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                   ? 'skull_king'
                   : m.gameMode === 'aventureros_tren'
                     ? 'aventureros_tren'
-                    : 'standard',
+                    : m.gameMode === 'regicide'
+                      ? 'regicide'
+                      : 'standard',
             pelusasRevolution:
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),
@@ -59,6 +61,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
             winnerIds: Array.isArray(m.winnerIds)
               ? m.winnerIds.filter((id) => typeof id === 'string')
               : undefined,
+            regicideSession:
+              m.gameMode === 'regicide' &&
+              m.regicideSession != null &&
+              typeof m.regicideSession === 'object'
+                ? m.regicideSession
+                : undefined,
           } as Match),
         )
       : [],

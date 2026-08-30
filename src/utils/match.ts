@@ -19,6 +19,7 @@ import {
   getAventurerosTrenMatchRanking,
   getAventurerosTrenMatchWinners,
 } from './aventurerosTren';
+import { formatRegicideMatchProgress } from './regicide';
 import {
   createInitialRounds,
   normalizeMatchRounds,
@@ -51,6 +52,9 @@ export function formatMatchTitle(match: Match): string {
   if (match.gameMode === 'skull_king') return 'Skull King';
   if (match.gameMode === 'aventureros_tren') {
     return match.name?.trim() || 'Aventureros al tren';
+  }
+  if (match.gameMode === 'regicide') {
+    return match.name?.trim() || 'Regicide';
   }
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
@@ -150,10 +154,10 @@ export function formatMatchSubtitle(match: Match): string {
 }
 
 export function formatMatchListMeta(match: Match): string {
-  const parts = [
-    formatMatchDate(match.updatedAt),
-    formatPlayerCount(match.players.length),
-  ];
+  const parts = [formatMatchDate(match.updatedAt)];
+  if (match.gameMode !== 'regicide') {
+    parts.push(formatPlayerCount(match.players.length));
+  }
   if (match.gameMode === 'pelusas') {
     parts.push(
       match.pelusasRevolution ? 'Pelusas · Revolution' : 'Pelusas',
@@ -165,11 +169,19 @@ export function formatMatchListMeta(match: Match): string {
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));
   }
+  if (match.gameMode === 'regicide') {
+    parts.push('Regicide');
+    if (match.regicideSession) {
+      parts.push(formatRegicideMatchProgress(match.regicideSession));
+    }
+  }
   if (match.winnerOnly) {
     parts.push('Sin puntuación');
   }
   if (match.status === 'in_progress') {
-    parts.push(formatMatchSubtitle(match));
+    if (match.gameMode !== 'regicide') {
+      parts.push(formatMatchSubtitle(match));
+    }
   }
   return parts.join(' · ');
 }
@@ -178,6 +190,9 @@ export function formatMatchListSubtitle(match: Match): string {
   const meta = formatMatchListMeta(match);
   if (match.status === 'finished') {
     const winner = formatWinnerLabel(match);
+    if (match.gameMode === 'regicide' && match.regicideSession?.victory) {
+      return meta;
+    }
     return winner ? `${meta}\n${winner}` : `${meta}\nFinalizada`;
   }
   return meta;
