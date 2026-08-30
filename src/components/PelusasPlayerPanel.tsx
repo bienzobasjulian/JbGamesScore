@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { PelusasPlayerCounts, Player } from '../types';
+import { getPelusaImageSource } from '../utils/pelusaAssets';
 import {
   calculatePelusasScore,
   formatPelusasCardLabel,
@@ -64,23 +65,37 @@ export function PelusasPlayerPanel({
 
       {expanded ? (
         <View style={styles.grid}>
-          {cards.map((cardValue) => (
-            <View key={cardValue} style={styles.cardRow}>
-              <View style={styles.cardLabelWrap}>
-                <Text style={styles.cardLabel}>
-                  {formatPelusasCardLabel(cardValue)}
-                </Text>
-                <Text style={styles.cardPts}>
-                  {cardValue > 0 ? `×${cardValue} pt` : `${cardValue} pt`}
-                </Text>
+          {cards.map((cardValue) => {
+            const pelusaImage = getPelusaImageSource(cardValue);
+
+            return (
+              <View key={cardValue} style={styles.cardRow}>
+                <View style={styles.cardLabelWrap}>
+                  {pelusaImage ? (
+                    <Image
+                      source={pelusaImage}
+                      style={styles.pelusaImage}
+                      accessibilityLabel={`Carta ${cardValue}`}
+                    />
+                  ) : (
+                    <View style={styles.cardBadge}>
+                      <Text style={styles.cardBadgeLabel}>
+                        {formatPelusasCardLabel(cardValue)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.cardPts}>
+                    {cardValue > 0 ? `×${cardValue} pt` : `${cardValue} pt`}
+                  </Text>
+                </View>
+                <CardCountStepper
+                  value={counts[String(cardValue)] ?? 0}
+                  onChange={(n) => onChangeCount(cardValue, n)}
+                  color={player.color}
+                />
               </View>
-              <CardCountStepper
-                value={counts[String(cardValue)] ?? 0}
-                onChange={(n) => onChangeCount(cardValue, n)}
-                color={player.color}
-              />
-            </View>
-          ))}
+            );
+          })}
         </View>
       ) : null}
     </View>
@@ -171,15 +186,33 @@ const styles = StyleSheet.create({
   },
   cardLabelWrap: {
     flex: 1,
-    gap: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  cardLabel: {
+  pelusaImage: {
+    width: 48,
+    height: 48,
+    resizeMode: 'contain',
+  },
+  cardBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  cardBadgeLabel: {
     fontSize: 18,
     fontWeight: '800',
     color: theme.text,
   },
   cardPts: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     color: theme.textMuted,
   },
 });
