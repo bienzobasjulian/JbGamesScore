@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants';
-import { AppData, Match, MatchTemplate, SavedPlayer } from './types';
+import { AppData, Match, MatchTemplate, PlaySession, PlayerGroup, SavedPlayer } from './types';
 import { createId, normalizeSettings } from './utils/game';
 import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
+import { formatDefaultSessionName } from './utils/session';
 import { normalizeMatchRounds } from './utils/rounds';
 
 function normalizeAppData(raw: Partial<AppData> | null): AppData {
@@ -10,6 +11,24 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
   if (!raw) return base;
   return {
     players: Array.isArray(raw.players) ? raw.players : [],
+    groups: Array.isArray(raw.groups)
+      ? raw.groups
+          .filter(
+            (g): g is PlayerGroup =>
+              g != null &&
+              typeof g.id === 'string' &&
+              typeof g.name === 'string',
+          )
+          .map((g) => ({
+            id: g.id,
+            name: g.name.trim() || 'Grupo sin nombre',
+            playerIds: Array.isArray(g.playerIds)
+              ? g.playerIds.filter((id) => typeof id === 'string')
+              : [],
+            createdAt: g.createdAt ?? Date.now(),
+            updatedAt: g.updatedAt ?? Date.now(),
+          }))
+      : [],
     matches: Array.isArray(raw.matches)
       ? raw.matches.map((m) =>
           normalizeMatchRounds({
@@ -34,6 +53,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),
             updatedAt: m.updatedAt ?? Date.now(),
+            sessionId:
+              typeof m.sessionId === 'string' ? m.sessionId : null,
+            winnerOnly: Boolean(m.winnerOnly),
+            winnerIds: Array.isArray(m.winnerIds)
+              ? m.winnerIds.filter((id) => typeof id === 'string')
+              : undefined,
           } as Match),
         )
       : [],
@@ -55,6 +80,25 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
             createdAt: t.createdAt ?? Date.now(),
             updatedAt: t.updatedAt ?? Date.now(),
           }))
+      : [],
+    sessions: Array.isArray(raw.sessions)
+      ? raw.sessions
+          .filter(
+            (s): s is PlaySession =>
+              s != null &&
+              typeof s.id === 'string' &&
+              typeof s.name === 'string',
+          )
+          .map((s) => {
+            const createdAt = s.createdAt ?? Date.now();
+            return {
+            id: s.id,
+            name: s.name.trim() || formatDefaultSessionName(createdAt),
+            status: s.status === 'closed' ? 'closed' : 'active',
+            createdAt,
+            updatedAt: s.updatedAt ?? Date.now(),
+          };
+          })
       : [],
   };
 }
@@ -99,8 +143,10 @@ async function migrateLegacyGame(): Promise<AppData | null> {
 
     return {
       players: savedPlayers,
+      groups: [],
       matches: [normalizeMatchRounds(legacyMatch)],
       templates: [],
+      sessions: [],
     };
   } catch {
     return null;

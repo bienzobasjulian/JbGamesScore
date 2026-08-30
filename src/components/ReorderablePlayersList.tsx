@@ -1,5 +1,5 @@
 import { ReactElement } from 'react';
-import { StyleProp, ViewStyle } from 'react-native';
+import { StyleProp, View, ViewStyle } from 'react-native';
 import DraggableFlatList, {
   RenderItemParams,
   ScaleDecorator,
@@ -27,28 +27,31 @@ export function ReorderablePlayersList({
   onRemove,
 }: Props) {
   return (
-    <DraggableFlatList
-      style={styles.list}
-      data={players}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={contentContainerStyle}
-      keyboardShouldPersistTaps="handled"
-      activationDistance={12}
-      ListHeaderComponent={listHeaderComponent}
-      ListEmptyComponent={listEmptyComponent}
-      ListFooterComponent={listFooterComponent}
-      onDragEnd={({ data }) => onChange(data)}
-      renderItem={({ item, drag, isActive }: RenderItemParams<Player>) => (
-        <ScaleDecorator>
-          <TurnOrderPlayerCard
-            player={item}
-            isActive={isActive}
-            onDrag={drag}
-            onRemove={() => onRemove(item.id)}
-          />
-        </ScaleDecorator>
-      )}
-    />
+    <View style={styles.list}>
+      <DraggableFlatList
+        style={styles.list}
+        containerStyle={styles.list}
+        data={players}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        activationDistance={12}
+        ListHeaderComponent={listHeaderComponent}
+        ListEmptyComponent={listEmptyComponent}
+        ListFooterComponent={listFooterComponent}
+        onDragEnd={({ data }) => onChange(data)}
+        renderItem={({ item, drag, isActive }: RenderItemParams<Player>) => (
+          <ScaleDecorator>
+            <TurnOrderPlayerCard
+              player={item}
+              isActive={isActive}
+              onDrag={drag}
+              onRemove={() => onRemove(item.id)}
+            />
+          </ScaleDecorator>
+        )}
+      />
+    </View>
   );
 }
 

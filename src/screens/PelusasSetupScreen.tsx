@@ -1,57 +1,53 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { theme } from '../constants';
-import { Player, SavedPlayer } from '../types';
+import { PelusasSetupDraft } from '../types/playerSelection';
+import { AppScreen, Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers } from '../utils/players';
 
 type Props = {
   savedPlayers: SavedPlayer[];
   initialPlayers?: Player[];
+  restoredDraft?: PelusasSetupDraft | null;
   onBack: () => void;
   onStart: (players: Player[]) => void;
-  onAddFromSaved: (player: SavedPlayer) => Player;
+  onOpenPlayerSelection: (config: {
+    draftKey: 'pelusasSetup';
+    parentDraft: PelusasSetupDraft;
+    players: Player[];
+    maxPlayers: number;
+    allowAnonymous: boolean;
+    returnScreen: AppScreen;
+  }) => void;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
 
 export function PelusasSetupScreen({
-  savedPlayers,
+  savedPlayers: _savedPlayers,
   initialPlayers = [],
+  restoredDraft,
   onBack,
   onStart,
-  onAddFromSaved,
+  onOpenPlayerSelection,
   onCreateNewPlayer,
 }: Props) {
-  const [players, setPlayers] = useState<Player[]>(initialPlayers);
-
-  const selectedIds = useMemo(
-    () => new Set(players.map((p) => p.id)),
-    [players],
+  const [players, setPlayers] = useState<Player[]>(
+    restoredDraft?.players ?? initialPlayers,
   );
 
-  const handleAddSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) return;
-    const player = onAddFromSaved(saved);
-    setPlayers((prev) => [...prev, player]);
-  };
-
-  const handleToggleSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) {
-      setPlayers((prev) => prev.filter((p) => p.id !== saved.id));
-      return;
-    }
-    handleAddSaved(saved);
-  };
-
-  const handleAddNew = (name: string) => {
-    const player = onCreateNewPlayer(name, players);
-    if (!player) return false;
-    if (players.some((p) => p.id === player.id)) return false;
-    setPlayers((prev) => [...prev, player]);
-    return true;
+  const handleChoosePlayers = () => {
+    onOpenPlayerSelection({
+      draftKey: 'pelusasSetup',
+      parentDraft: { players },
+      players,
+      maxPlayers: Number.POSITIVE_INFINITY,
+      allowAnonymous: true,
+      returnScreen: { type: 'pelusasSetup' },
+    });
   };
 
   const handleStart = () => {
@@ -61,10 +57,8 @@ export function PelusasSetupScreen({
   const rosterBlock = (
     <MatchPlayerRoster
       intro="Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al 10 tiene cada jugador (y las de Revolution, si las activáis)."
-      savedPlayers={savedPlayers}
-      selectedIds={selectedIds}
-      onToggleSaved={handleToggleSaved}
-      onAddNew={handleAddNew}
+      playerCount={players.length}
+      onChoosePlayers={handleChoosePlayers}
       soloHint="Sin jugadores seleccionados se usará un jugador «Yo» solo para este conteo."
     />
   );
@@ -79,7 +73,7 @@ export function PelusasSetupScreen({
         listHeaderComponent={rosterBlock}
         listEmptyComponent={
           <Text style={styles.empty}>
-            Puedes contar puntos en solitario o elegir jugadores arriba.
+            Pulsa «Elegir jugadores» para añadir quién juega.
           </Text>
         }
         onChange={setPlayers}

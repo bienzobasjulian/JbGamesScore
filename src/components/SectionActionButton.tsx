@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 
-type Variant = 'matches' | 'players';
+type Variant = 'matches' | 'players' | 'sessions';
 
 type Props = {
   label: string;
@@ -24,6 +24,12 @@ const variants: Record<
     border: '#9B59B655',
     iconBg: '#9B59B6',
     text: '#C39BD3',
+  },
+  sessions: {
+    bg: theme.warning + '18',
+    border: theme.warning + '55',
+    iconBg: theme.warning,
+    text: theme.warning,
   },
 };
 

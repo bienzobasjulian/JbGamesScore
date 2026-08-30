@@ -1,5 +1,6 @@
 import { PLAYER_COLORS } from '../constants';
 import { Player } from '../types';
+import { formatRelativeDate } from './dateFormat';
 import { createId } from './game';
 
 export const MIN_MATCH_PLAYERS = 1;
@@ -32,4 +33,20 @@ export function ensureMatchPlayers(
 ): Player[] {
   if (players.length >= MIN_MATCH_PLAYERS) return players;
   return [createSoloPlayer(createNamedPlayer)];
+}
+
+export function formatPlayerLastUsed(timestamp: number): string {
+  return `Último uso: ${formatRelativeDate(timestamp)}`;
+}
+
+const AVATAR_DARK_TEXT_COLORS = new Set(['#FFFFFF', '#FFFF00', '#00FFFF']);
+
+function normalizePlayerColor(color: string): string {
+  return color.trim().toUpperCase();
+}
+
+export function getPlayerAvatarTextColor(color: string): string {
+  return AVATAR_DARK_TEXT_COLORS.has(normalizePlayerColor(color))
+    ? '#000000'
+    : '#FFFFFF';
 }

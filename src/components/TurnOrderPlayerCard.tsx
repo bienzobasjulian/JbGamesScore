@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { Player } from '../types';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   player: Player;
@@ -19,7 +20,12 @@ export function TurnOrderPlayerCard({
     <View style={[styles.card, isActive && styles.cardActive]}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text style={styles.avatarText}>
+          <Text
+            style={[
+              styles.avatarText,
+              { color: getPlayerAvatarTextColor(player.color) },
+            ]}
+          >
             {player.name.charAt(0).toUpperCase()}
           </Text>
         </View>

@@ -6,47 +6,43 @@ import { theme } from '../constants';
 
 type Props = {
   onBack: () => void;
-  onSave: (name: string) => boolean;
+  onCreated: (sessionId: string) => void;
+  onSave: (name: string) => string;
 };
 
-export function CreatePlayerScreen({ onBack, onSave }: Props) {
+export function CreateSessionScreen({ onBack, onCreated, onSave }: Props) {
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   const handleSave = () => {
-    const ok = onSave(name);
-    if (ok) {
-      onBack();
-    } else {
-      setError('Introduce un nombre válido y único');
-    }
+    const sessionId = onSave(name);
+    onCreated(sessionId);
   };
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Nuevo jugador" onBack={onBack} />
+      <AppHeader title="Nueva sesión de juego" onBack={onBack} />
 
-      <Text style={styles.label}>Nombre</Text>
+      <Text style={styles.intro}>
+        Una sesión agrupa varias partidas de la misma tarde o reunión. Los
+        jugadores pueden cambiar entre partidas y verás quién ha ganado más.
+      </Text>
+
+      <Text style={styles.label}>Nombre de la sesión (opcional)</Text>
       <TextInput
         style={styles.input}
-        placeholder="Nombre del jugador"
+        placeholder="Ej. Noche de juegos del viernes"
         placeholderTextColor={theme.textMuted}
         value={name}
-        onChangeText={(t) => {
-          setName(t);
-          setError(null);
-        }}
+        onChangeText={setName}
         onSubmitEditing={handleSave}
         returnKeyType="done"
-        maxLength={24}
+        maxLength={40}
         autoFocus
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Button
-        label="Guardar jugador"
+        label="Crear sesión"
         onPress={handleSave}
-        disabled={!name.trim()}
         style={styles.saveBtn}
       />
     </View>
@@ -57,6 +53,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  intro: {
+    fontSize: 14,
+    color: theme.textMuted,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
@@ -73,11 +75,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: theme.text,
-  },
-  error: {
-    color: theme.danger,
-    fontSize: 14,
-    marginTop: 8,
   },
   saveBtn: {
     marginTop: 24,

@@ -11,7 +11,8 @@ import { HamburgerMenu } from './src/components/HamburgerMenu';
 import { theme } from './src/constants';
 import { useApp } from './src/hooks/useApp';
 import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
-import { CreatePlayerScreen } from './src/screens/CreatePlayerScreen';
+import { CreateSessionScreen } from './src/screens/CreateSessionScreen';
+import { CreateWinnerMatchScreen } from './src/screens/CreateWinnerMatchScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EditMatchScreen } from './src/screens/EditMatchScreen';
@@ -21,13 +22,24 @@ import { PlayersListScreen } from './src/screens/PlayersListScreen';
 import { PelusasCounterScreen } from './src/screens/PelusasCounterScreen';
 import { PelusasSetupScreen } from './src/screens/PelusasSetupScreen';
 import { AventurerosTrenCounterScreen } from './src/screens/AventurerosTrenCounterScreen';
+import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
+import { SessionsListScreen } from './src/screens/SessionsListScreen';
+import { SelectPlayersScreen } from './src/screens/SelectPlayersScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
+import {
+  CreateMatchDraft,
+  CreateWinnerMatchDraft,
+  EditMatchDraft,
+  EditTemplateDraft,
+  PelusasSetupDraft,
+} from './src/types/playerSelection';
 import { checkGameOver } from './src/utils/game';
 import {
   formatMatchTitle,
   getAllMatchesSorted,
   getMatchRankingFromMatch,
+  getWinnerOnlyRanking,
   matchToGameState,
 } from './src/utils/match';
 
@@ -99,8 +111,33 @@ function AppShell() {
           case 'createMatch':
           case 'matchesList':
           case 'playersList':
+          case 'sessionsList':
           case 'game':
             app.goHome();
+            return true;
+
+          case 'createSession':
+            if (
+              app.screen.type === 'createSession' &&
+              app.screen.returnTo === 'sessionsList'
+            ) {
+              app.goSessionsList();
+            } else {
+              app.goHome();
+            }
+            return true;
+
+          case 'sessionDetail':
+            app.goSessionsList();
+            return true;
+
+          case 'createSessionMatch':
+          case 'createWinnerMatch':
+            app.goSessionDetail(app.screen.sessionId);
+            return true;
+
+          case 'selectPlayers':
+            app.cancelSelectPlayers();
             return true;
 
           case 'templatesList':
@@ -113,10 +150,6 @@ function AppShell() {
 
           case 'editMatch':
             app.openMatch(app.screen.matchId);
-            return true;
-
-          case 'createPlayer':
-            app.backFromCreatePlayer();
             return true;
 
           case 'pelusasSetup':
@@ -173,37 +206,184 @@ function AppShell() {
           <HomeScreen
             inProgressMatches={app.inProgressMatches}
             recentFinishedMatches={app.recentFinishedMatches}
+            recentSessions={app.recentSessions}
+            allMatches={app.data.matches}
             recentPlayers={app.recentPlayers}
             onMenuPress={app.openMenu}
             onCreateMatch={app.goCreateMatch}
+            onCreateSession={app.goCreateSession}
             onOpenMatch={app.openMatch}
-            onCreatePlayer={app.goCreatePlayer}
+            onOpenSession={app.goSessionDetail}
+            onViewAllPlayers={app.goPlayersList}
           />
         );
 
       case 'createMatch': {
         const initialTemplateId = app.screen.templateId;
+        const restoredDraft =
+          app.consumeReturningDraft<CreateMatchDraft>('createMatch');
         return (
           <CreateMatchScreen
-            key={initialTemplateId ?? 'new'}
+            key={
+              restoredDraft
+                ? `restored-${restoredDraft.players.map((p) => p.id).join('-')}`
+                : (initialTemplateId ?? 'new')
+            }
             templates={app.data.templates}
             savedPlayers={app.data.players}
             initialTemplateId={initialTemplateId}
+            restoredDraft={restoredDraft}
             onBack={app.goHome}
-            onStartStandard={(players, settings, name) => {
-              app.createAndStartMatch(players, settings, name);
+            onOpenPlayerSelection={app.openSelectPlayers}
+            onStartStandard={(players, settings, name, sessionId) => {
+              app.createAndStartMatch(players, settings, name, sessionId);
             }}
-            onStartPelusas={(players) => {
-              app.startPelusasSession(players);
+            onStartPelusas={(players, sessionId) => {
+              app.startPelusasSession(players, sessionId);
             }}
-            onStartSkullKing={(players) => {
-              app.startSkullKingSession(players);
+            onStartSkullKing={(players, sessionId) => {
+              app.startSkullKingSession(players, sessionId);
             }}
-            onStartAventurerosTren={(players, submode) => {
-              app.startAventurerosTrenSession(players, submode);
+            onStartAventurerosTren={(players, submode, sessionId) => {
+              app.startAventurerosTrenSession(players, submode, sessionId);
             }}
-            onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}
+          />
+        );
+      }
+
+      case 'createSessionMatch': {
+        const session = app.getSession(app.screen.sessionId);
+        if (!session) return null;
+        const restoredDraft =
+          app.consumeReturningDraft<CreateMatchDraft>('createMatch');
+        return (
+          <CreateMatchScreen
+            key={
+              restoredDraft
+                ? `session-restored-${restoredDraft.players.map((p) => p.id).join('-')}`
+                : `session-${session.id}`
+            }
+            templates={app.data.templates}
+            savedPlayers={app.data.players}
+            sessionId={session.id}
+            sessionName={session.name}
+            restoredDraft={restoredDraft}
+            onBack={() => app.goSessionDetail(session.id)}
+            onOpenPlayerSelection={app.openSelectPlayers}
+            onStartStandard={(players, settings, name, sessionId) => {
+              app.createAndStartMatch(players, settings, name, sessionId);
+            }}
+            onStartPelusas={(players, sessionId) => {
+              app.startPelusasSession(players, sessionId);
+            }}
+            onStartSkullKing={(players, sessionId) => {
+              app.startSkullKingSession(players, sessionId);
+            }}
+            onStartAventurerosTren={(players, submode, sessionId) => {
+              app.startAventurerosTrenSession(players, submode, sessionId);
+            }}
+            onCreateNewPlayer={app.createPlayerForMatch}
+          />
+        );
+      }
+
+      case 'createWinnerMatch': {
+        const session = app.getSession(app.screen.sessionId);
+        if (!session) return null;
+        const restoredDraft =
+          app.consumeReturningDraft<CreateWinnerMatchDraft>(
+            'createWinnerMatch',
+          );
+        return (
+          <CreateWinnerMatchScreen
+            key={
+              restoredDraft
+                ? `winner-restored-${restoredDraft.players.map((p) => p.id).join('-')}`
+                : `winner-${session.id}`
+            }
+            sessionId={session.id}
+            sessionName={session.name}
+            savedPlayers={app.data.players}
+            restoredDraft={restoredDraft}
+            onBack={() => app.goSessionDetail(session.id)}
+            onOpenPlayerSelection={app.openSelectPlayers}
+            onSave={(players, winnerIds, name) => {
+              app.createAndSaveWinnerMatch(
+                players,
+                winnerIds,
+                name,
+                session.id,
+              );
+              app.goSessionDetail(session.id);
+            }}
+            onCreateNewPlayer={app.createPlayerForMatch}
+          />
+        );
+      }
+
+      case 'selectPlayers': {
+        const config = app.getPlayerSelectionConfig();
+        if (!config) return null;
+        return (
+          <SelectPlayersScreen
+            savedPlayers={app.data.players}
+            groups={app.data.groups}
+            initialPlayers={config.players}
+            maxPlayers={config.maxPlayers}
+            allowAnonymous={config.allowAnonymous}
+            onBack={app.cancelSelectPlayers}
+            onConfirm={app.confirmSelectPlayers}
+            onCreatePlayer={app.createSavedPlayerForSelection}
+          />
+        );
+      }
+
+      case 'sessionsList':
+        return (
+          <SessionsListScreen
+            sessions={app.data.sessions}
+            matches={app.data.matches}
+            onBack={app.goHome}
+            onCreateSession={() => app.goCreateSession('sessionsList')}
+            onOpenSession={app.goSessionDetail}
+          />
+        );
+
+      case 'createSession':
+        return (
+          <CreateSessionScreen
+            onBack={() =>
+              app.screen.type === 'createSession' &&
+              app.screen.returnTo === 'sessionsList'
+                ? app.goSessionsList()
+                : app.goHome()
+            }
+            onSave={app.createSession}
+            onCreated={app.goSessionDetail}
+          />
+        );
+
+      case 'sessionDetail': {
+        const session = app.getSession(app.screen.sessionId);
+        if (!session) return null;
+        return (
+          <SessionDetailScreen
+            session={session}
+            matches={app.data.matches}
+            onBack={app.goSessionsList}
+            onCreateScoredMatch={() =>
+              app.goCreateSessionMatch(session.id)
+            }
+            onCreateWinnerMatch={() =>
+              app.goCreateWinnerMatch(session.id)
+            }
+            onOpenMatch={(matchId) => {
+              app.openMatch(matchId);
+            }}
+            onCloseSession={() => app.closeSession(session.id)}
+            onReopenSession={() => app.reopenSession(session.id)}
+            onDeleteSession={() => app.deleteSession(session.id)}
           />
         );
       }
@@ -240,10 +420,18 @@ function AppShell() {
         if (app.screen.templateId && !template) {
           return null;
         }
+        const restoredDraft =
+          app.consumeReturningDraft<EditTemplateDraft>('editTemplate');
         return (
           <EditTemplateScreen
+            key={
+              restoredDraft
+                ? `template-restored-${restoredDraft.playerIds.join('-')}`
+                : template?.id ?? 'new'
+            }
             template={template}
             savedPlayers={app.data.players}
+            restoredDraft={restoredDraft}
             onBack={app.goTemplatesList}
             onSave={app.saveTemplate}
             onDelete={
@@ -251,8 +439,7 @@ function AppShell() {
                 ? () => app.deleteTemplate(template.id)
                 : undefined
             }
-            onAddFromSaved={app.addPlayerFromSaved}
-            onCreateNewPlayer={app.createPlayerForMatch}
+            onOpenPlayerSelection={app.openSelectPlayers}
           />
         );
       }
@@ -261,18 +448,20 @@ function AppShell() {
         return (
           <PlayersListScreen
             players={app.data.players}
+            groups={app.data.groups}
             onBack={app.goHome}
-            onCreatePlayer={app.goCreatePlayer}
+            onCreatePlayer={app.createSavedPlayerForSelection}
+            onCreateGroup={app.createPlayerGroupByName}
+            onUpdateGroup={(groupId, patch) =>
+              app.updatePlayerGroup(groupId, patch)
+            }
+            onDeleteGroup={app.deletePlayerGroup}
+            onRemoveGroups={app.deletePlayerGroups}
+            onUpdatePlayer={(playerId, patch) =>
+              app.updateSavedPlayer(playerId, patch)
+            }
             onRemovePlayer={app.removeSavedPlayer}
             onRemovePlayers={app.removeSavedPlayers}
-          />
-        );
-
-      case 'createPlayer':
-        return (
-          <CreatePlayerScreen
-            onBack={app.backFromCreatePlayer}
-            onSave={app.addSavedPlayer}
           />
         );
 
@@ -282,7 +471,9 @@ function AppShell() {
         const state = matchToGameState(match);
         const resultsRanking =
           match.status === 'finished'
-            ? getMatchRankingFromMatch(match)
+            ? match.winnerOnly
+              ? getWinnerOnlyRanking(match)
+              : getMatchRankingFromMatch(match)
             : undefined;
         return (
           <GameScreen
@@ -291,7 +482,9 @@ function AppShell() {
             resultsRanking={resultsRanking}
             isMatchFinished={match.status === 'finished'}
             editingAfterFinish={Boolean(match.editingAfterFinish)}
+            isWinnerOnlyMatch={Boolean(match.winnerOnly)}
             isDedicatedGameMatch={
+              match.winnerOnly ||
               match.gameMode === 'pelusas' ||
               match.gameMode === 'skull_king' ||
               match.gameMode === 'aventureros_tren'
@@ -315,7 +508,13 @@ function AppShell() {
             onScoringModeChange={(playerId, mode) =>
               app.setRoundScoringMode(match.id, playerId, mode)
             }
-            onBack={app.goHome}
+            onBack={() => {
+              if (match.sessionId) {
+                app.goSessionDetail(match.sessionId);
+              } else {
+                app.goHome();
+              }
+            }}
             onEditMatch={() => app.goEditMatch(match.id)}
             onFinishMatch={() => app.finishMatch(match.id)}
             onResumeMatch={() => app.resumeMatch(match.id)}
@@ -329,38 +528,53 @@ function AppShell() {
         const match = app.getMatch(app.screen.matchId);
         if (!match || match.status === 'finished') return null;
         if (match.gameMode && match.gameMode !== 'standard') return null;
+        const restoredDraft =
+          app.consumeReturningDraft<EditMatchDraft>('editMatch');
         return (
           <EditMatchScreen
+            key={
+              restoredDraft
+                ? `edit-restored-${restoredDraft.players.map((p) => p.id).join('-')}`
+                : match.id
+            }
             match={match}
             savedPlayers={app.data.players}
+            restoredDraft={restoredDraft}
             onBack={() => app.openMatch(match.id)}
             onSave={(players, settings, name) =>
               app.updateMatchConfiguration(match.id, players, settings, name)
             }
-            onAddFromSaved={app.addPlayerFromSaved}
+            onOpenPlayerSelection={app.openSelectPlayers}
             onCreateNewPlayer={app.createPlayerForMatch}
           />
         );
       }
 
-      case 'pelusasSetup':
+      case 'pelusasSetup': {
+        const restoredDraft =
+          app.consumeReturningDraft<PelusasSetupDraft>('pelusasSetup');
         return (
           <PelusasSetupScreen
             key={
-              app.pelusasSession?.players.map((p) => p.id).join('-') ?? 'new'
+              restoredDraft
+                ? `pelusas-restored-${restoredDraft.players.map((p) => p.id).join('-')}`
+                : (app.pelusasSession?.players.map((p) => p.id).join('-') ??
+                  'new')
             }
             savedPlayers={app.data.players}
             initialPlayers={app.pelusasSession?.players}
+            restoredDraft={restoredDraft}
             onBack={app.exitPelusas}
+            onOpenPlayerSelection={app.openSelectPlayers}
             onStart={(players) =>
               app.pelusasSession
                 ? app.updatePelusasPlayers(players)
                 : app.startPelusasSession(players)
             }
-            onAddFromSaved={app.addPlayerFromSaved}
             onCreateNewPlayer={app.createPlayerForMatch}
           />
         );
+      }
 
       case 'pelusasCount': {
         if (!app.pelusasSession) return null;
@@ -433,6 +647,7 @@ function AppShell() {
           onClose={app.closeMenu}
           items={[
             { label: 'Nueva partida', onPress: app.goCreateMatch },
+            { label: 'Sesiones de juego', onPress: app.goSessionsList },
             { label: 'Lista de partidas', onPress: app.goMatchesList },
             { label: 'Lista de jugadores', onPress: app.goPlayersList },
             {

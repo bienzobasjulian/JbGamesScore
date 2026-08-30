@@ -17,6 +17,7 @@ import {
   Match,
   MatchTemplate,
   PelusasSession,
+  PlaySession,
   Player,
   SkullKingRoundEntry,
   SkullKingSession,
@@ -26,12 +27,17 @@ import {
   ScoringMode,
 } from '../types';
 import {
+  PlayerSelectionConfig,
+  PlayerSelectionDraftKey,
+} from '../types/playerSelection';
+import {
   checkGameOver,
   createId,
   normalizeSettings,
 } from '../utils/game';
 import {
   createMatch,
+  createWinnerOnlyMatch,
   getInProgressMatches,
   getRecentFinishedMatches,
   getRecentPlayers,
@@ -39,8 +45,20 @@ import {
   pickPlayerColor,
 } from '../utils/match';
 import {
+  createPlayerGroup,
+  removePlayerFromGroups,
+  removePlayersFromGroups,
+} from '../utils/groups';
+import {
+  createPlaySession,
+  getActiveSessions,
+  getRecentSessions,
+} from '../utils/session';
+import { isAnonymousPlayer } from '../utils/playerSelection';
+import {
   RECENT_FINISHED_MATCHES_LIMIT,
   RECENT_PLAYERS_HOME_LIMIT,
+  RECENT_SESSIONS_HOME_LIMIT,
 } from '../constants';
 import { sumBreakdownItems } from '../utils/scoring';
 import {
@@ -121,6 +139,17 @@ function upsertSavedPlayer(
   ];
 }
 
+function upsertRosterPlayers(
+  players: SavedPlayer[],
+  roster: Player[],
+): SavedPlayer[] {
+  return roster.reduce(
+    (acc, player) =>
+      isAnonymousPlayer(player) ? acc : upsertSavedPlayer(acc, player),
+    players,
+  );
+}
+
 function updateMatchInData(
   data: AppData,
   matchId: string,
@@ -134,11 +163,34 @@ function updateMatchInData(
   };
 }
 
+function touchSession(data: AppData, sessionId: string): AppData {
+  const now = Date.now();
+  return {
+    ...data,
+    sessions: data.sessions.map((s) =>
+      s.id === sessionId ? { ...s, updatedAt: now } : s,
+    ),
+  };
+}
+
+function appendMatch(data: AppData, match: Match): AppData {
+  let next: AppData = {
+    ...data,
+    matches: [...data.matches, match],
+  };
+  if (match.sessionId) {
+    next = touchSession(next, match.sessionId);
+  }
+  return next;
+}
+
 export function useApp() {
   const [data, setData] = useState<AppData>({
     players: [],
+    groups: [],
     matches: [],
     templates: [],
+    sessions: [],
   });
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
@@ -150,7 +202,12 @@ export function useApp() {
     useState<SkullKingSession | null>(null);
   const [aventurerosTrenSession, setAventurerosTrenSession] =
     useState<AventurerosTrenSession | null>(null);
-  const previousScreenRef = useRef<AppScreen>({ type: 'home' });
+  const dedicatedMatchSessionIdRef = useRef<string | null>(null);
+  const playerSelectionRef = useRef<PlayerSelectionConfig | null>(null);
+  const returningDraftRef = useRef<{
+    key: PlayerSelectionDraftKey;
+    data: unknown;
+  } | null>(null);
 
   useEffect(() => {
     loadAppData().then((saved) => {
@@ -174,6 +231,7 @@ export function useApp() {
   }, []);
 
   const goCreateMatch = useCallback((templateId?: string) => {
+    dedicatedMatchSessionIdRef.current = null;
     setScreen({ type: 'createMatch', templateId });
     setMenuOpen(false);
   }, []);
@@ -197,31 +255,31 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const startPelusasSession = useCallback((players: Player[]) => {
-    if (players.length < 1) return;
-    setData((prev) => ({
-      ...prev,
-      players: players.reduce(
-        (acc, p) => upsertSavedPlayer(acc, p),
-        prev.players,
-      ),
-    }));
-    setPelusasSession({
-      players,
-      revolutionMode: false,
-      countsByPlayer: createPelusasCountsByPlayer(players, false),
-    });
-    setScreen({ type: 'pelusasCount' });
-  }, []);
+  const startPelusasSession = useCallback(
+    (players: Player[], sessionId?: string | null) => {
+      if (players.length < 1) return;
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+      }));
+      setPelusasSession({
+        players,
+        revolutionMode: false,
+        countsByPlayer: createPelusasCountsByPlayer(players, false),
+      });
+      setScreen({ type: 'pelusasCount' });
+    },
+    [],
+  );
 
   const updatePelusasPlayers = useCallback((players: Player[]) => {
     if (players.length < 1) return;
     setData((prev) => ({
       ...prev,
-      players: players.reduce(
-        (acc, p) => upsertSavedPlayer(acc, p),
-        prev.players,
-      ),
+      players: upsertRosterPlayers(prev.players, players),
     }));
     setPelusasSession((prev) => {
       if (!prev) {
@@ -304,39 +362,45 @@ export function useApp() {
   }, []);
 
   const finishPelusasSession = useCallback(() => {
+    const sessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchSessionIdRef.current = null;
     setPelusasSession((prev) => {
       if (!prev) return null;
-      const match = createFinishedPelusasMatch(prev);
-      setData((data) => ({
-        ...data,
-        players: prev.players.reduce(
-          (acc, p) => upsertSavedPlayer(acc, p),
-          data.players,
+      const match = {
+        ...createFinishedPelusasMatch(prev),
+        sessionId: sessionId ?? null,
+      };
+      setData((data) =>
+        appendMatch(
+          {
+            ...data,
+            players: upsertRosterPlayers(data.players, prev.players),
+          },
+          match,
         ),
-        matches: [...data.matches, match],
-      }));
+      );
       setScreen({ type: 'game', matchId: match.id });
       return null;
     });
   }, []);
 
-  const startSkullKingSession = useCallback((players: Player[]) => {
-    if (
-      players.length < 1 ||
-      players.length > 6
-    ) {
-      return;
-    }
-    setData((prev) => ({
-      ...prev,
-      players: players.reduce(
-        (acc, p) => upsertSavedPlayer(acc, p),
-        prev.players,
-      ),
-    }));
-    setSkullKingSession(createSkullKingSession(players));
-    setScreen({ type: 'skullKingCount' });
-  }, []);
+  const startSkullKingSession = useCallback(
+    (players: Player[], sessionId?: string | null) => {
+      if (players.length < 1 || players.length > 6) {
+        return;
+      }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+      }));
+      setSkullKingSession(createSkullKingSession(players));
+      setScreen({ type: 'skullKingCount' });
+    },
+    [],
+  );
 
   const exitSkullKing = useCallback(() => {
     setSkullKingSession(null);
@@ -391,36 +455,46 @@ export function useApp() {
   );
 
   const finishSkullKingSession = useCallback(() => {
+    const sessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchSessionIdRef.current = null;
     setSkullKingSession((prev) => {
       if (!prev) return null;
-      const match = createFinishedSkullKingMatch(prev);
-      setData((data) => ({
-        ...data,
-        players: prev.players.reduce(
-          (acc, p) => upsertSavedPlayer(acc, p),
-          data.players,
+      const match = {
+        ...createFinishedSkullKingMatch(prev),
+        sessionId: sessionId ?? null,
+      };
+      setData((data) =>
+        appendMatch(
+          {
+            ...data,
+            players: upsertRosterPlayers(data.players, prev.players),
+          },
+          match,
         ),
-        matches: [...data.matches, match],
-      }));
+      );
       setScreen({ type: 'game', matchId: match.id });
       return null;
     });
   }, []);
 
   const startAventurerosTrenSession = useCallback(
-    (players: Player[], submode: AventurerosTrenSubmode = 'base') => {
+    (
+      players: Player[],
+      submode: AventurerosTrenSubmode = 'base',
+      sessionId?: string | null,
+    ) => {
       if (
         players.length < AVENTUREROS_TREN_MIN_PLAYERS ||
         players.length > AVENTUREROS_TREN_MAX_PLAYERS
       ) {
         return;
       }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
       setData((prev) => ({
         ...prev,
-        players: players.reduce(
-          (acc, p) => upsertSavedPlayer(acc, p),
-          prev.players,
-        ),
+        players: upsertRosterPlayers(prev.players, players),
       }));
       setAventurerosTrenSession(createAventurerosTrenSession(players, submode));
       setScreen({ type: 'aventurerosTrenCount' });
@@ -555,17 +629,23 @@ export function useApp() {
   );
 
   const finishAventurerosTrenSession = useCallback(() => {
+    const sessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchSessionIdRef.current = null;
     setAventurerosTrenSession((prev) => {
       if (!prev) return null;
-      const match = createFinishedAventurerosTrenMatch(prev);
-      setData((data) => ({
-        ...data,
-        players: prev.players.reduce(
-          (acc, p) => upsertSavedPlayer(acc, p),
-          data.players,
+      const match = {
+        ...createFinishedAventurerosTrenMatch(prev),
+        sessionId: sessionId ?? null,
+      };
+      setData((data) =>
+        appendMatch(
+          {
+            ...data,
+            players: upsertRosterPlayers(data.players, prev.players),
+          },
+          match,
         ),
-        matches: [...data.matches, match],
-      }));
+      );
       setScreen({ type: 'game', matchId: match.id });
       return null;
     });
@@ -581,17 +661,148 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const goCreatePlayer = useCallback(() => {
-    setScreen((current) => {
-      previousScreenRef.current = current;
-      return { type: 'createPlayer' };
-    });
-    setMenuOpen(false);
-  }, []);
-
   const goTemplatesList = useCallback(() => {
     setScreen({ type: 'templatesList' });
     setMenuOpen(false);
+  }, []);
+
+  const goSessionsList = useCallback(() => {
+    setScreen({ type: 'sessionsList' });
+    setMenuOpen(false);
+  }, []);
+
+  const openSelectPlayers = useCallback((config: PlayerSelectionConfig) => {
+    playerSelectionRef.current = config;
+    setScreen({ type: 'selectPlayers' });
+  }, []);
+
+  const getPlayerSelectionConfig = useCallback(
+    () => playerSelectionRef.current,
+    [],
+  );
+
+  const cancelSelectPlayers = useCallback(() => {
+    const config = playerSelectionRef.current;
+    if (!config) return;
+    returningDraftRef.current = {
+      key: config.draftKey,
+      data: config.parentDraft,
+    };
+    playerSelectionRef.current = null;
+    setScreen(config.returnScreen);
+  }, []);
+
+  const confirmSelectPlayers = useCallback((players: Player[]) => {
+    const config = playerSelectionRef.current;
+    if (!config) return;
+    returningDraftRef.current = {
+      key: config.draftKey,
+      data: { ...(config.parentDraft as object), players },
+    };
+    playerSelectionRef.current = null;
+    setScreen(config.returnScreen);
+  }, []);
+
+  const consumeReturningDraft = useCallback(
+    <T,>(key: PlayerSelectionDraftKey): T | null => {
+      if (returningDraftRef.current?.key !== key) return null;
+      const data = returningDraftRef.current.data as T;
+      returningDraftRef.current = null;
+      return data;
+    },
+    [],
+  );
+
+  const createSavedPlayerForSelection = useCallback((name: string): Player | null => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    let result: Player | null = null;
+    setData((prev) => {
+      const duplicate = prev.players.some(
+        (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (duplicate) return prev;
+      const saved = createSavedPlayer(trimmed, prev.players);
+      result = { id: saved.id, name: saved.name, color: saved.color };
+      return { ...prev, players: [...prev.players, saved] };
+    });
+    return result;
+  }, []);
+
+  const goCreateSession = useCallback((returnTo: 'home' | 'sessionsList' = 'home') => {
+    setScreen({ type: 'createSession', returnTo });
+    setMenuOpen(false);
+  }, []);
+
+  const goSessionDetail = useCallback((sessionId: string) => {
+    setScreen({ type: 'sessionDetail', sessionId });
+    setMenuOpen(false);
+  }, []);
+
+  const goCreateSessionMatch = useCallback((sessionId: string) => {
+    dedicatedMatchSessionIdRef.current = sessionId;
+    setScreen({ type: 'createSessionMatch', sessionId });
+  }, []);
+
+  const goCreateWinnerMatch = useCallback((sessionId: string) => {
+    setScreen({ type: 'createWinnerMatch', sessionId });
+  }, []);
+
+  const getSession = useCallback(
+    (sessionId: string) => data.sessions.find((s) => s.id === sessionId),
+    [data.sessions],
+  );
+
+  const createSession = useCallback((name: string) => {
+    const session = createPlaySession(name);
+    setData((prev) => ({
+      ...prev,
+      sessions: [...prev.sessions, session],
+    }));
+    return session.id;
+  }, []);
+
+  const closeSession = useCallback((sessionId: string) => {
+    setData((prev) => ({
+      ...prev,
+      sessions: prev.sessions.map((s) =>
+        s.id === sessionId
+          ? { ...s, status: 'closed' as const, updatedAt: Date.now() }
+          : s,
+      ),
+    }));
+  }, []);
+
+  const reopenSession = useCallback((sessionId: string) => {
+    setData((prev) => ({
+      ...prev,
+      sessions: prev.sessions.map((s) =>
+        s.id === sessionId
+          ? { ...s, status: 'active' as const, updatedAt: Date.now() }
+          : s,
+      ),
+    }));
+  }, []);
+
+  const deleteSession = useCallback((sessionId: string) => {
+    setData((prev) => ({
+      ...prev,
+      sessions: prev.sessions.filter((s) => s.id !== sessionId),
+      matches: prev.matches.map((m) =>
+        m.sessionId === sessionId ? { ...m, sessionId: null } : m,
+      ),
+    }));
+    setScreen((current) => {
+      if (
+        (current.type === 'sessionDetail' ||
+          current.type === 'createSessionMatch' ||
+          current.type === 'createWinnerMatch') &&
+        current.sessionId === sessionId
+      ) {
+        return { type: 'sessionsList' };
+      }
+      return current;
+    });
   }, []);
 
   const goEditTemplate = useCallback((templateId?: string) => {
@@ -599,33 +810,16 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const backFromCreatePlayer = useCallback(() => {
-    setScreen(previousScreenRef.current);
-  }, []);
-
   const openMatch = useCallback((matchId: string) => {
     setScreen({ type: 'game', matchId });
     setMenuOpen(false);
-  }, []);
-
-  const addSavedPlayer = useCallback((name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return false;
-    setData((prev) => {
-      const duplicate = prev.players.some(
-        (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
-      );
-      if (duplicate) return prev;
-      const player = createSavedPlayer(trimmed, prev.players);
-      return { ...prev, players: [...prev.players, player] };
-    });
-    return true;
   }, []);
 
   const removeSavedPlayer = useCallback((playerId: string) => {
     setData((prev) => ({
       ...prev,
       players: prev.players.filter((p) => p.id !== playerId),
+      groups: removePlayerFromGroups(prev.groups, playerId),
       templates: prev.templates.map((t) => ({
         ...t,
         playerIds: t.playerIds.filter((id) => id !== playerId),
@@ -639,12 +833,113 @@ export function useApp() {
     setData((prev) => ({
       ...prev,
       players: prev.players.filter((p) => !ids.has(p.id)),
+      groups: removePlayersFromGroups(prev.groups, playerIds),
       templates: prev.templates.map((t) => ({
         ...t,
         playerIds: t.playerIds.filter((id) => !ids.has(id)),
       })),
     }));
   }, []);
+
+  const createPlayerGroupByName = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    let result: string | null = null;
+    setData((prev) => {
+      const duplicate = prev.groups.some(
+        (group) => group.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (duplicate) return prev;
+      const group = createPlayerGroup(trimmed);
+      result = group.id;
+      return {
+        ...prev,
+        groups: [...prev.groups, group],
+      };
+    });
+    return result;
+  }, []);
+
+  const updatePlayerGroup = useCallback(
+    (
+      groupId: string,
+      patch: { name?: string; playerIds?: string[] },
+    ) => {
+      setData((prev) => ({
+        ...prev,
+        groups: prev.groups.map((group) => {
+          if (group.id !== groupId) return group;
+          const nextName =
+            patch.name !== undefined ? patch.name.trim() : group.name;
+          if (!nextName) return group;
+          const nextPlayerIds =
+            patch.playerIds !== undefined
+              ? [...new Set(patch.playerIds)]
+              : group.playerIds;
+          return {
+            ...group,
+            name: nextName,
+            playerIds: nextPlayerIds,
+            updatedAt: Date.now(),
+          };
+        }),
+      }));
+    },
+    [],
+  );
+
+  const deletePlayerGroup = useCallback((groupId: string) => {
+    setData((prev) => ({
+      ...prev,
+      groups: prev.groups.filter((group) => group.id !== groupId),
+    }));
+  }, []);
+
+  const deletePlayerGroups = useCallback((groupIds: string[]) => {
+    const ids = new Set(groupIds);
+    if (ids.size === 0) return;
+    setData((prev) => ({
+      ...prev,
+      groups: prev.groups.filter((group) => !ids.has(group.id)),
+    }));
+  }, []);
+
+  const updateSavedPlayer = useCallback(
+    (playerId: string, patch: { name: string; color: string }): boolean => {
+      const trimmed = patch.name.trim();
+      if (!trimmed) return false;
+
+      let saved = false;
+      setData((prev) => {
+        const duplicate = prev.players.some(
+          (player) =>
+            player.id !== playerId &&
+            player.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (duplicate) return prev;
+
+        saved = true;
+        return {
+          ...prev,
+          players: prev.players.map((player) =>
+            player.id === playerId
+              ? { ...player, name: trimmed, color: patch.color }
+              : player,
+          ),
+          matches: prev.matches.map((match) => ({
+            ...match,
+            players: match.players.map((player) =>
+              player.id === playerId
+                ? { ...player, name: trimmed, color: patch.color }
+                : player,
+            ),
+          })),
+        };
+      });
+      return saved;
+    },
+    [],
+  );
 
   const getTemplate = useCallback(
     (templateId: string) =>
@@ -719,28 +1014,69 @@ export function useApp() {
   }, []);
 
   const createAndStartMatch = useCallback(
-    (players: Player[], settings: GameSettings, name?: string | null) => {
+    (
+      players: Player[],
+      settings: GameSettings,
+      name?: string | null,
+      sessionId?: string | null,
+    ) => {
       if (players.length < 1) return null;
-      const match = createMatch(players, settings, name);
-      setData((prev) => ({
-        ...prev,
-        players: players.reduce(
-          (acc, p) => upsertSavedPlayer(acc, p),
-          prev.players,
+      const match = createMatch(players, settings, name, sessionId);
+      setData((prev) =>
+        appendMatch(
+          {
+            ...prev,
+            players: upsertRosterPlayers(prev.players, players),
+          },
+          match,
         ),
-        matches: [...prev.matches, match],
-      }));
+      );
       setScreen({ type: 'game', matchId: match.id });
       return match.id;
     },
     [],
   );
 
+  const createAndSaveWinnerMatch = useCallback(
+    (
+      players: Player[],
+      winnerIds: string[],
+      name?: string | null,
+      sessionId?: string | null,
+    ) => {
+      if (players.length < 1 || winnerIds.length < 1) return null;
+      const match = createWinnerOnlyMatch(
+        players,
+        winnerIds,
+        name,
+        sessionId,
+      );
+      setData((prev) =>
+        appendMatch(
+          {
+            ...prev,
+            players: upsertRosterPlayers(prev.players, players),
+          },
+          match,
+        ),
+      );
+      return match.id;
+    },
+    [],
+  );
+
   const deleteMatch = useCallback((matchId: string) => {
-    setData((prev) => ({
-      ...prev,
-      matches: prev.matches.filter((m) => m.id !== matchId),
-    }));
+    setData((prev) => {
+      const match = prev.matches.find((m) => m.id === matchId);
+      let next: AppData = {
+        ...prev,
+        matches: prev.matches.filter((m) => m.id !== matchId),
+      };
+      if (match?.sessionId) {
+        next = touchSession(next, match.sessionId);
+      }
+      return next;
+    });
     setScreen((current) => {
       if (current.type === 'game' && current.matchId === matchId) {
         return { type: 'home' };
@@ -752,10 +1088,19 @@ export function useApp() {
   const deleteMatches = useCallback((matchIds: string[]) => {
     const ids = new Set(matchIds);
     if (ids.size === 0) return;
-    setData((prev) => ({
-      ...prev,
-      matches: prev.matches.filter((m) => !ids.has(m.id)),
-    }));
+    setData((prev) => {
+      const removed = prev.matches.filter((m) => ids.has(m.id));
+      let next: AppData = {
+        ...prev,
+        matches: prev.matches.filter((m) => !ids.has(m.id)),
+      };
+      for (const match of removed) {
+        if (match.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+      }
+      return next;
+    });
     setScreen((current) => {
       if (current.type === 'game' && ids.has(current.matchId)) {
         return { type: 'home' };
@@ -1104,10 +1449,7 @@ export function useApp() {
       if (source.gameMode === 'pelusas') {
         setData((prev) => ({
           ...prev,
-          players: source.players.reduce(
-            (acc, p) => upsertSavedPlayer(acc, p),
-            prev.players,
-          ),
+          players: upsertRosterPlayers(prev.players, source.players),
         }));
         setPelusasSession({
           players: source.players,
@@ -1124,10 +1466,7 @@ export function useApp() {
       if (source.gameMode === 'skull_king') {
         setData((prev) => ({
           ...prev,
-          players: source.players.reduce(
-            (acc, p) => upsertSavedPlayer(acc, p),
-            prev.players,
-          ),
+          players: upsertRosterPlayers(prev.players, source.players),
         }));
         setSkullKingSession(createSkullKingSession(source.players));
         setScreen({ type: 'skullKingCount' });
@@ -1137,10 +1476,7 @@ export function useApp() {
       if (source.gameMode === 'aventureros_tren') {
         setData((prev) => ({
           ...prev,
-          players: source.players.reduce(
-            (acc, p) => upsertSavedPlayer(acc, p),
-            prev.players,
-          ),
+          players: upsertRosterPlayers(prev.players, source.players),
         }));
         setAventurerosTrenSession(
           createAventurerosTrenSession(
@@ -1196,10 +1532,16 @@ export function useApp() {
   const recentFinishedMatches = getRecentFinishedMatches(
     data.matches,
     RECENT_FINISHED_MATCHES_LIMIT,
+    true,
   );
   const recentPlayers = getRecentPlayers(
     data.players,
     RECENT_PLAYERS_HOME_LIMIT,
+  );
+  const activeSessions = getActiveSessions(data.sessions);
+  const recentSessions = getRecentSessions(
+    data.sessions,
+    RECENT_SESSIONS_HOME_LIMIT,
   );
 
   return {
@@ -1210,6 +1552,8 @@ export function useApp() {
     inProgressMatches,
     recentFinishedMatches,
     recentPlayers,
+    activeSessions,
+    recentSessions,
     openMenu,
     closeMenu,
     goHome,
@@ -1245,19 +1589,38 @@ export function useApp() {
     goMatchesList,
     goPlayersList,
     goTemplatesList,
+    goSessionsList,
+    goCreateSession,
+    goSessionDetail,
+    goCreateSessionMatch,
+    goCreateWinnerMatch,
+    getSession,
+    createSession,
+    closeSession,
+    reopenSession,
+    deleteSession,
     goEditTemplate,
-    goCreatePlayer,
-    backFromCreatePlayer,
     getTemplate,
     saveTemplate,
     deleteTemplate,
     openMatch,
     goEditMatch,
     updateMatchConfiguration,
-    addSavedPlayer,
+    createSavedPlayerForSelection,
+    openSelectPlayers,
+    getPlayerSelectionConfig,
+    cancelSelectPlayers,
+    confirmSelectPlayers,
+    consumeReturningDraft,
     removeSavedPlayer,
     removeSavedPlayers,
+    createPlayerGroupByName,
+    updatePlayerGroup,
+    deletePlayerGroup,
+    deletePlayerGroups,
+    updateSavedPlayer,
     createAndStartMatch,
+    createAndSaveWinnerMatch,
     deleteMatch,
     deleteMatches,
     getMatch,

@@ -8,6 +8,14 @@ export type SavedPlayer = Player & {
   lastUsedAt: number;
 };
 
+export type PlayerGroup = {
+  id: string;
+  name: string;
+  playerIds: string[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type RoundScores = Record<string, number>;
 
 export type RoundBreakdown = Record<string, number[]>;
@@ -29,9 +37,25 @@ export type MatchGameMode =
   | 'skull_king'
   | 'aventureros_tren';
 
+export type PlaySessionStatus = 'active' | 'closed';
+
+export type PlaySession = {
+  id: string;
+  name: string;
+  status: PlaySessionStatus;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type Match = {
   id: string;
   name: string | null;
+  /** Sesión de juego a la que pertenece esta partida. */
+  sessionId?: string | null;
+  /** Partida sin puntuación: solo se registra quién ganó. */
+  winnerOnly?: boolean;
+  /** IDs de ganadores (partidas winnerOnly o empates). */
+  winnerIds?: string[];
   gameMode?: MatchGameMode;
   pelusasRevolution?: boolean;
   aventurerosTrenSubmode?: AventurerosTrenSubmode;
@@ -149,8 +173,10 @@ export type AventurerosTrenSession = {
 
 export type AppData = {
   players: SavedPlayer[];
+  groups: PlayerGroup[];
   matches: Match[];
   templates: MatchTemplate[];
+  sessions: PlaySession[];
 };
 
 export type AppScreen =
@@ -160,10 +186,15 @@ export type AppScreen =
   | { type: 'editMatch'; matchId: string }
   | { type: 'matchesList' }
   | { type: 'playersList' }
-  | { type: 'createPlayer' }
   | { type: 'templatesList' }
   | { type: 'editTemplate'; templateId?: string }
   | { type: 'pelusasSetup' }
   | { type: 'pelusasCount' }
   | { type: 'skullKingCount' }
-  | { type: 'aventurerosTrenCount' };
+  | { type: 'aventurerosTrenCount' }
+  | { type: 'sessionsList' }
+  | { type: 'createSession'; returnTo?: 'home' | 'sessionsList' }
+  | { type: 'sessionDetail'; sessionId: string }
+  | { type: 'createSessionMatch'; sessionId: string }
+  | { type: 'createWinnerMatch'; sessionId: string }
+  | { type: 'selectPlayers' };

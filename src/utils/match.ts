@@ -7,6 +7,7 @@ import {
   RoundScores,
   SavedPlayer,
 } from '../types';
+import { formatRelativeDate } from './dateFormat';
 import {
   checkGameOver,
   createId,
@@ -45,6 +46,7 @@ export function matchToGameState(match: Match): GameState {
 export function formatMatchTitle(match: Match): string {
   const custom = match.name?.trim();
   if (custom) return custom;
+  if (match.winnerOnly) return 'Partida con ganador';
   if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
   if (match.gameMode === 'aventureros_tren') {
@@ -58,11 +60,7 @@ export function formatMatchTitle(match: Match): string {
 }
 
 export function formatMatchDate(timestamp: number): string {
-  return new Intl.DateTimeFormat('es', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(timestamp));
+  return formatRelativeDate(timestamp);
 }
 
 export function formatPlayerCount(count: number): string {
@@ -108,6 +106,11 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
 }
 
 export function getMatchWinners(match: Match): Player[] {
+  if (match.winnerOnly && match.winnerIds?.length) {
+    const ids = new Set(match.winnerIds);
+    return match.players.filter((p) => ids.has(p.id));
+  }
+
   if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
     return getAventurerosTrenMatchWinners(match);
   }
@@ -162,6 +165,9 @@ export function formatMatchListMeta(match: Match): string {
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));
   }
+  if (match.winnerOnly) {
+    parts.push('Sin puntuación');
+  }
   if (match.status === 'in_progress') {
     parts.push(formatMatchSubtitle(match));
   }
@@ -186,6 +192,10 @@ export function getRecentPlayers(
     .slice(0, limit);
 }
 
+export function isStandaloneMatch(match: Match): boolean {
+  return !match.sessionId;
+}
+
 export function getInProgressMatches(matches: Match[]): Match[] {
   return [...matches]
     .filter((m) => m.status === 'in_progress')
@@ -195,21 +205,26 @@ export function getInProgressMatches(matches: Match[]): Match[] {
 export function getRecentFinishedMatches(
   matches: Match[],
   limit: number,
+  standaloneOnly = false,
 ): Match[] {
   return [...matches]
     .filter((m) => m.status === 'finished')
+    .filter((m) => !standaloneOnly || isStandaloneMatch(m))
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, limit);
 }
 
 export function getAllMatchesSorted(matches: Match[]): Match[] {
-  return [...matches].sort((a, b) => b.updatedAt - a.updatedAt);
+  return [...matches]
+    .filter(isStandaloneMatch)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function createMatch(
   players: Player[],
   settings: GameState['settings'],
   name?: string | null,
+  sessionId?: string | null,
 ): Match {
   const now = Date.now();
   const trimmedName = name?.trim();
@@ -222,6 +237,7 @@ export function createMatch(
   return {
     id: createId(),
     name: trimmedName ? trimmedName : null,
+    sessionId: sessionId ?? null,
     settings: normalizedSettings,
     players,
     rounds,
@@ -234,10 +250,49 @@ export function createMatch(
   };
 }
 
+export function createWinnerOnlyMatch(
+  players: Player[],
+  winnerIds: string[],
+  name?: string | null,
+  sessionId?: string | null,
+): Match {
+  const now = Date.now();
+  const trimmedName = name?.trim();
+  const validWinnerIds = winnerIds.filter((id) =>
+    players.some((p) => p.id === id),
+  );
+  return {
+    id: createId(),
+    name: trimmedName ? trimmedName : null,
+    sessionId: sessionId ?? null,
+    winnerOnly: true,
+    winnerIds: validWinnerIds,
+    settings: normalizeSettings({ maxRounds: null, maxPointsToWin: null }),
+    players,
+    rounds: [],
+    roundBreakdowns: [],
+    activeRoundIndex: 0,
+    roundScoringMode: {},
+    status: 'finished',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function getWinnerOnlyRanking(match: Match): RankedPlayer[] {
+  const winners = getMatchWinners(match);
+  const winnerIds = new Set(winners.map((w) => w.id));
+  return match.players.map((player, index) => ({
+    player,
+    total: winnerIds.has(player.id) ? 1 : 0,
+    rank: winnerIds.has(player.id) ? 1 : 2,
+  }));
+}
+
 export function pickPlayerColor(existing: Player[]): string {
   return PLAYER_COLORS[existing.length % PLAYER_COLORS.length];
 }
 
 export function initialAppData(): AppData {
-  return { players: [], matches: [], templates: [] };
+  return { players: [], groups: [], matches: [], templates: [], sessions: [] };
 }

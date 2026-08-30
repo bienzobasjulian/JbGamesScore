@@ -97,7 +97,7 @@ export function MatchesListScreen({
         keyboardShouldPersistTaps="handled"
       >
         {matches.length === 0 ? (
-          <Text style={styles.empty}>No hay partidas guardadas</Text>
+          <Text style={styles.empty}>No hay partidas sueltas guardadas</Text>
         ) : (
           matches.map((match) => (
             <MatchListRow

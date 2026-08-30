@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
@@ -6,59 +6,59 @@ import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { theme } from '../constants';
-import { GameSettings, Match, Player, SavedPlayer } from '../types';
+import { EditMatchDraft } from '../types/playerSelection';
+import { AppScreen, GameSettings, Match, Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers } from '../utils/players';
 
 type Props = {
   match: Match;
   savedPlayers: SavedPlayer[];
+  restoredDraft?: EditMatchDraft | null;
   onBack: () => void;
   onSave: (
     players: Player[],
     settings: GameSettings,
     name: string | null,
   ) => void;
-  onAddFromSaved: (player: SavedPlayer) => Player;
+  onOpenPlayerSelection: (config: {
+    draftKey: 'editMatch';
+    parentDraft: EditMatchDraft;
+    players: Player[];
+    maxPlayers: number;
+    allowAnonymous: boolean;
+    returnScreen: AppScreen;
+  }) => void;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
 
 export function EditMatchScreen({
   match,
-  savedPlayers,
+  savedPlayers: _savedPlayers,
+  restoredDraft,
   onBack,
   onSave,
-  onAddFromSaved,
+  onOpenPlayerSelection,
   onCreateNewPlayer,
 }: Props) {
-  const [settings, setSettings] = useState<GameSettings>(match.settings);
-  const [matchName, setMatchName] = useState(match.name ?? '');
-  const [players, setPlayers] = useState<Player[]>(match.players);
-
-  const selectedIds = useMemo(
-    () => new Set(players.map((player) => player.id)),
-    [players],
+  const [settings, setSettings] = useState<GameSettings>(
+    restoredDraft?.settings ?? match.settings,
+  );
+  const [matchName, setMatchName] = useState(
+    restoredDraft?.matchName ?? match.name ?? '',
+  );
+  const [players, setPlayers] = useState<Player[]>(
+    restoredDraft?.players ?? match.players,
   );
 
-  const handleAddSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) return;
-    const player = onAddFromSaved(saved);
-    setPlayers((prev) => [...prev, player]);
-  };
-
-  const handleToggleSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) {
-      setPlayers((prev) => prev.filter((player) => player.id !== saved.id));
-      return;
-    }
-    handleAddSaved(saved);
-  };
-
-  const handleAddNew = (name: string) => {
-    const player = onCreateNewPlayer(name, players);
-    if (!player) return false;
-    if (players.some((existing) => existing.id === player.id)) return false;
-    setPlayers((prev) => [...prev, player]);
-    return true;
+  const handleChoosePlayers = () => {
+    onOpenPlayerSelection({
+      draftKey: 'editMatch',
+      parentDraft: { settings, matchName, players },
+      players,
+      maxPlayers: Number.POSITIVE_INFINITY,
+      allowAnonymous: true,
+      returnScreen: { type: 'editMatch', matchId: match.id },
+    });
   };
 
   const handleSave = () => {
@@ -89,10 +89,8 @@ export function EditMatchScreen({
       <GameSettingsPanel settings={settings} onChange={setSettings} />
 
       <MatchPlayerRoster
-        savedPlayers={savedPlayers}
-        selectedIds={selectedIds}
-        onToggleSaved={handleToggleSaved}
-        onAddNew={handleAddNew}
+        playerCount={players.length}
+        onChoosePlayers={handleChoosePlayers}
       />
     </View>
   );
@@ -107,7 +105,7 @@ export function EditMatchScreen({
         listHeaderComponent={header}
         listEmptyComponent={
           <Text style={styles.empty}>
-            Añade al menos un jugador para continuar.
+            Pulsa «Elegir jugadores» para añadir al menos uno.
           </Text>
         }
         onChange={setPlayers}

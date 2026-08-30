@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +14,9 @@ import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
 import { theme } from '../constants';
+import { CreateMatchDraft } from '../types/playerSelection';
 import {
+  AppScreen,
   AventurerosTrenSubmode,
   GameSettings,
   MatchTemplate,
@@ -68,19 +69,31 @@ type Props = {
   savedPlayers: SavedPlayer[];
   initialTemplateId?: string;
   initialGameType?: CreateMatchGameType;
+  sessionId?: string;
+  sessionName?: string;
+  restoredDraft?: CreateMatchDraft | null;
   onBack: () => void;
+  onOpenPlayerSelection: (config: {
+    draftKey: 'createMatch';
+    parentDraft: CreateMatchDraft;
+    players: Player[];
+    maxPlayers: number;
+    allowAnonymous: boolean;
+    returnScreen: AppScreen;
+  }) => void;
   onStartStandard: (
     players: Player[],
     settings: GameSettings,
     name?: string | null,
+    sessionId?: string | null,
   ) => void;
-  onStartPelusas: (players: Player[]) => void;
-  onStartSkullKing: (players: Player[]) => void;
+  onStartPelusas: (players: Player[], sessionId?: string | null) => void;
+  onStartSkullKing: (players: Player[], sessionId?: string | null) => void;
   onStartAventurerosTren: (
     players: Player[],
     submode: AventurerosTrenSubmode,
+    sessionId?: string | null,
   ) => void;
-  onAddFromSaved: (player: SavedPlayer) => Player;
   onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
 };
 
@@ -89,29 +102,44 @@ export function CreateMatchScreen({
   savedPlayers,
   initialTemplateId,
   initialGameType = 'standard',
+  sessionId,
+  sessionName,
+  restoredDraft,
   onBack,
+  onOpenPlayerSelection,
   onStartStandard,
   onStartPelusas,
   onStartSkullKing,
   onStartAventurerosTren,
-  onAddFromSaved,
   onCreateNewPlayer,
 }: Props) {
-  const initial = buildInitialFromTemplate(
+  const templateInitial = buildInitialFromTemplate(
     templates,
     savedPlayers,
     initialTemplateId,
   );
-  const [gameType, setGameType] = useState<CreateMatchGameType>(initialGameType);
-  const [settings, setSettings] = useState<GameSettings>(initial.settings);
-  const [matchName, setMatchName] = useState(initial.matchName);
-  const [players, setPlayers] = useState<Player[]>(initial.players);
+  const [gameType, setGameType] = useState<CreateMatchGameType>(
+    restoredDraft?.gameType ?? initialGameType,
+  );
+  const [settings, setSettings] = useState<GameSettings>(
+    restoredDraft?.settings ?? templateInitial.settings,
+  );
+  const [matchName, setMatchName] = useState(
+    restoredDraft?.matchName ?? templateInitial.matchName,
+  );
+  const [players, setPlayers] = useState<Player[]>(
+    restoredDraft?.players ?? templateInitial.players,
+  );
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
-    initial.loadedTemplateId,
+    restoredDraft?.loadedTemplateId ?? templateInitial.loadedTemplateId,
   );
   const [aventurerosSubmode, setAventurerosSubmode] =
-    useState<AventurerosTrenSubmode>('base');
-  const [randomStarterName, setRandomStarterName] = useState<string | null>(null);
+    useState<AventurerosTrenSubmode>(
+      restoredDraft?.aventurerosSubmode ?? 'base',
+    );
+  const [randomStarterName, setRandomStarterName] = useState<string | null>(
+    restoredDraft?.randomStarterName ?? null,
+  );
 
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
@@ -119,38 +147,45 @@ export function CreateMatchScreen({
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
 
-  const selectedIds = useMemo(
-    () => new Set(players.map((p) => p.id)),
-    [players],
-  );
-
   const canStart = players.length <= playerLimits.max;
   const soloHint =
     'Si no eliges a nadie, se usará un jugador «Yo» solo para este registro.';
   const startLabel = isPelusas ? 'Contar puntos' : 'Comenzar partida';
-  const atPlayerCap = players.length >= playerLimits.max;
 
-  const handleAddSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id) || atPlayerCap) return;
-    const player = onAddFromSaved(saved);
-    setPlayers((prev) => [...prev, player]);
-  };
+  const buildDraft = useMemo(
+    (): CreateMatchDraft => ({
+      gameType,
+      settings,
+      matchName,
+      players,
+      loadedTemplateId,
+      aventurerosSubmode,
+      randomStarterName,
+    }),
+    [
+      gameType,
+      settings,
+      matchName,
+      players,
+      loadedTemplateId,
+      aventurerosSubmode,
+      randomStarterName,
+    ],
+  );
 
-  const handleToggleSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) {
-      handleRemove(saved.id);
-      return;
-    }
-    handleAddSaved(saved);
-  };
+  const returnScreen: AppScreen = sessionId
+    ? { type: 'createSessionMatch', sessionId }
+    : { type: 'createMatch', templateId: initialTemplateId };
 
-  const handleAddNew = (name: string) => {
-    if (atPlayerCap) return false;
-    const player = onCreateNewPlayer(name, players);
-    if (!player) return false;
-    if (players.some((p) => p.id === player.id)) return false;
-    setPlayers((prev) => [...prev, player]);
-    return true;
+  const handleChoosePlayers = () => {
+    onOpenPlayerSelection({
+      draftKey: 'createMatch',
+      parentDraft: buildDraft,
+      players,
+      maxPlayers: playerLimits.max,
+      allowAnonymous: true,
+      returnScreen,
+    });
   };
 
   const handleRemove = (id: string) => {
@@ -201,18 +236,26 @@ export function CreateMatchScreen({
     if (!canStart) return;
     const roster = ensureMatchPlayers(players, onCreateNewPlayer);
     if (isPelusas) {
-      onStartPelusas(roster);
+      onStartPelusas(roster, sessionId ?? null);
     } else if (isSkullKing) {
-      onStartSkullKing(roster);
+      onStartSkullKing(roster, sessionId ?? null);
     } else if (isAventurerosTren) {
-      onStartAventurerosTren(roster, aventurerosSubmode);
+      onStartAventurerosTren(roster, aventurerosSubmode, sessionId ?? null);
     } else {
-      onStartStandard(roster, settings, matchName.trim() || null);
+      onStartStandard(
+        roster,
+        settings,
+        matchName.trim() || null,
+        sessionId ?? null,
+      );
     }
   };
 
   const header = (
     <View style={styles.headerBlock}>
+      {sessionName ? (
+        <Text style={styles.sessionHint}>Sesión: {sessionName}</Text>
+      ) : null}
       <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
 
       {!isSpecialGame ? (
@@ -263,19 +306,22 @@ export function CreateMatchScreen({
       )}
 
       <MatchPlayerRoster
-        savedPlayers={savedPlayers}
-        selectedIds={selectedIds}
-        onToggleSaved={handleToggleSaved}
-        onAddNew={handleAddNew}
+        playerCount={players.length}
+        onChoosePlayers={handleChoosePlayers}
         soloHint={soloHint}
-        atPlayerCap={atPlayerCap}
+        maxPlayers={
+          Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
+        }
       />
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Nueva partida" onBack={onBack} />
+      <AppHeader
+        title={sessionName ? 'Partida en sesión' : 'Nueva partida'}
+        onBack={onBack}
+      />
 
       <ReorderablePlayersList
         players={players}
@@ -283,7 +329,7 @@ export function CreateMatchScreen({
         listHeaderComponent={header}
         listEmptyComponent={
           <Text style={styles.empty}>
-            Puedes empezar ya en solitario o elegir jugadores arriba.
+            Pulsa «Elegir jugadores» para añadir quién juega.
           </Text>
         }
         onChange={setPlayers}
@@ -323,6 +369,11 @@ const styles = StyleSheet.create({
   headerBlock: {
     gap: 16,
     marginBottom: 12,
+  },
+  sessionHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.accent,
   },
   namePanel: {
     backgroundColor: theme.surface,

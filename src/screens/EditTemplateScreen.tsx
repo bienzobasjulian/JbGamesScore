@@ -1,11 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
@@ -13,11 +7,15 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { theme } from '../constants';
-import { GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
+import { EditTemplateDraft } from '../types/playerSelection';
+import { AppScreen, GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
+import { isAnonymousPlayer } from '../utils/playerSelection';
+
 type Props = {
   template?: MatchTemplate;
   savedPlayers: SavedPlayer[];
+  restoredDraft?: EditTemplateDraft | null;
   onBack: () => void;
   onSave: (draft: {
     id?: string;
@@ -26,26 +24,44 @@ type Props = {
     playerIds: string[];
   }) => string | null;
   onDelete?: () => void;
-  onAddFromSaved: (player: SavedPlayer) => Player;
-  onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
+  onOpenPlayerSelection: (config: {
+    draftKey: 'editTemplate';
+    parentDraft: EditTemplateDraft;
+    players: Player[];
+    maxPlayers: number;
+    allowAnonymous: boolean;
+    returnScreen: AppScreen;
+  }) => void;
 };
+
+function initialPlayerIds(
+  restoredDraft?: EditTemplateDraft | null,
+  template?: MatchTemplate,
+): string[] {
+  if (restoredDraft?.players) {
+    return restoredDraft.players
+      .filter((player) => !isAnonymousPlayer(player))
+      .map((player) => player.id);
+  }
+  return restoredDraft?.playerIds ?? template?.playerIds ?? [];
+}
 
 export function EditTemplateScreen({
   template,
   savedPlayers,
+  restoredDraft,
   onBack,
   onSave,
   onDelete,
-  onAddFromSaved,
-  onCreateNewPlayer,
+  onOpenPlayerSelection,
 }: Props) {
   const isNew = template == null;
-  const [name, setName] = useState(template?.name ?? '');
+  const [name, setName] = useState(restoredDraft?.name ?? template?.name ?? '');
   const [settings, setSettings] = useState<GameSettings>(
-    template?.settings ?? defaultSettings(),
+    restoredDraft?.settings ?? template?.settings ?? defaultSettings(),
   );
-  const [playerIds, setPlayerIds] = useState<string[]>(
-    template?.playerIds ?? [],
+  const [playerIds, setPlayerIds] = useState<string[]>(() =>
+    initialPlayerIds(restoredDraft, template),
   );
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,28 +79,18 @@ export function EditTemplateScreen({
     [playerIds, savedPlayers],
   );
 
-  const selectedIds = useMemo(() => new Set(playerIds), [playerIds]);
-
-  const handleAddSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) return;
-    onAddFromSaved(saved);
-    setPlayerIds((prev) => [...prev, saved.id]);
-  };
-
-  const handleToggleSaved = (saved: SavedPlayer) => {
-    if (selectedIds.has(saved.id)) {
-      handleRemove(saved.id);
-      return;
-    }
-    handleAddSaved(saved);
-  };
-
-  const handleAddNew = (playerName: string) => {
-    const player = onCreateNewPlayer(playerName, rosterPlayers);
-    if (!player) return false;
-    if (playerIds.includes(player.id)) return false;
-    setPlayerIds((prev) => [...prev, player.id]);
-    return true;
+  const handleChoosePlayers = () => {
+    onOpenPlayerSelection({
+      draftKey: 'editTemplate',
+      parentDraft: { name, settings, playerIds },
+      players: rosterPlayers,
+      maxPlayers: Number.POSITIVE_INFINITY,
+      allowAnonymous: false,
+      returnScreen: {
+        type: 'editTemplate',
+        templateId: template?.id,
+      },
+    });
   };
 
   const handleRemove = (id: string) => {
@@ -134,10 +140,8 @@ export function EditTemplateScreen({
       <MatchPlayerRoster
         title="Jugadores habituales"
         intro="Opcional. Se cargarán al usar esta plantilla en una partida nueva."
-        savedPlayers={savedPlayers}
-        selectedIds={selectedIds}
-        onToggleSaved={handleToggleSaved}
-        onAddNew={handleAddNew}
+        playerCount={rosterPlayers.length}
+        onChoosePlayers={handleChoosePlayers}
       />
     </View>
   );
@@ -153,6 +157,11 @@ export function EditTemplateScreen({
         players={rosterPlayers}
         contentContainerStyle={styles.list}
         listHeaderComponent={formBlock}
+        listEmptyComponent={
+          <Text style={styles.empty}>
+            Pulsa «Elegir jugadores» para añadir jugadores habituales.
+          </Text>
+        }
         onChange={(players) => setPlayerIds(players.map((player) => player.id))}
         onRemove={handleRemove}
       />
@@ -224,23 +233,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.danger,
   },
-  playersSection: {
-    gap: 10,
-  },
-  playersTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: theme.text,
-  },
-  playersHint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textMuted,
-    marginTop: 2,
-  },
   list: {
     gap: 12,
     paddingBottom: 8,
+  },
+  empty: {
+    color: theme.textMuted,
+    fontSize: 15,
+    textAlign: 'center',
+    marginVertical: 16,
   },
   footer: {
     paddingTop: 12,

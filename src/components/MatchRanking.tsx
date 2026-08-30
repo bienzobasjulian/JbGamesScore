@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { RankedPlayer } from '../utils/match';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   ranking: RankedPlayer[];
@@ -71,7 +72,12 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
                       { backgroundColor: entry.player.color },
                     ]}
                   >
-                    <Text style={styles.avatarText}>
+                    <Text
+                      style={[
+                        styles.avatarText,
+                        { color: getPlayerAvatarTextColor(entry.player.color) },
+                      ]}
+                    >
                       {entry.player.name.charAt(0).toUpperCase()}
                     </Text>
                   </View>

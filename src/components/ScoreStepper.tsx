@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -23,6 +23,13 @@ function parseScore(text: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function tryParsePartialScore(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === '' || trimmed === '-' || trimmed === '+') return null;
+  const parsed = parseInt(trimmed, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function ScoreStepper({
   value,
   onAdjust,
@@ -32,12 +39,25 @@ export function ScoreStepper({
 }: Props) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
+  const textRef = useRef(text);
+  const focusedRef = useRef(focused);
+
+  textRef.current = text;
+  focusedRef.current = focused;
 
   useEffect(() => {
     if (!focused) {
       setText(String(value));
     }
   }, [value, focused]);
+
+  useEffect(() => {
+    return () => {
+      if (focusedRef.current) {
+        onSetValue(parseScore(textRef.current));
+      }
+    };
+  }, [onSetValue]);
 
   const commitValue = () => {
     const num = parseScore(text);
@@ -46,10 +66,28 @@ export function ScoreStepper({
     setFocused(false);
   };
 
+  const handleChangeText = (next: string) => {
+    setText(next);
+    const parsed = tryParsePartialScore(next);
+    if (parsed !== null) {
+      onSetValue(parsed);
+    }
+  };
+
+  const handleAdjust = (delta: number) => {
+    if (focused) {
+      const next = parseScore(text) + delta;
+      onSetValue(next);
+      setText(String(next));
+      return;
+    }
+    onAdjust(delta);
+  };
+
   return (
     <View style={styles.row}>
       <Pressable
-        onPress={() => onAdjust(-1)}
+        onPress={() => handleAdjust(-1)}
         disabled={disabled}
         style={({ pressed }) => [
           styles.btn,
@@ -69,7 +107,7 @@ export function ScoreStepper({
           disabled && styles.disabled,
         ]}
         value={text}
-        onChangeText={setText}
+        onChangeText={handleChangeText}
         onFocus={() => setFocused(true)}
         onBlur={commitValue}
         onSubmitEditing={commitValue}
@@ -81,7 +119,7 @@ export function ScoreStepper({
       />
 
       <Pressable
-        onPress={() => onAdjust(1)}
+        onPress={() => handleAdjust(1)}
         disabled={disabled}
         style={({ pressed }) => [
           styles.btn,

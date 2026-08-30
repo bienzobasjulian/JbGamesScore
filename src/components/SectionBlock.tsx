@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { theme } from '../constants';
 import { SectionActionButton } from './SectionActionButton';
 
-type ActionVariant = 'matches' | 'players';
+type ActionVariant = 'matches' | 'players' | 'sessions';
 
 type Props = {
   title: string;

@@ -1,45 +1,40 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Button } from './Button';
 import { theme } from '../constants';
-import { SavedPlayer } from '../types';
-import { AddPlayerInput } from './AddPlayerInput';
-import { SavedPlayerPicker } from './SavedPlayerPicker';
 
 type Props = {
-  savedPlayers: SavedPlayer[];
-  selectedIds: Set<string>;
-  onToggleSaved: (player: SavedPlayer) => void;
-  onAddNew: (name: string) => boolean;
+  playerCount: number;
+  onChoosePlayers: () => void;
   title?: string;
   intro?: string;
   soloHint?: string;
-  atPlayerCap?: boolean;
+  maxPlayers?: number;
 };
 
 export function MatchPlayerRoster({
-  savedPlayers,
-  selectedIds,
-  onToggleSaved,
-  onAddNew,
+  playerCount,
+  onChoosePlayers,
   title = 'Jugadores',
   intro,
   soloHint,
-  atPlayerCap = false,
+  maxPlayers,
 }: Props) {
+  const maxLabel =
+    maxPlayers != null && Number.isFinite(maxPlayers)
+      ? ` · máx. ${maxPlayers}`
+      : '';
+
   return (
     <View style={styles.section}>
       {intro ? <Text style={styles.intro}>{intro}</Text> : null}
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>
+        {title} ({playerCount}){maxLabel}
+      </Text>
       {soloHint ? <Text style={styles.soloHint}>{soloHint}</Text> : null}
-
-      <Text style={styles.hint}>Nuevo nombre</Text>
-      <AddPlayerInput onAdd={onAddNew} disabled={atPlayerCap} />
-
-      <Text style={styles.hint}>Guardados</Text>
-      <SavedPlayerPicker
-        players={savedPlayers}
-        selectedIds={selectedIds}
-        onToggle={onToggleSaved}
-        atPlayerCap={atPlayerCap}
+      <Button
+        label="Elegir jugadores"
+        onPress={onChoosePlayers}
+        variant="secondary"
       />
     </View>
   );
@@ -63,11 +58,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.textMuted,
     lineHeight: 18,
-  },
-  hint: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textMuted,
-    marginTop: 2,
   },
 });

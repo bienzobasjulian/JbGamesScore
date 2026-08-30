@@ -57,6 +57,12 @@ export function BreakdownEditor({
     setTimeout(focusInput, 0);
   };
 
+  const handleBlur = () => {
+    if (parsePoints(draft) !== null) {
+      handleAdd();
+    }
+  };
+
   return (
     <View style={styles.wrap}>
       <View style={styles.totalRow}>
@@ -106,6 +112,7 @@ export function BreakdownEditor({
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={handleAdd}
+            onBlur={handleBlur}
             blurOnSubmit={false}
             keyboardType="number-pad"
             returnKeyType="done"

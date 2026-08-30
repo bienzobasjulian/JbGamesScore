@@ -6,6 +6,7 @@ import {
   getSkullKingRoundNumber,
 } from '../utils/skullKing';
 import { CardCountStepper } from './CardCountStepper';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   player: Player;
@@ -36,7 +37,12 @@ export function SkullKingPlayerRoundPanel({
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
         <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text style={styles.avatarText}>
+          <Text
+            style={[
+              styles.avatarText,
+              { color: getPlayerAvatarTextColor(player.color) },
+            ]}
+          >
             {player.name.charAt(0).toUpperCase()}
           </Text>
         </View>

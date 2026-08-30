@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme } from '../constants';
 
@@ -14,6 +14,13 @@ function clampCount(value: number, max: number): number {
   return Math.min(n, max);
 }
 
+function tryParseCount(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+  const parsed = parseInt(trimmed, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function CardCountStepper({
   value,
   onChange,
@@ -22,12 +29,29 @@ export function CardCountStepper({
 }: Props) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
+  const textRef = useRef(text);
+  const focusedRef = useRef(focused);
+  const maxLength = Math.max(2, String(max).length);
+
+  textRef.current = text;
+  focusedRef.current = focused;
 
   useEffect(() => {
     if (!focused) {
       setText(String(value));
     }
   }, [value, focused]);
+
+  useEffect(() => {
+    return () => {
+      if (focusedRef.current) {
+        const trimmed = textRef.current.trim();
+        const parsed = trimmed === '' ? 0 : parseInt(trimmed, 10);
+        const next = clampCount(Number.isNaN(parsed) ? 0 : parsed, max);
+        onChange(next);
+      }
+    };
+  }, [max, onChange]);
 
   const commit = () => {
     const trimmed = text.trim();
@@ -38,10 +62,25 @@ export function CardCountStepper({
     setFocused(false);
   };
 
+  const handleChangeText = (next: string) => {
+    setText(next);
+    const parsed = tryParseCount(next);
+    if (parsed !== null) {
+      onChange(clampCount(parsed, max));
+    }
+  };
+
+  const handleAdjust = (delta: number) => {
+    const base = focused ? clampCount(parseInt(text, 10) || 0, max) : value;
+    const next = clampCount(base + delta, max);
+    onChange(next);
+    setText(String(next));
+  };
+
   return (
     <View style={styles.row}>
       <Pressable
-        onPress={() => onChange(clampCount(value - 1, max))}
+        onPress={() => handleAdjust(-1)}
         disabled={value <= 0}
         style={({ pressed }) => [
           styles.btn,
@@ -56,18 +95,18 @@ export function CardCountStepper({
       <TextInput
         style={[styles.input, focused && { borderColor: color }]}
         value={text}
-        onChangeText={setText}
+        onChangeText={handleChangeText}
         onFocus={() => setFocused(true)}
         onBlur={commit}
         onSubmitEditing={commit}
         keyboardType="number-pad"
         returnKeyType="done"
         selectTextOnFocus
-        maxLength={2}
+        maxLength={maxLength}
       />
 
       <Pressable
-        onPress={() => onChange(clampCount(value + 1, max))}
+        onPress={() => handleAdjust(1)}
         disabled={value >= max}
         style={({ pressed }) => [
           styles.btn,

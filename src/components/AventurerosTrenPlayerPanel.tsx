@@ -19,6 +19,7 @@ import {
   getDestinationEntryPoints,
   getRouteEntryPoints,
 } from '../utils/aventurerosTren';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   player: Player;
@@ -89,7 +90,12 @@ export function AventurerosTrenPlayerPanel({
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
         <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text style={styles.avatarText}>
+          <Text
+            style={[
+              styles.avatarText,
+              { color: getPlayerAvatarTextColor(player.color) },
+            ]}
+          >
             {player.name.charAt(0).toUpperCase()}
           </Text>
         </View>

@@ -41,6 +41,7 @@ type Props = {
   isMatchFinished?: boolean;
   editingAfterFinish?: boolean;
   isDedicatedGameMatch?: boolean;
+  isWinnerOnlyMatch?: boolean;
   onAdjust: (playerId: string, delta: number) => void;
   onSetScore: (playerId: string, value: number) => void;
   onScoringModeChange: (playerId: string, mode: ScoringMode) => void;
@@ -63,6 +64,7 @@ export function GameScreen({
   isMatchFinished = false,
   editingAfterFinish = false,
   isDedicatedGameMatch = false,
+  isWinnerOnlyMatch = false,
   onAdjust,
   onSetScore,
   onScoringModeChange,
@@ -258,11 +260,35 @@ export function GameScreen({
 
       <View style={styles.body}>
         {showResults ? (
-          <MatchResultsPager
-            ranking={ranking}
-            players={state.players}
-            rounds={state.rounds}
-          />
+          isWinnerOnlyMatch ? (
+            <View style={styles.winnerOnlyWrap}>
+              <Text style={styles.winnerOnlyHeading}>Ganador</Text>
+              {ranking
+                .filter((entry) => entry.total > 0)
+                .map((entry) => (
+                  <View key={entry.player.id} style={styles.winnerOnlyRow}>
+                    <View
+                      style={[
+                        styles.winnerOnlyDot,
+                        { backgroundColor: entry.player.color },
+                      ]}
+                    />
+                    <Text style={styles.winnerOnlyName}>
+                      {entry.player.name}
+                    </Text>
+                  </View>
+                ))}
+              <Text style={styles.winnerOnlyNote}>
+                Partida registrada sin puntuación.
+              </Text>
+            </View>
+          ) : (
+            <MatchResultsPager
+              ranking={ranking}
+              players={state.players}
+              rounds={state.rounds}
+            />
+          )
         ) : (
           <FlatList
             style={styles.scroll}
@@ -270,6 +296,7 @@ export function GameScreen({
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListHeaderComponent={
               pastRounds.length > 0 ? (
                 <View style={styles.listHeader}>
@@ -512,5 +539,43 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+  },
+  winnerOnlyWrap: {
+    flex: 1,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 24,
+    gap: 16,
+    justifyContent: 'center',
+  },
+  winnerOnlyHeading: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.text,
+    textAlign: 'center',
+  },
+  winnerOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  winnerOnlyDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  winnerOnlyName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  winnerOnlyNote: {
+    fontSize: 13,
+    color: theme.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
