@@ -48,6 +48,8 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                   ? 'skull_king'
                   : m.gameMode === 'pili_pili'
                     ? 'pili_pili'
+                    : m.gameMode === 'flip7'
+                      ? 'flip7'
                     : m.gameMode === 'aventureros_tren'
                     ? 'aventureros_tren'
                     : m.gameMode === 'regicide'

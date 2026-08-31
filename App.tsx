@@ -28,6 +28,7 @@ import { SessionsListScreen } from './src/screens/SessionsListScreen';
 import { SelectPlayersScreen } from './src/screens/SelectPlayersScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
 import { PiliPiliCounterScreen } from './src/screens/PiliPiliCounterScreen';
+import { Flip7CounterScreen } from './src/screens/Flip7CounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import {
   CreateMatchDraft,
@@ -161,6 +162,7 @@ function AppShell() {
           case 'pelusasCount':
           case 'skullKingCount':
           case 'piliPiliCount':
+          case 'flip7Count':
           case 'aventurerosTrenCount':
             return false;
 
@@ -246,6 +248,9 @@ function AppShell() {
             onStartPiliPili={(players, sessionId) => {
               app.startPiliPiliSession(players, sessionId);
             }}
+            onStartFlip7={(players, sessionId) => {
+              app.startFlip7Session(players, sessionId);
+            }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
             }}
@@ -287,6 +292,9 @@ function AppShell() {
             }}
             onStartPiliPili={(players, sessionId) => {
               app.startPiliPiliSession(players, sessionId);
+            }}
+            onStartFlip7={(players, sessionId) => {
+              app.startFlip7Session(players, sessionId);
             }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
@@ -499,6 +507,7 @@ function AppShell() {
               match.gameMode === 'pelusas' ||
               match.gameMode === 'skull_king' ||
               match.gameMode === 'pili_pili' ||
+              match.gameMode === 'flip7' ||
               match.gameMode === 'aventureros_tren'
             }
             floorRoundTotalsAtZero={match.gameMode === 'pili_pili'}
@@ -630,6 +639,23 @@ function AppShell() {
             onAddRound={app.addPiliPiliRound}
             onUpdateRoundEntry={app.updatePiliPiliRoundEntry}
             onUpdateRoundConfig={app.updatePiliPiliRoundConfig}
+          />
+        );
+      }
+
+      case 'flip7Count': {
+        if (!app.flip7Session) return null;
+        return (
+          <Flip7CounterScreen
+            session={app.flip7Session}
+            onSaveAndExit={app.saveFlip7AndExit}
+            onDeleteAndExit={app.deleteFlip7AndExit}
+            onFinishMatch={app.finishFlip7Session}
+            onGoToRound={app.goFlip7Round}
+            onAddRound={app.addFlip7Round}
+            onToggleNumber={app.toggleFlip7RoundNumber}
+            onToggleModifier={app.toggleFlip7RoundModifier}
+            onSetPlayerStatus={app.setFlip7RoundPlayerStatus}
           />
         );
       }

@@ -3,6 +3,7 @@ export type CreateMatchGameType =
   | 'pelusas'
   | 'skull_king'
   | 'pili_pili'
+  | 'flip7'
   | 'aventureros_tren'
   | 'regicide';
 
@@ -19,6 +20,8 @@ export function getCreateMatchPlayerLimits(
       return { min: 1, max: 6 };
     case 'pili_pili':
       return { min: 2, max: 8 };
+    case 'flip7':
+      return { min: 3, max: Number.POSITIVE_INFINITY };
     case 'aventureros_tren':
       return { min: 1, max: 5 };
     case 'pelusas':
@@ -62,6 +65,12 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     id: 'pili_pili',
     name: 'Pili pili',
     description: 'Apuestas de bazas y Pilis de penalización (2–8 jugadores)',
+  },
+  {
+    id: 'flip7',
+    name: 'Flip 7',
+    description:
+      'Cartas del 0 al 12, modificadores y bonus Flip7 · gana quien llegue a 200 (3+ jugadores)',
   },
   {
     id: 'aventureros_tren',

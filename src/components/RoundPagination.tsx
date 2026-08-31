@@ -14,6 +14,8 @@ type Props = {
   allowAddRound?: boolean;
   /** Bloquea cambiar de ronda y añadir otra mientras la ronda activa tenga errores. */
   navigationLocked?: boolean;
+  /** Bloquea solo el botón + (permite navegar entre rondas). */
+  addRoundLocked?: boolean;
   lockedHint?: string;
   onSelectRound: (index: number) => void;
   onAddRound: () => void;
@@ -28,6 +30,7 @@ export function RoundPagination({
   disabled,
   allowAddRound = true,
   navigationLocked,
+  addRoundLocked,
   lockedHint,
   onSelectRound,
   onAddRound,
@@ -40,6 +43,7 @@ export function RoundPagination({
     allowAddRound &&
     !disabled &&
     !navigationLocked &&
+    !addRoundLocked &&
     (onLastFixedRound ||
       (!fixedTabs && activeIndex === roundCount - 1));
 
@@ -119,6 +123,8 @@ export function RoundPagination({
         <Text style={styles.hint}>
           Pulsa + al terminar la ronda para sumar puntos y seguir
         </Text>
+      ) : addRoundLocked && lockedHint ? (
+        <Text style={styles.lockedHint}>{lockedHint}</Text>
       ) : navigationLocked && lockedHint ? (
         <Text style={styles.lockedHint}>{lockedHint}</Text>
       ) : null}

@@ -24,6 +24,9 @@ import {
   PiliPiliRoundConfig,
   PiliPiliRoundEntry,
   PiliPiliSession,
+  Flip7Modifier,
+  Flip7PlayerRoundStatus,
+  Flip7Session,
   RoundBreakdown,
   RoundScores,
   SavedPlayer,
@@ -98,6 +101,16 @@ import {
   PILI_PILI_MAX_PLAYERS,
   PILI_PILI_MIN_PLAYERS,
 } from '../utils/piliPili';
+import {
+  appendFlip7Round,
+  createFinishedFlip7Match,
+  createFlip7Session,
+  createInProgressFlip7Match,
+  FLIP7_MIN_PLAYERS,
+  setFlip7PlayerStatus,
+  toggleFlip7PlayerModifier,
+  toggleFlip7PlayerNumber,
+} from '../utils/flip7';
 import {
   createAventurerosTrenDestinationEntry,
   createAventurerosTrenRouteEntry,
@@ -228,6 +241,7 @@ export function useApp() {
     useState<SkullKingSession | null>(null);
   const [piliPiliSession, setPiliPiliSession] =
     useState<PiliPiliSession | null>(null);
+  const [flip7Session, setFlip7Session] = useState<Flip7Session | null>(null);
   const [aventurerosTrenSession, setAventurerosTrenSession] =
     useState<AventurerosTrenSession | null>(null);
   const [regicideSession, setRegicideSession] =
@@ -319,6 +333,25 @@ export function useApp() {
       ),
     );
   }, [piliPiliSession]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !flip7Session) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'flip7'
+          ? {
+              ...match,
+              flip7Session,
+              players: flip7Session.players,
+              activeRoundIndex: flip7Session.activeRoundIndex,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [flip7Session]);
 
   useEffect(() => {
     const matchId = dedicatedMatchIdRef.current;
@@ -883,6 +916,164 @@ export function useApp() {
     });
   }, []);
 
+  const startFlip7Session = useCallback(
+    (players: Player[], sessionId?: string | null) => {
+      if (players.length < FLIP7_MIN_PLAYERS) {
+        return;
+      }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createFlip7Session(players);
+      const match = createInProgressFlip7Match(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setFlip7Session(session);
+      setScreen({ type: 'flip7Count' });
+    },
+    [],
+  );
+
+  const saveFlip7AndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7Session(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteFlip7AndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7Session(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const exitFlip7 = useCallback(() => {
+    setFlip7Session(null);
+    setScreen({ type: 'home' });
+    setMenuOpen(false);
+  }, []);
+
+  const goFlip7Round = useCallback((roundIndex: number) => {
+    setFlip7Session((prev) => {
+      if (!prev) return null;
+      if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+      return { ...prev, activeRoundIndex: roundIndex };
+    });
+  }, []);
+
+  const toggleFlip7RoundNumber = useCallback(
+    (roundIndex: number, playerId: string, number: number) => {
+      setFlip7Session((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        rounds[roundIndex] = toggleFlip7PlayerNumber(
+          rounds[roundIndex] ?? {},
+          playerId,
+          number,
+        );
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const toggleFlip7RoundModifier = useCallback(
+    (roundIndex: number, playerId: string, modifier: Flip7Modifier) => {
+      setFlip7Session((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        rounds[roundIndex] = toggleFlip7PlayerModifier(
+          rounds[roundIndex] ?? {},
+          playerId,
+          modifier,
+        );
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const setFlip7RoundPlayerStatus = useCallback(
+    (roundIndex: number, playerId: string, status: Flip7PlayerRoundStatus) => {
+      setFlip7Session((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        rounds[roundIndex] = setFlip7PlayerStatus(
+          rounds[roundIndex] ?? {},
+          playerId,
+          status,
+        );
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const addFlip7Round = useCallback(() => {
+    setFlip7Session((prev) => {
+      if (!prev) return null;
+      return appendFlip7Round(prev);
+    });
+  }, []);
+
+  const finishFlip7Session = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7Session((prev) => {
+      if (!prev) return null;
+      const finished = createFinishedFlip7Match(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            flip7Session: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
+      return null;
+    });
+  }, []);
+
   const startAventurerosTrenSession = useCallback(
     (
       players: Player[],
@@ -1365,6 +1556,12 @@ export function useApp() {
           setMenuOpen(false);
           return;
         }
+        if (match.gameMode === 'flip7' && match.flip7Session) {
+          setFlip7Session(match.flip7Session);
+          setScreen({ type: 'flip7Count' });
+          setMenuOpen(false);
+          return;
+        }
         if (
           match.gameMode === 'aventureros_tren' &&
           match.aventurerosTrenSession
@@ -1670,6 +1867,7 @@ export function useApp() {
         (current.type === 'pelusasCount' ||
           current.type === 'skullKingCount' ||
           current.type === 'piliPiliCount' ||
+          current.type === 'flip7Count' ||
           current.type === 'aventurerosTrenCount') &&
         isActiveDedicated
       ) {
@@ -2104,6 +2302,25 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'flip7') {
+        const session = createFlip7Session(source.players);
+        const match = createInProgressFlip7Match(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setFlip7Session(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
+        setScreen({ type: 'flip7Count' });
+        return;
+      }
+
       if (source.gameMode === 'aventureros_tren') {
         const session = createAventurerosTrenSession(
           source.players,
@@ -2244,6 +2461,17 @@ export function useApp() {
     updatePiliPiliRoundConfig,
     addPiliPiliRound,
     finishPiliPiliSession,
+    flip7Session,
+    startFlip7Session,
+    exitFlip7,
+    saveFlip7AndExit,
+    deleteFlip7AndExit,
+    goFlip7Round,
+    toggleFlip7RoundNumber,
+    toggleFlip7RoundModifier,
+    setFlip7RoundPlayerStatus,
+    addFlip7Round,
+    finishFlip7Session,
     aventurerosTrenSession,
     startAventurerosTrenSession,
     exitAventurerosTren,

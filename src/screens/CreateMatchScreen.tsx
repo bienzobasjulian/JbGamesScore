@@ -90,6 +90,7 @@ type Props = {
   onStartPelusas: (players: Player[], sessionId?: string | null) => void;
   onStartSkullKing: (players: Player[], sessionId?: string | null) => void;
   onStartPiliPili: (players: Player[], sessionId?: string | null) => void;
+  onStartFlip7: (players: Player[], sessionId?: string | null) => void;
   onStartAventurerosTren: (
     players: Player[],
     submode: AventurerosTrenSubmode,
@@ -113,6 +114,7 @@ export function CreateMatchScreen({
   onStartPelusas,
   onStartSkullKing,
   onStartPiliPili,
+  onStartFlip7,
   onStartAventurerosTren,
   onStartRegicide,
   onCreateNewPlayer,
@@ -148,6 +150,7 @@ export function CreateMatchScreen({
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
   const isPiliPili = gameType === 'pili_pili';
+  const isFlip7 = gameType === 'flip7';
   const isAventurerosTren = gameType === 'aventureros_tren';
   const isRegicide = gameType === 'regicide';
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
@@ -155,7 +158,7 @@ export function CreateMatchScreen({
 
   const canStart = isRegicide
     ? true
-    : isPiliPili
+    : isPiliPili || isFlip7
       ? players.length >= playerLimits.min && players.length <= playerLimits.max
       : players.length <= playerLimits.max;
   const soloHint =
@@ -259,6 +262,8 @@ export function CreateMatchScreen({
       onStartSkullKing(roster, sessionId ?? null);
     } else if (isPiliPili) {
       onStartPiliPili(roster, sessionId ?? null);
+    } else if (isFlip7) {
+      onStartFlip7(roster, sessionId ?? null);
     } else if (isAventurerosTren) {
       onStartAventurerosTren(roster, aventurerosSubmode, sessionId ?? null);
     } else {
@@ -318,6 +323,11 @@ export function CreateMatchScreen({
           alguien llega a 7 Pilis; gana quien tenga menos. Elige entre{' '}
           {playerLimits.min} y {playerLimits.max} jugadores. Ordena la lista con
           el primer jugador como repartidor de la ronda 1.
+        </Text>
+      ) : isFlip7 ? (
+        <Text style={styles.specialHint}>
+          Cartas del 0 al 12 con modificadores y bonus Flip7 (+15). Gana quien
+          llegue primero a 200 puntos. Mínimo {playerLimits.min} jugadores.
         </Text>
       ) : isRegicide ? (
         <View style={styles.regicideHintBox}>

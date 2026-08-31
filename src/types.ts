@@ -36,6 +36,7 @@ export type MatchGameMode =
   | 'pelusas'
   | 'skull_king'
   | 'pili_pili'
+  | 'flip7'
   | 'aventureros_tren'
   | 'regicide';
 
@@ -82,6 +83,7 @@ export type Match = {
   pelusasSession?: PelusasSession;
   skullKingSession?: SkullKingSession;
   piliPiliSession?: PiliPiliSession;
+  flip7Session?: Flip7Session;
   aventurerosTrenSession?: AventurerosTrenSession;
   createdAt: number;
   updatedAt: number;
@@ -166,6 +168,24 @@ export type PiliPiliSession = {
   roundConfigs: PiliPiliRoundConfig[];
 };
 
+export type Flip7Modifier = '+2' | '+4' | '+6' | '+8' | '+10' | 'x2';
+
+export type Flip7PlayerRoundStatus = 'active' | 'stood' | 'eliminated';
+
+export type Flip7RoundEntry = {
+  status: Flip7PlayerRoundStatus;
+  numbers: number[];
+  modifiers: Flip7Modifier[];
+  /** Puntos fijados al cerrar la ronda. */
+  closedScore?: number;
+};
+
+export type Flip7Session = {
+  players: Player[];
+  activeRoundIndex: number;
+  rounds: Record<string, Flip7RoundEntry>[];
+};
+
 export type AventurerosTrenPhase = 'construccion' | 'destinos';
 
 export type AventurerosTrenSubmode = 'base' | 'europa';
@@ -235,6 +255,7 @@ export type AppScreen =
   | { type: 'pelusasCount' }
   | { type: 'skullKingCount' }
   | { type: 'piliPiliCount' }
+  | { type: 'flip7Count' }
   | { type: 'aventurerosTrenCount' }
   | { type: 'regicideCount' }
   | { type: 'sessionsList' }

@@ -20,6 +20,7 @@ import {
   getAventurerosTrenMatchWinners,
 } from './aventurerosTren';
 import { getPiliPiliPlayerTotalFromRounds } from './piliPili';
+import { getFlip7PlayerTotalFromRounds } from './flip7';
 import { formatRegicideMatchProgress } from './regicide';
 import {
   createInitialRounds,
@@ -62,6 +63,36 @@ function getPiliPiliMatchWinners(match: Match): Player[] {
     .map((entry) => entry.player);
 }
 
+function getFlip7MatchRanking(match: Match): RankedPlayer[] {
+  const m = normalizeMatchRounds(match);
+  const sorted = match.players
+    .map((player) => ({
+      player,
+      total: getFlip7PlayerTotalFromRounds(m.rounds, player.id),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  let rank = 0;
+  let prevScore: number | null = null;
+
+  return sorted.map((entry, index) => {
+    if (prevScore === null || entry.total !== prevScore) {
+      rank = index + 1;
+      prevScore = entry.total;
+    }
+    return { ...entry, rank };
+  });
+}
+
+function getFlip7MatchWinners(match: Match): Player[] {
+  const ranked = getFlip7MatchRanking(match);
+  if (ranked.length === 0) return [];
+  const topScore = ranked[0].total;
+  return ranked
+    .filter((entry) => entry.total === topScore)
+    .map((entry) => entry.player);
+}
+
 export function matchToGameState(match: Match): GameState {
   const m = normalizeMatchRounds(match);
   return {
@@ -82,6 +113,7 @@ export function formatMatchTitle(match: Match): string {
   if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
   if (match.gameMode === 'pili_pili') return 'Pili pili';
+  if (match.gameMode === 'flip7') return 'Flip 7';
   if (match.gameMode === 'aventureros_tren') {
     return match.name?.trim() || 'Aventureros al tren';
   }
@@ -141,6 +173,9 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
   if (match.gameMode === 'pili_pili') {
     return getPiliPiliMatchRanking(match);
   }
+  if (match.gameMode === 'flip7') {
+    return getFlip7MatchRanking(match);
+  }
   return getMatchRankingFromState(matchToGameState(match));
 }
 
@@ -156,6 +191,10 @@ export function getMatchWinners(match: Match): Player[] {
 
   if (match.gameMode === 'pili_pili') {
     return getPiliPiliMatchWinners(match);
+  }
+
+  if (match.gameMode === 'flip7') {
+    return getFlip7MatchWinners(match);
   }
 
   const state = matchToGameState(match);
@@ -207,6 +246,9 @@ export function formatMatchListMeta(match: Match): string {
   }
   if (match.gameMode === 'pili_pili') {
     parts.push('Pili pili · menos Pilis gana');
+  }
+  if (match.gameMode === 'flip7') {
+    parts.push('Flip 7 · 200 pts');
   }
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));
