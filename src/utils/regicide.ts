@@ -548,20 +548,14 @@ export function selectRegicideBoss(
   };
 }
 
-export function confirmRegicideAttack(
-  session: RegicideSession,
+export function applyRegicideAttackToBoss(
+  boss: RegicideBossState,
   cards: RegicideCard[],
-): RegicideSession {
-  if (!session.activeBossId || cards.length === 0) return session;
-  if (!canCombineRegicideCards(cards)) return session;
-
-  const snapshot = cloneSession(session);
-  const next = cloneSession(session);
-  const boss = next.bosses[session.activeBossId];
-  if (!boss || boss.defeated) return session;
+): RegicideBossState | null {
+  if (!canCombineRegicideCards(cards)) return null;
 
   for (const card of cards) {
-    if (isCardPlayedAgainstBoss(boss, card)) return session;
+    if (isCardPlayedAgainstBoss(boss, card)) return null;
   }
 
   const actionIndex = boss.actions.length;
@@ -593,6 +587,23 @@ export function confirmRegicideAttack(
     updatedBoss.defeated = true;
     updatedBoss.currentHp = 0;
   }
+
+  return updatedBoss;
+}
+
+export function confirmRegicideAttack(
+  session: RegicideSession,
+  cards: RegicideCard[],
+): RegicideSession {
+  if (!session.activeBossId || cards.length === 0) return session;
+
+  const snapshot = cloneSession(session);
+  const next = cloneSession(session);
+  const boss = next.bosses[session.activeBossId];
+  if (!boss || boss.defeated) return session;
+
+  const updatedBoss = applyRegicideAttackToBoss(boss, cards);
+  if (!updatedBoss) return session;
 
   next.bosses[session.activeBossId] = updatedBoss;
   next.undoSnapshot = snapshot;

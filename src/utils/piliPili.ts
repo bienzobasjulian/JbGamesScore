@@ -410,9 +410,9 @@ export function getPiliPiliRoundErrors(
   }
 
   const tricksSum = getPiliPiliTricksWonSum(roundByPlayer, players);
-  if (tricksSum > cardsDealt) {
+  if (tricksSum !== cardsDealt) {
     errors.push(
-      `La suma de bazas ganadas (${tricksSum}) supera las ${cardsDealt} cartas repartidas en la ronda.`,
+      `La suma de bazas ganadas (${tricksSum}) debe ser igual a las ${cardsDealt} cartas repartidas en la ronda.`,
     );
   }
 

@@ -146,14 +146,6 @@ export function PiliPiliCounterScreen({
     onAddRound();
   };
 
-  const handleGoToRound = (index: number) => {
-    if (index !== roundIndex && hasRoundErrors) {
-      showRoundErrorsModal();
-      return;
-    }
-    onGoToRound(index);
-  };
-
   const handleSaveFinished = () => {
     setFinishModalVisible(false);
     onFinishMatch();
@@ -269,7 +261,7 @@ export function PiliPiliCounterScreen({
           roundCount={session.rounds.length}
           activeIndex={roundIndex}
           maxRounds={null}
-          onSelectRound={handleGoToRound}
+          onSelectRound={onGoToRound}
           onAddRound={handleAddRound}
         />
       </View>

@@ -750,22 +750,6 @@ export function useApp() {
     setPiliPiliSession((prev) => {
       if (!prev) return null;
       if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
-      if (roundIndex !== prev.activeRoundIndex) {
-        const activeRound = prev.rounds[prev.activeRoundIndex] ?? {};
-        const activeConfig =
-          prev.roundConfigs[prev.activeRoundIndex] ??
-          emptyPiliPiliRoundConfig();
-        if (
-          hasPiliPiliRoundErrors(
-            activeRound,
-            prev.players,
-            activeConfig,
-            prev.activeRoundIndex,
-          )
-        ) {
-          return prev;
-        }
-      }
       return { ...prev, activeRoundIndex: roundIndex };
     });
   }, []);

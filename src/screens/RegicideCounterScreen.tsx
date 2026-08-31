@@ -14,6 +14,7 @@ import { Button } from '../components/Button';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { theme } from '../constants';
 import {
+  applyRegicideAttackToBoss,
   canAddRegicideCard,
   canCombineRegicideCards,
   clearRegicideActiveBoss,
@@ -55,6 +56,10 @@ type StatAnimation = {
 };
 
 const STAT_ANIM_DURATION_MS = 750;
+const STAT_ANIM_SETTLE_MS = 400;
+const BOSS_FADE_DURATION_MS = 900;
+
+type DefeatTransitionPhase = 'none' | 'stats' | 'fade';
 
 const SUIT_COLORS: Record<RegicideSuit, string> = {
   hearts: '#E85D4C',
@@ -136,6 +141,14 @@ export function RegicideCounterScreen({
   const [pendingJoker, setPendingJoker] = useState(false);
   const [statAnimation, setStatAnimation] = useState<StatAnimation | null>(null);
   const [exitModalVisible, setExitModalVisible] = useState(false);
+  const [pendingSession, setPendingSession] = useState<RegicideSession | null>(
+    null,
+  );
+  const [defeatTransitionPhase, setDefeatTransitionPhase] =
+    useState<DefeatTransitionPhase>('none');
+  const bossOpacity = useRef(new Animated.Value(1)).current;
+
+  const isCombatLocked = defeatTransitionPhase !== 'none';
 
   const handleRequestExit = () => setExitModalVisible(true);
 
@@ -205,10 +218,61 @@ export function RegicideCounterScreen({
   };
 
   useEffect(() => {
-    if (!statAnimation) return;
-    const timer = setTimeout(() => setStatAnimation(null), STAT_ANIM_DURATION_MS + 400);
+    if (
+      !statAnimation ||
+      defeatTransitionPhase !== 'none' ||
+      pendingSession
+    ) {
+      return;
+    }
+    const timer = setTimeout(
+      () => setStatAnimation(null),
+      STAT_ANIM_DURATION_MS + STAT_ANIM_SETTLE_MS,
+    );
     return () => clearTimeout(timer);
-  }, [statAnimation]);
+  }, [defeatTransitionPhase, pendingSession, statAnimation]);
+
+  useEffect(() => {
+    if (defeatTransitionPhase !== 'stats' || !pendingSession) return;
+
+    const delay = statAnimation
+      ? STAT_ANIM_DURATION_MS + STAT_ANIM_SETTLE_MS
+      : 0;
+
+    const timer = setTimeout(() => {
+      setDefeatTransitionPhase('fade');
+      Animated.timing(bossOpacity, {
+        toValue: 0,
+        duration: BOSS_FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) return;
+        onUpdateSession(pendingSession);
+        setPendingSession(null);
+        bossOpacity.setValue(1);
+        setStatAnimation(null);
+        setDefeatTransitionPhase('none');
+      });
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [
+    bossOpacity,
+    defeatTransitionPhase,
+    onUpdateSession,
+    pendingSession,
+    statAnimation,
+  ]);
+
+  const combatStatBoss = useMemo(() => {
+    if (!activeBoss) return null;
+    if (!pendingSession || !statAnimation) return activeBoss;
+    return {
+      ...activeBoss,
+      currentHp: statAnimation.hp.to,
+      currentAttack: statAnimation.atk?.to ?? activeBoss.currentAttack,
+    };
+  }, [activeBoss, pendingSession, statAnimation]);
 
   const handleSelectBoss = (bossId: RegicideBossId) => {
     onUpdateSession(selectRegicideBoss(session, bossId));
@@ -243,6 +307,7 @@ export function RegicideCounterScreen({
   };
 
   const handleConfirmAttack = () => {
+    if (isCombatLocked) return;
     if (pendingJoker) {
       onUpdateSession(confirmRegicideJoker(session));
       resetDraft();
@@ -251,35 +316,37 @@ export function RegicideCounterScreen({
     if (!canCombineRegicideCards(draftCards) || !activeBoss) return;
 
     const attackPreview = previewRegicideAttack(activeBoss, draftCards);
-    const bossId = session.activeBossId;
     const hpFrom = activeBoss.currentHp;
     const atkFrom = activeBoss.currentAttack;
-    const nextSession = confirmRegicideAttack(session, draftCards);
-    const nextBoss =
-      bossId && nextSession.activeBossId === bossId
-        ? nextSession.bosses[bossId]
-        : null;
+    const projectedBoss = applyRegicideAttackToBoss(activeBoss, draftCards);
+    if (!projectedBoss) return;
 
-    if (
-      nextBoss &&
-      (attackPreview.damage > 0 || attackPreview.attackReduction > 0)
-    ) {
+    const nextSession = confirmRegicideAttack(session, draftCards);
+
+    if (attackPreview.damage > 0 || attackPreview.attackReduction > 0) {
       setStatAnimation({
         hp: {
           from: hpFrom,
-          to: nextBoss.currentHp,
-          delta: attackPreview.damage,
+          to: projectedBoss.currentHp,
+          delta: Math.min(attackPreview.damage, hpFrom),
         },
         ...(attackPreview.attackReduction > 0
           ? {
               atk: {
                 from: atkFrom,
-                to: nextBoss.currentAttack,
-                delta: attackPreview.attackReduction,
+                to: projectedBoss.currentAttack,
+                delta: Math.min(attackPreview.attackReduction, atkFrom),
               },
             }
           : {}),
       });
+    }
+
+    if (projectedBoss.defeated) {
+      setPendingSession(nextSession);
+      setDefeatTransitionPhase('stats');
+      resetDraft();
+      return;
     }
 
     onUpdateSession(nextSession);
@@ -287,11 +354,13 @@ export function RegicideCounterScreen({
   };
 
   const handleUndo = () => {
+    if (isCombatLocked) return;
     onUpdateSession(undoRegicideAction(session));
     resetDraft();
   };
 
   const handleChangeBoss = () => {
+    if (isCombatLocked) return;
     onUpdateSession(clearRegicideActiveBoss(session));
     resetDraft();
     setMode('select_boss');
@@ -339,9 +408,6 @@ export function RegicideCounterScreen({
               <Text style={styles.topBtnText}>← Salir</Text>
             </Pressable>
           <Text style={styles.screenTitle}>Selecciona el enemigo actual</Text>
-          <Text style={styles.tierHint}>
-            {REGICIDE_TIER_LABEL[session.currentTier]}
-          </Text>
         </View>
 
         <View style={styles.bossSelectRow}>
@@ -482,15 +548,19 @@ export function RegicideCounterScreen({
         <View style={styles.topActions}>
           <Pressable
             onPress={handleUndo}
-            disabled={!session.undoSnapshot}
+            disabled={!session.undoSnapshot || isCombatLocked}
             style={[
               styles.iconBtn,
-              !session.undoSnapshot && styles.iconBtnDisabled,
+              (!session.undoSnapshot || isCombatLocked) && styles.iconBtnDisabled,
             ]}
           >
             <Text style={styles.iconBtnText}>↩</Text>
           </Pressable>
-          <Pressable onPress={handleChangeBoss} style={styles.iconBtn}>
+          <Pressable
+            onPress={handleChangeBoss}
+            disabled={isCombatLocked}
+            style={[styles.iconBtn, isCombatLocked && styles.iconBtnDisabled]}
+          >
             <Text style={styles.iconBtnText}>⇄</Text>
           </Pressable>
         </View>
@@ -499,7 +569,7 @@ export function RegicideCounterScreen({
       <View style={styles.combatRow}>
         <AnimatedStatPanel
           title="Vida"
-          value={activeBoss.currentHp}
+          value={combatStatBoss?.currentHp ?? activeBoss.currentHp}
           animation={
             statAnimation
               ? {
@@ -512,11 +582,13 @@ export function RegicideCounterScreen({
           accent={theme.danger}
         />
 
-        <BossCenterPanel boss={activeBoss} />
+        <Animated.View style={[styles.centerPanelOuter, { opacity: bossOpacity }]}>
+          <BossCenterPanel boss={activeBoss} />
+        </Animated.View>
 
         <AnimatedStatPanel
           title="Ataque"
-          value={activeBoss.currentAttack}
+          value={combatStatBoss?.currentAttack ?? activeBoss.currentAttack}
           animation={
             statAnimation?.atk
               ? {
@@ -530,15 +602,17 @@ export function RegicideCounterScreen({
         />
       </View>
 
-      <View style={styles.suitRow}>
+      <View style={[styles.suitRow, isCombatLocked && styles.suitRowDisabled]}>
         {REGICIDE_SUITS.map((suit) => (
           <Pressable
             key={suit}
             onPress={() => handleSelectSuit(suit)}
+            disabled={isCombatLocked}
             style={({ pressed }) => [
               styles.suitCardBtn,
               { borderColor: SUIT_COLORS[suit] },
-              pressed && styles.suitCardBtnPressed,
+              isCombatLocked && styles.iconBtnDisabled,
+              pressed && !isCombatLocked && styles.suitCardBtnPressed,
             ]}
           >
             <Text style={[styles.suitCardEmoji, { color: SUIT_COLORS[suit] }]}>
@@ -548,12 +622,13 @@ export function RegicideCounterScreen({
         ))}
         <Pressable
           onPress={handleSelectJoker}
-          disabled={activeBoss.immunityRemoved}
+          disabled={activeBoss.immunityRemoved || isCombatLocked}
           style={({ pressed }) => [
             styles.suitCardBtn,
             styles.jokerCardBtn,
-            activeBoss.immunityRemoved && styles.iconBtnDisabled,
-            pressed && styles.suitCardBtnPressed,
+            (activeBoss.immunityRemoved || isCombatLocked) &&
+              styles.iconBtnDisabled,
+            pressed && !isCombatLocked && styles.suitCardBtnPressed,
           ]}
         >
           <Text style={styles.suitCardEmoji}>🃏</Text>
@@ -600,15 +675,28 @@ function AnimatedStatPanel({
   const anim = useRef(new Animated.Value(value)).current;
   const [display, setDisplay] = useState(value);
   const [showDelta, setShowDelta] = useState(false);
+  const activeAnimationKeyRef = useRef<string | null>(null);
+
+  const animationKey = animation
+    ? `${animation.from}:${animation.to}:${animation.delta}`
+    : null;
 
   useEffect(() => {
     if (!animation) {
+      activeAnimationKeyRef.current = null;
       anim.setValue(value);
       setDisplay(value);
       setShowDelta(false);
       return;
     }
 
+    if (activeAnimationKeyRef.current === animationKey) {
+      return;
+    }
+
+    activeAnimationKeyRef.current = animationKey;
+
+    anim.stopAnimation();
     anim.setValue(animation.from);
     setDisplay(animation.from);
     setShowDelta(true);
@@ -617,11 +705,13 @@ function AnimatedStatPanel({
       setDisplay(Math.max(0, Math.round(v)));
     });
 
-    Animated.timing(anim, {
+    const timing = Animated.timing(anim, {
       toValue: animation.to,
       duration: STAT_ANIM_DURATION_MS,
       useNativeDriver: false,
-    }).start(({ finished }) => {
+    });
+
+    timing.start(({ finished }) => {
       if (finished) {
         setDisplay(animation.to);
         setTimeout(() => setShowDelta(false), 350);
@@ -629,9 +719,10 @@ function AnimatedStatPanel({
     });
 
     return () => {
+      timing.stop();
       anim.removeListener(listener);
     };
-  }, [anim, animation, value]);
+  }, [anim, animationKey, value]);
 
   return (
     <View style={styles.statPanel}>
@@ -963,6 +1054,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     justifyContent: 'center',
     alignItems: 'flex-end',
+  },
+  suitRowDisabled: {
+    opacity: 0.55,
   },
   suitCardBtn: {
     flex: 1,
