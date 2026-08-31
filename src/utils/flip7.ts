@@ -7,7 +7,10 @@ import {
   Player,
 } from '../types';
 import { createId } from './game';
+import { emptyFlip7RoundState, normalizeFlip7Session } from './flip7Turn';
 import { emptyRoundBreakdown } from './rounds';
+
+export { normalizeFlip7Session } from './flip7Turn';
 
 export const FLIP7_MIN_PLAYERS = 3;
 export const FLIP7_WIN_AT = 200;
@@ -37,6 +40,7 @@ export function emptyFlip7RoundEntry(): Flip7RoundEntry {
     status: 'active',
     numbers: [],
     modifiers: [],
+    hasSecondChance: false,
   };
 }
 
@@ -53,6 +57,8 @@ export function createFlip7Session(players: Player[]): Flip7Session {
     players,
     activeRoundIndex: 0,
     rounds: [emptyRoundByPlayer(players)],
+    roundStates: [emptyFlip7RoundState()],
+    undoStack: [],
   };
 }
 
@@ -102,7 +108,7 @@ export function canFlip7TakeNumber(
   if (entry.status !== 'active') return false;
   if (entry.numbers.includes(number)) return true;
   if (entry.numbers.length >= FLIP7_MAX_NUMBERS) return false;
-  return getFlip7NumberRemaining(roundByPlayer, number, playerId) > 0;
+  return true;
 }
 
 export function canFlip7TakeModifier(
@@ -112,10 +118,8 @@ export function canFlip7TakeModifier(
 ): boolean {
   const entry = roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
   if (entry.status !== 'active') return false;
-  if (entry.modifiers.includes(modifier)) return true;
-  const used =
-    getFlip7RoundDeckUsage(roundByPlayer, playerId).modifiers[modifier] ?? 0;
-  return used < 1;
+  if (entry.modifiers.includes(modifier)) return false;
+  return true;
 }
 
 export function hasFlip7Bonus(entry: Flip7RoundEntry): boolean {
@@ -136,7 +140,16 @@ export function calculateFlip7EntryPoints(entry: Flip7RoundEntry): number {
 
 export function calculateFlip7RoundScore(entry: Flip7RoundEntry): number {
   if (entry.status === 'eliminated') return 0;
-  if (entry.status !== 'stood') return 0;
+  if (entry.status === 'stood' || entry.status === 'frozen') {
+    return calculateFlip7EntryPoints(entry);
+  }
+  return 0;
+}
+
+/** Puntos en vivo para clasificación (incluye ronda abierta y cartas en juego). */
+export function getFlip7LiveEntryScore(entry: Flip7RoundEntry): number {
+  if (entry.closedScore !== undefined) return entry.closedScore;
+  if (entry.status === 'eliminated') return 0;
   return calculateFlip7EntryPoints(entry);
 }
 
@@ -148,6 +161,36 @@ export function getFlip7DisplayScore(entry: Flip7RoundEntry): number {
 
 export function isFlip7Eliminated(entry: Flip7RoundEntry): boolean {
   return entry.status === 'eliminated';
+}
+
+export function isFlip7Frozen(entry: Flip7RoundEntry): boolean {
+  return entry.status === 'frozen';
+}
+
+export function getFlip7StatusLabel(status: Flip7PlayerRoundStatus): string {
+  switch (status) {
+    case 'active':
+      return 'Activo';
+    case 'stood':
+      return 'Plantado';
+    case 'frozen':
+      return 'Congelado';
+    case 'eliminated':
+      return 'Eliminado';
+    default:
+      return 'Activo';
+  }
+}
+
+export function getFlip7EntryStripStatus(
+  entry: Flip7RoundEntry,
+  isTurn: boolean,
+): string {
+  if (entry.status === 'active' && isTurn) return 'Turno';
+  if (isFlip7Frozen(entry)) return 'Congelado';
+  if (entry.status === 'stood') return 'Plantado';
+  if (isFlip7Eliminated(entry)) return 'Eliminado';
+  return 'Activo';
 }
 
 export function isFlip7RoundFinalized(entry: Flip7RoundEntry): boolean {
@@ -169,6 +212,10 @@ export function formatFlip7RoundScoreBreakdown(entry: Flip7RoundEntry): string {
     return preview > 0 ? `En juego · ${preview} pts posibles` : 'En juego';
   }
   if (entry.status === 'eliminated') return 'Eliminado · 0 pts';
+  if (entry.status === 'frozen') {
+    const pts = calculateFlip7EntryPoints(entry);
+    return pts > 0 ? `Congelado · ${pts} pts` : 'Congelado · 0 pts';
+  }
 
   const numberSum = entry.numbers.reduce((sum, n) => sum + n, 0);
   const hasX2 = entry.modifiers.includes('x2');
@@ -206,12 +253,15 @@ export function getFlip7PlayerTotal(
   session: Flip7Session,
   playerId: string,
   upToRoundExclusive: number = session.rounds.length,
+  live = false,
 ): number {
   let total = 0;
   const limit = Math.max(0, Math.min(upToRoundExclusive, session.rounds.length));
   for (let i = 0; i < limit; i++) {
     const entry = session.rounds[i][playerId] ?? emptyFlip7RoundEntry();
-    total += getFlip7RoundEntryScore(entry);
+    total += live
+      ? getFlip7LiveEntryScore(entry)
+      : getFlip7RoundEntryScore(entry);
   }
   return total;
 }
@@ -226,11 +276,12 @@ export function getFlip7PlayerTotalFromRounds(
 export function sortPlayersByFlip7Total(
   session: Flip7Session,
   upToRoundExclusive: number = session.rounds.length,
+  live = false,
 ): { player: Player; total: number }[] {
   return session.players
     .map((player) => ({
       player,
-      total: getFlip7PlayerTotal(session, player.id, upToRoundExclusive),
+      total: getFlip7PlayerTotal(session, player.id, upToRoundExclusive, live),
     }))
     .sort((a, b) => b.total - a.total);
 }
@@ -238,10 +289,11 @@ export function sortPlayersByFlip7Total(
 export function hasFlip7GameOver(
   session: Flip7Session,
   upToRoundExclusive: number = session.rounds.length,
+  live = false,
 ): boolean {
   return session.players.some(
     (player) =>
-      getFlip7PlayerTotal(session, player.id, upToRoundExclusive) >=
+      getFlip7PlayerTotal(session, player.id, upToRoundExclusive, live) >=
       FLIP7_WIN_AT,
   );
 }
@@ -249,8 +301,9 @@ export function hasFlip7GameOver(
 export function getFlip7GameOverWinners(
   session: Flip7Session,
   upToRoundExclusive: number = session.rounds.length,
+  live = false,
 ): Player[] {
-  const ranked = sortPlayersByFlip7Total(session, upToRoundExclusive);
+  const ranked = sortPlayersByFlip7Total(session, upToRoundExclusive, live);
   if (ranked.length === 0) return [];
   const topScore = ranked[0].total;
   if (topScore < FLIP7_WIN_AT) return [];
@@ -358,15 +411,21 @@ export function setFlip7PlayerStatus(
 }
 
 export function appendFlip7Round(session: Flip7Session): Flip7Session {
-  const rounds = [...session.rounds];
-  const closingIndex = session.activeRoundIndex;
+  const normalized = normalizeFlip7Session(session);
+  const rounds = [...normalized.rounds];
+  const roundStates = [...normalized.roundStates];
+  const closingIndex = normalized.activeRoundIndex;
   rounds[closingIndex] = closeFlip7RoundByPlayer(rounds[closingIndex] ?? {});
-  rounds.push(emptyRoundByPlayer(session.players));
+  roundStates[closingIndex] = roundStates[closingIndex] ?? emptyFlip7RoundState();
+  rounds.push(emptyRoundByPlayer(normalized.players));
+  roundStates.push(emptyFlip7RoundState());
 
   return {
-    ...session,
+    ...normalized,
     rounds,
+    roundStates,
     activeRoundIndex: rounds.length - 1,
+    undoStack: [],
   };
 }
 

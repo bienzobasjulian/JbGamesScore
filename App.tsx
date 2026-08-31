@@ -653,9 +653,13 @@ function AppShell() {
             onFinishMatch={app.finishFlip7Session}
             onGoToRound={app.goFlip7Round}
             onAddRound={app.addFlip7Round}
-            onToggleNumber={app.toggleFlip7RoundNumber}
-            onToggleModifier={app.toggleFlip7RoundModifier}
+            onRegisterNumber={app.registerFlip7RoundNumber}
+            onRegisterModifier={app.registerFlip7RoundModifier}
             onSetPlayerStatus={app.setFlip7RoundPlayerStatus}
+            onApplyFreeze={app.applyFlip7RoundFreeze}
+            onApplyFlipThree={app.applyFlip7RoundFlipThree}
+            onDrawSecondChance={app.drawFlip7RoundSecondChance}
+            onUndo={app.undoFlip7RoundAction}
           />
         );
       }

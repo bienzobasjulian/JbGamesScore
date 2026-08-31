@@ -3,8 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { Flip7ActivePlayerPanel } from '../components/Flip7ActivePlayerPanel';
 import { Flip7CelebrationModal } from '../components/Flip7CelebrationModal';
-import { Flip7PlayerRoundPanel } from '../components/Flip7PlayerRoundPanel';
+import { Flip7PickPlayerModal } from '../components/Flip7PickPlayerModal';
+import { Flip7PlayerStrip } from '../components/Flip7PlayerStrip';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
@@ -12,7 +14,6 @@ import { theme } from '../constants';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { Flip7Modifier, Flip7PlayerRoundStatus, Flip7Session, Player } from '../types';
 import {
-  calculateFlip7RoundScore,
   emptyFlip7RoundEntry,
   FLIP7_WIN_AT,
   getFlip7GameOverWinners,
@@ -23,6 +24,17 @@ import {
   isFlip7RoundComplete,
   sortPlayersByFlip7Total,
 } from '../utils/flip7';
+import {
+  getFlip7ActiveTargetCandidates,
+  canFlip7Undo,
+  getFlip7Dealer,
+  getFlip7PlayersInTurnOrder,
+  getFlip7RoundState,
+  getFlip7TurnPlayer,
+  resolveFlip7TargetPlayerId,
+} from '../utils/flip7Turn';
+
+type PickAction = 'freeze' | 'flipThree' | 'secondChance';
 
 type Props = {
   session: Flip7Session;
@@ -31,8 +43,12 @@ type Props = {
   onFinishMatch: () => void;
   onGoToRound: (roundIndex: number) => void;
   onAddRound: () => void;
-  onToggleNumber: (roundIndex: number, playerId: string, number: number) => void;
-  onToggleModifier: (
+  onRegisterNumber: (
+    roundIndex: number,
+    playerId: string,
+    number: number,
+  ) => { flip7Achieved: boolean } | null;
+  onRegisterModifier: (
     roundIndex: number,
     playerId: string,
     modifier: Flip7Modifier,
@@ -42,6 +58,22 @@ type Props = {
     playerId: string,
     status: Flip7PlayerRoundStatus,
   ) => void;
+  onApplyFreeze: (
+    roundIndex: number,
+    sourcePlayerId: string,
+    targetPlayerId: string,
+  ) => void;
+  onApplyFlipThree: (
+    roundIndex: number,
+    sourcePlayerId: string,
+    targetPlayerId: string,
+  ) => void;
+  onDrawSecondChance: (
+    roundIndex: number,
+    playerId: string,
+    targetPlayerId?: string,
+  ) => void;
+  onUndo: () => void;
 };
 
 export function Flip7CounterScreen({
@@ -51,17 +83,20 @@ export function Flip7CounterScreen({
   onFinishMatch,
   onGoToRound,
   onAddRound,
-  onToggleNumber,
-  onToggleModifier,
+  onRegisterNumber,
+  onRegisterModifier,
   onSetPlayerStatus,
+  onApplyFreeze,
+  onApplyFlipThree,
+  onDrawSecondChance,
+  onUndo,
 }: Props) {
-  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [finishModalVisible, setFinishModalVisible] = useState(false);
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
   const [rankingModalVisible, setRankingModalVisible] = useState(false);
   const [flip7ModalPlayer, setFlip7ModalPlayer] = useState<Player | null>(null);
+  const [pickAction, setPickAction] = useState<PickAction | null>(null);
+  const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const celebratedFlip7Ref = useRef<Set<string>>(new Set());
   const autoAdvancedRoundRef = useRef<string | null>(null);
   const {
@@ -74,7 +109,28 @@ export function Flip7CounterScreen({
   const roundNumber = getFlip7RoundNumber(roundIndex);
   const isCurrentRound = roundIndex === session.rounds.length - 1;
   const roundByPlayer = session.rounds[roundIndex] ?? {};
+  const roundState = getFlip7RoundState(session, roundIndex);
+  const turnOrder = useMemo(
+    () => getFlip7PlayersInTurnOrder(session.players, roundIndex),
+    [session.players, roundIndex],
+  );
+  const dealer = getFlip7Dealer(session.players, roundIndex);
+  const turnPlayer = getFlip7TurnPlayer(session, roundIndex);
+  const turnPlayerId = turnPlayer?.id ?? null;
   const roundComplete = isFlip7RoundComplete(roundByPlayer, session.players);
+  const canUndo = canFlip7Undo(session);
+
+  const focusedPlayer =
+    session.players.find((p) => p.id === focusedPlayerId) ??
+    turnPlayer ??
+    session.players[0] ??
+    null;
+
+  useEffect(() => {
+    if (turnPlayerId) {
+      setFocusedPlayerId(turnPlayerId);
+    }
+  }, [turnPlayerId, roundState.turnOrderIndex, roundIndex]);
 
   const completedRounds = useMemo(
     () =>
@@ -91,13 +147,13 @@ export function Flip7CounterScreen({
   );
 
   const cumulativeRanking = useMemo(
-    () => sortPlayersByFlip7Total(session, session.rounds.length),
+    () => sortPlayersByFlip7Total(session, session.rounds.length, true),
     [session],
   );
 
-  const gameOver = hasFlip7GameOver(session, session.rounds.length);
+  const gameOver = hasFlip7GameOver(session, session.rounds.length, true);
   const winners = useMemo(
-    () => getFlip7GameOverWinners(session, session.rounds.length),
+    () => getFlip7GameOverWinners(session, session.rounds.length, true),
     [session],
   );
 
@@ -144,16 +200,148 @@ export function Flip7CounterScreen({
     isCurrentRound,
   ]);
 
-  const togglePlayer = (playerId: string) => {
-    setExpandedPlayers((prev) => {
-      const next = new Set(prev);
-      if (next.has(playerId)) {
-        next.delete(playerId);
-      } else {
-        next.add(playerId);
+  const pickCandidates = useMemo(() => {
+    if (!pickAction || !turnPlayerId) return [];
+
+    if (pickAction === 'secondChance') {
+      const entry = roundByPlayer[turnPlayerId] ?? emptyFlip7RoundEntry();
+      if (!entry.hasSecondChance) return [];
+      const candidates = getFlip7ActiveTargetCandidates(
+        turnOrder,
+        roundByPlayer,
+        turnPlayerId,
+        (targetEntry) => !targetEntry.hasSecondChance,
+      );
+      const self = session.players.find((p) => p.id === turnPlayerId);
+      if (self && !candidates.some((player) => player.id === self.id)) {
+        return [...candidates, self];
       }
-      return next;
-    });
+      return candidates;
+    }
+
+    const others = getFlip7ActiveTargetCandidates(
+      turnOrder,
+      roundByPlayer,
+      turnPlayerId,
+    );
+    const self = session.players.find((p) => p.id === turnPlayerId);
+    const selfEntry = roundByPlayer[turnPlayerId] ?? emptyFlip7RoundEntry();
+    if (
+      self &&
+      selfEntry.status === 'active' &&
+      !others.some((player) => player.id === self.id)
+    ) {
+      return [...others, self];
+    }
+    return others;
+  }, [pickAction, turnOrder, roundByPlayer, turnPlayerId, session.players]);
+
+  const buildActionCandidates = () => {
+    if (!turnPlayerId) return [];
+    const others = getFlip7ActiveTargetCandidates(
+      turnOrder,
+      roundByPlayer,
+      turnPlayerId,
+    );
+    const self = session.players.find((p) => p.id === turnPlayerId);
+    const selfEntry = roundByPlayer[turnPlayerId] ?? emptyFlip7RoundEntry();
+    if (
+      self &&
+      selfEntry.status === 'active' &&
+      !others.some((player) => player.id === self.id)
+    ) {
+      return [...others, self];
+    }
+    return others;
+  };
+
+  const navigatePlayer = (delta: number) => {
+    if (turnOrder.length === 0 || !focusedPlayer) return;
+    const currentIndex = turnOrder.findIndex((p) => p.id === focusedPlayer.id);
+    const nextIndex =
+      (currentIndex + delta + turnOrder.length) % turnOrder.length;
+    setFocusedPlayerId(turnOrder[nextIndex].id);
+  };
+
+  const handleSelectStripPlayer = (playerId: string) => {
+    setFocusedPlayerId(playerId);
+  };
+
+  const openPickOrAuto = (action: PickAction) => {
+    if (!turnPlayerId) return;
+
+    if (action === 'secondChance') {
+      const entry = roundByPlayer[turnPlayerId] ?? emptyFlip7RoundEntry();
+      if (!entry.hasSecondChance) {
+        onDrawSecondChance(roundIndex, turnPlayerId);
+        return;
+      }
+      const candidates = getFlip7ActiveTargetCandidates(
+        turnOrder,
+        roundByPlayer,
+        turnPlayerId,
+        (targetEntry) => !targetEntry.hasSecondChance,
+      );
+      const self = session.players.find((p) => p.id === turnPlayerId);
+      const withSelf =
+        self && !candidates.some((player) => player.id === self.id)
+          ? [...candidates, self]
+          : candidates;
+      const targetId = resolveFlip7TargetPlayerId(withSelf, turnPlayerId);
+      if (withSelf.length <= 1) {
+        onDrawSecondChance(roundIndex, turnPlayerId, targetId);
+        return;
+      }
+      setPickAction(action);
+      return;
+    }
+
+    const candidates = buildActionCandidates();
+    const targetId = resolveFlip7TargetPlayerId(candidates, turnPlayerId);
+    if (candidates.length === 0) {
+      if (action === 'freeze') {
+        onApplyFreeze(roundIndex, turnPlayerId, turnPlayerId);
+      } else {
+        onApplyFlipThree(roundIndex, turnPlayerId, turnPlayerId);
+      }
+      return;
+    }
+    if (candidates.length === 1) {
+      if (action === 'freeze') {
+        onApplyFreeze(roundIndex, turnPlayerId, targetId);
+      } else {
+        onApplyFlipThree(roundIndex, turnPlayerId, targetId);
+      }
+      return;
+    }
+    setPickAction(action);
+  };
+
+  const handlePickPlayer = (targetPlayerId: string) => {
+    if (!pickAction || !turnPlayerId) return;
+    if (pickAction === 'freeze') {
+      onApplyFreeze(roundIndex, turnPlayerId, targetPlayerId);
+    } else if (pickAction === 'flipThree') {
+      onApplyFlipThree(roundIndex, turnPlayerId, targetPlayerId);
+    } else {
+      onDrawSecondChance(roundIndex, turnPlayerId, targetPlayerId);
+    }
+    setPickAction(null);
+  };
+
+  const handleRegisterNumber = (number: number) => {
+    if (!focusedPlayer || !turnPlayerId) return;
+    if (focusedPlayer.id !== turnPlayerId) return;
+    const result = onRegisterNumber(roundIndex, focusedPlayer.id, number);
+    if (result?.flip7Achieved) {
+      setFlip7ModalPlayer(focusedPlayer);
+    }
+  };
+
+  const handleUndo = () => {
+    celebratedFlip7Ref.current.clear();
+    setFlip7ModalPlayer(null);
+    onUndo();
   };
 
   const handleSaveFinished = () => {
@@ -172,6 +360,13 @@ export function Flip7CounterScreen({
     onAddRound();
   };
 
+  const pickTitle =
+    pickAction === 'freeze'
+      ? '¿A quién congelas?'
+      : pickAction === 'flipThree'
+        ? '¿Quién roba 3?'
+        : '¿A quién das Segunda oportunidad?';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -183,13 +378,27 @@ export function Flip7CounterScreen({
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Flip 7</Text>
-        <Pressable
-          onPress={() => setActionsMenuVisible(true)}
-          hitSlop={12}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-        >
-          <Text style={styles.menuIcon}>⋮</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={handleUndo}
+            disabled={!isCurrentRound || !canUndo}
+            hitSlop={12}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              (!isCurrentRound || !canUndo) && styles.iconBtnDisabled,
+              pressed && styles.iconBtnPressed,
+            ]}
+          >
+            <Text style={styles.undoIcon}>↩</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActionsMenuVisible(true)}
+            hitSlop={12}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -204,8 +413,14 @@ export function Flip7CounterScreen({
             {!isCurrentRound ? ' · consulta' : ''}
           </Text>
           <Text style={styles.roundSub}>
-            Primer jugador en llegar a {FLIP7_WIN_AT} puntos gana. La ronda
-            termina con Flip 7 o cuando todos se planten o queden eliminados.
+            Repartidor: {dealer?.name ?? '—'}
+            {isCurrentRound && turnPlayer
+              ? ` · Turno: ${turnPlayer.name}`
+              : ''}
+          </Text>
+          <Text style={styles.roundSub}>
+            Primer jugador en llegar a {FLIP7_WIN_AT} puntos gana. Al registrar
+            carta pasa el turno (salvo roba 3). ↩ deshace paso a paso.
           </Text>
         </View>
 
@@ -247,32 +462,55 @@ export function Flip7CounterScreen({
           <RoundHistory players={session.players} rounds={completedRounds} />
         ) : null}
 
-        <Text style={styles.sectionHint}>
-          «Plantarse/Bloqueado» conserva los puntos. «Eliminado» si repetiste un
-          número (0 pts). Cierra la ronda con + cuando todos hayan terminado, o
-          con Flip 7.
-        </Text>
+        <Flip7PlayerStrip
+          players={turnOrder}
+          roundByPlayer={roundByPlayer}
+          turnPlayerId={isCurrentRound ? turnPlayerId : null}
+          focusedPlayerId={focusedPlayer?.id ?? ''}
+          pendingDraws={roundState.pendingDraws}
+          onSelectPlayer={handleSelectStripPlayer}
+        />
 
-        {session.players.map((player) => (
-          <Flip7PlayerRoundPanel
-            key={player.id}
-            player={player}
-            entry={roundByPlayer[player.id] ?? emptyFlip7RoundEntry()}
+        <View style={styles.carouselNav}>
+          <Pressable
+            onPress={() => navigatePlayer(-1)}
+            style={({ pressed }) => [styles.navBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.navBtnText}>‹</Text>
+          </Pressable>
+          <Text style={styles.carouselLabel} numberOfLines={1}>
+            {focusedPlayer?.name ?? '—'}
+          </Text>
+          <Pressable
+            onPress={() => navigatePlayer(1)}
+            style={({ pressed }) => [styles.navBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.navBtnText}>›</Text>
+          </Pressable>
+        </View>
+
+        {focusedPlayer ? (
+          <Flip7ActivePlayerPanel
+            player={focusedPlayer}
+            entry={roundByPlayer[focusedPlayer.id] ?? emptyFlip7RoundEntry()}
             roundByPlayer={roundByPlayer}
             readOnly={!isCurrentRound}
-            expanded={expandedPlayers.has(player.id)}
-            onToggle={() => togglePlayer(player.id)}
-            onToggleNumber={(number) =>
-              onToggleNumber(roundIndex, player.id, number)
+            isTurnPlayer={
+              isCurrentRound && focusedPlayer.id === turnPlayerId
             }
-            onToggleModifier={(modifier) =>
-              onToggleModifier(roundIndex, player.id, modifier)
+            pendingDraws={roundState.pendingDraws[focusedPlayer.id] ?? 0}
+            onAddNumber={handleRegisterNumber}
+            onAddModifier={(modifier) =>
+              onRegisterModifier(roundIndex, focusedPlayer.id, modifier)
             }
             onSetStatus={(status) =>
-              onSetPlayerStatus(roundIndex, player.id, status)
+              onSetPlayerStatus(roundIndex, focusedPlayer.id, status)
             }
+            onFreeze={() => openPickOrAuto('freeze')}
+            onFlipThree={() => openPickOrAuto('flipThree')}
+            onSecondChance={() => openPickOrAuto('secondChance')}
           />
-        ))}
+        ) : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -286,6 +524,16 @@ export function Flip7CounterScreen({
           onAddRound={handleAddRound}
         />
       </View>
+
+      <Flip7PickPlayerModal
+        visible={pickAction != null}
+        title={pickTitle}
+        message="Si no hay otro jugador válido, se aplica a ti."
+        players={pickCandidates}
+        roundByPlayer={roundByPlayer}
+        onSelect={handlePickPlayer}
+        onCancel={() => setPickAction(null)}
+      />
 
       <ExitMatchModal
         visible={exitModalVisible}
@@ -377,6 +625,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: theme.text,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconBtnDisabled: {
+    opacity: 0.35,
+  },
+  undoIcon: {
+    fontSize: 22,
+    color: theme.text,
+    fontWeight: '700',
+  },
   scroll: {
     flex: 1,
   },
@@ -447,10 +708,33 @@ const styles = StyleSheet.create({
   rankingScoreWin: {
     color: theme.success,
   },
-  sectionHint: {
-    fontSize: 13,
-    color: theme.textMuted,
-    lineHeight: 18,
+  carouselNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBtnText: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: theme.text,
+    lineHeight: 32,
+  },
+  carouselLabel: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.text,
   },
   gameOverBanner: {
     backgroundColor: theme.success + '22',

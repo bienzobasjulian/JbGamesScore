@@ -2,13 +2,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { Flip7Modifier, Flip7PlayerRoundStatus, Flip7RoundEntry, Player } from '../types';
 import {
-  canFlip7TakeModifier,
   FLIP7_MAX_NUMBERS,
   FLIP7_MODIFIERS,
   FLIP7_NUMBERS,
   formatFlip7RoundScoreBreakdown,
   getFlip7DisplayScore,
-  getFlip7NumberRemaining,
   hasFlip7Bonus,
   isFlip7Eliminated,
 } from '../utils/flip7';
@@ -31,6 +29,7 @@ function getFlip7StatusLabel(entry: Flip7RoundEntry, expanded: boolean): string 
     return `${entry.numbers.length}/${FLIP7_MAX_NUMBERS} números · ${expanded ? 'Ocultar' : 'Registrar cartas'}`;
   }
   if (isFlip7Eliminated(entry)) return 'Eliminado';
+  if (entry.status === 'frozen') return 'Congelado';
   return 'Plantado';
 }
 
@@ -48,7 +47,6 @@ export function Flip7PlayerRoundPanel({
   const roundScore = getFlip7DisplayScore(entry);
   const isLocked = readOnly || entry.status !== 'active';
   const flip7Achieved = hasFlip7Bonus(entry);
-  const atNumberLimit = entry.numbers.length >= FLIP7_MAX_NUMBERS;
   const eliminated = isFlip7Eliminated(entry);
 
   return (
@@ -111,23 +109,15 @@ export function Flip7PlayerRoundPanel({
             <>
               <Text style={styles.sectionLabel}>Números (0–12)</Text>
               <Text style={styles.sectionHint}>
-                Máximo {FLIP7_MAX_NUMBERS} números. «Plantarse/Bloqueado»
-                conserva tus puntos. «Eliminado» si repetiste un número.
+                Resaltadas: cartas de este jugador.
               </Text>
               <View style={styles.chipGrid}>
                 {FLIP7_NUMBERS.map((number) => {
                   const selected = entry.numbers.includes(number);
-                  const remaining = getFlip7NumberRemaining(
-                    roundByPlayer,
-                    number,
-                    player.id,
-                  );
-                  const disabled =
-                    !selected && (remaining <= 0 || atNumberLimit);
                   return (
                     <Pressable
                       key={number}
-                      disabled={disabled}
+                      disabled={isLocked}
                       onPress={() => onToggleNumber(number)}
                       style={({ pressed }) => [
                         styles.chip,
@@ -135,15 +125,13 @@ export function Flip7PlayerRoundPanel({
                           backgroundColor: player.color + '33',
                           borderColor: player.color,
                         },
-                        disabled && styles.chipDisabled,
-                        pressed && !disabled && styles.chipPressed,
+                        pressed && !isLocked && styles.chipPressed,
                       ]}
                     >
                       <Text
                         style={[
                           styles.chipText,
                           selected && styles.chipTextSelected,
-                          disabled && styles.chipTextDisabled,
                         ]}
                       >
                         {number}
@@ -157,16 +145,10 @@ export function Flip7PlayerRoundPanel({
               <View style={styles.chipGrid}>
                 {FLIP7_MODIFIERS.map((modifier) => {
                   const selected = entry.modifiers.includes(modifier);
-                  const canTake = canFlip7TakeModifier(
-                    roundByPlayer,
-                    player.id,
-                    modifier,
-                  );
-                  const disabled = !selected && !canTake;
                   return (
                     <Pressable
                       key={modifier}
-                      disabled={disabled}
+                      disabled={isLocked}
                       onPress={() => onToggleModifier(modifier)}
                       style={({ pressed }) => [
                         styles.chip,
@@ -175,15 +157,13 @@ export function Flip7PlayerRoundPanel({
                           backgroundColor: theme.accent + '33',
                           borderColor: theme.accent,
                         },
-                        disabled && styles.chipDisabled,
-                        pressed && !disabled && styles.chipPressed,
+                        pressed && !isLocked && styles.chipPressed,
                       ]}
                     >
                       <Text
                         style={[
                           styles.chipText,
                           selected && styles.chipTextSelected,
-                          disabled && styles.chipTextDisabled,
                         ]}
                       >
                         {modifier}

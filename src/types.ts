@@ -170,20 +170,34 @@ export type PiliPiliSession = {
 
 export type Flip7Modifier = '+2' | '+4' | '+6' | '+8' | '+10' | 'x2';
 
-export type Flip7PlayerRoundStatus = 'active' | 'stood' | 'eliminated';
+export type Flip7PlayerRoundStatus = 'active' | 'stood' | 'frozen' | 'eliminated';
 
 export type Flip7RoundEntry = {
   status: Flip7PlayerRoundStatus;
   numbers: number[];
   modifiers: Flip7Modifier[];
+  hasSecondChance?: boolean;
   /** Puntos fijados al cerrar la ronda. */
   closedScore?: number;
+};
+
+export type Flip7RoundState = {
+  /** Índice en el orden de turno de la ronda (después del repartidor). */
+  turnOrderIndex: number;
+  pendingDraws: Record<string, number>;
+  /** Tras roba 3, el turno continúa después de este jugador. */
+  flipThreeSourcePlayerId: string | null;
 };
 
 export type Flip7Session = {
   players: Player[];
   activeRoundIndex: number;
   rounds: Record<string, Flip7RoundEntry>[];
+  roundStates: Flip7RoundState[];
+  /** Historial de estados para deshacer paso a paso. */
+  undoStack?: Flip7Session[];
+  /** @deprecated Solo migración desde partidas guardadas. */
+  undoSnapshot?: Flip7Session | null;
 };
 
 export type AventurerosTrenPhase = 'construccion' | 'destinos';
