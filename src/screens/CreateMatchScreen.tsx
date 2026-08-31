@@ -89,6 +89,7 @@ type Props = {
   ) => void;
   onStartPelusas: (players: Player[], sessionId?: string | null) => void;
   onStartSkullKing: (players: Player[], sessionId?: string | null) => void;
+  onStartPiliPili: (players: Player[], sessionId?: string | null) => void;
   onStartAventurerosTren: (
     players: Player[],
     submode: AventurerosTrenSubmode,
@@ -111,6 +112,7 @@ export function CreateMatchScreen({
   onStartStandard,
   onStartPelusas,
   onStartSkullKing,
+  onStartPiliPili,
   onStartAventurerosTren,
   onStartRegicide,
   onCreateNewPlayer,
@@ -145,6 +147,7 @@ export function CreateMatchScreen({
 
   const isPelusas = gameType === 'pelusas';
   const isSkullKing = gameType === 'skull_king';
+  const isPiliPili = gameType === 'pili_pili';
   const isAventurerosTren = gameType === 'aventureros_tren';
   const isRegicide = gameType === 'regicide';
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
@@ -152,7 +155,9 @@ export function CreateMatchScreen({
 
   const canStart = isRegicide
     ? true
-    : players.length <= playerLimits.max;
+    : isPiliPili
+      ? players.length >= playerLimits.min && players.length <= playerLimits.max
+      : players.length <= playerLimits.max;
   const soloHint =
     'Si no eliges a nadie, se usará un jugador «Yo» solo para este registro.';
   const startLabel = isPelusas
@@ -252,6 +257,8 @@ export function CreateMatchScreen({
       onStartPelusas(roster, sessionId ?? null);
     } else if (isSkullKing) {
       onStartSkullKing(roster, sessionId ?? null);
+    } else if (isPiliPili) {
+      onStartPiliPili(roster, sessionId ?? null);
     } else if (isAventurerosTren) {
       onStartAventurerosTren(roster, aventurerosSubmode, sessionId ?? null);
     } else {
@@ -304,6 +311,13 @@ export function CreateMatchScreen({
         <Text style={styles.specialHint}>
           Partida a 10 rondas de bazas. Elige entre {playerLimits.min} y{' '}
           {playerLimits.max} jugadores.
+        </Text>
+      ) : isPiliPili ? (
+        <Text style={styles.specialHint}>
+          Apuestas de bazas con Pilis de penalización. La partida termina cuando
+          alguien llega a 7 Pilis; gana quien tenga menos. Elige entre{' '}
+          {playerLimits.min} y {playerLimits.max} jugadores. Ordena la lista con
+          el primer jugador como repartidor de la ronda 1.
         </Text>
       ) : isRegicide ? (
         <View style={styles.regicideHintBox}>

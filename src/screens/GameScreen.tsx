@@ -41,6 +41,7 @@ type Props = {
   isMatchFinished?: boolean;
   editingAfterFinish?: boolean;
   isDedicatedGameMatch?: boolean;
+  floorRoundTotalsAtZero?: boolean;
   isWinnerOnlyMatch?: boolean;
   onAdjust: (playerId: string, delta: number) => void;
   onSetScore: (playerId: string, value: number) => void;
@@ -64,6 +65,7 @@ export function GameScreen({
   isMatchFinished = false,
   editingAfterFinish = false,
   isDedicatedGameMatch = false,
+  floorRoundTotalsAtZero = false,
   isWinnerOnlyMatch = false,
   onAdjust,
   onSetScore,
@@ -287,6 +289,7 @@ export function GameScreen({
               ranking={ranking}
               players={state.players}
               rounds={state.rounds}
+              floorTotalAtZero={floorRoundTotalsAtZero}
             />
           )
         ) : (
@@ -303,6 +306,7 @@ export function GameScreen({
                   <RoundHistory
                     players={state.players}
                     rounds={pastRounds}
+                    floorTotalAtZero={floorRoundTotalsAtZero}
                   />
                 </View>
               ) : null

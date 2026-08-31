@@ -8,10 +8,12 @@ import {
 } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
+import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
 import { PelusasPlayerPanel } from '../components/PelusasPlayerPanel';
 import { theme } from '../constants';
+import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { PelusasSession } from '../types';
 import {
   emptyPelusasCounts,
@@ -20,7 +22,8 @@ import {
 
 type Props = {
   session: PelusasSession;
-  onBack: () => void;
+  onSaveAndExit: () => void;
+  onDeleteAndExit: () => void;
   onFinishMatch: () => void;
   onSetRevolutionMode: (enabled: boolean) => void;
   onSetCardCount: (
@@ -33,7 +36,8 @@ type Props = {
 
 export function PelusasCounterScreen({
   session,
-  onBack,
+  onSaveAndExit,
+  onDeleteAndExit,
   onFinishMatch,
   onSetRevolutionMode,
   onSetCardCount,
@@ -43,6 +47,11 @@ export function PelusasCounterScreen({
     () => new Set(),
   );
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const {
+    exitModalVisible,
+    setExitModalVisible,
+    requestExit,
+  } = useExitMatchModal();
 
   const ranking = useMemo(
     () =>
@@ -75,7 +84,7 @@ export function PelusasCounterScreen({
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Pelusas" onBack={onBack} />
+      <AppHeader title="Pelusas" onBack={requestExit} />
 
       <ScrollView
         style={styles.scroll}
@@ -159,6 +168,20 @@ export function PelusasCounterScreen({
         <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
       </View>
 
+      <ExitMatchModal
+        visible={exitModalVisible}
+        matchTitle="Pelusas"
+        onClose={() => setExitModalVisible(false)}
+        onSaveAndExit={() => {
+          setExitModalVisible(false);
+          onSaveAndExit();
+        }}
+        onDeleteAndExit={() => {
+          setExitModalVisible(false);
+          onDeleteAndExit();
+        }}
+      />
+
       <FinishMatchModal
         visible={finishModalVisible}
         matchTitle="Pelusas"
@@ -167,7 +190,7 @@ export function PelusasCounterScreen({
         onSaveFinished={handleSaveFinished}
         onDelete={() => {
           setFinishModalVisible(false);
-          onBack();
+          onDeleteAndExit();
         }}
       />
     </View>

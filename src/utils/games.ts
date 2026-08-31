@@ -2,6 +2,7 @@ export type CreateMatchGameType =
   | 'standard'
   | 'pelusas'
   | 'skull_king'
+  | 'pili_pili'
   | 'aventureros_tren'
   | 'regicide';
 
@@ -16,6 +17,8 @@ export function getCreateMatchPlayerLimits(
   switch (gameType) {
     case 'skull_king':
       return { min: 1, max: 6 };
+    case 'pili_pili':
+      return { min: 2, max: 8 };
     case 'aventureros_tren':
       return { min: 1, max: 5 };
     case 'pelusas':
@@ -54,6 +57,11 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     id: 'skull_king',
     name: 'Skull King',
     description: 'Bazas a 10 rondas con apuestas y bonificaciones',
+  },
+  {
+    id: 'pili_pili',
+    name: 'Pili pili',
+    description: 'Apuestas de bazas y Pilis de penalización (2–8 jugadores)',
   },
   {
     id: 'aventureros_tren',

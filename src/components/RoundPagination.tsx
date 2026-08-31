@@ -12,6 +12,9 @@ type Props = {
   roundBreakdowns?: RoundBreakdown[];
   disabled?: boolean;
   allowAddRound?: boolean;
+  /** Bloquea cambiar de ronda y añadir otra mientras la ronda activa tenga errores. */
+  navigationLocked?: boolean;
+  lockedHint?: string;
   onSelectRound: (index: number) => void;
   onAddRound: () => void;
 };
@@ -24,6 +27,8 @@ export function RoundPagination({
   roundBreakdowns,
   disabled,
   allowAddRound = true,
+  navigationLocked,
+  lockedHint,
   onSelectRound,
   onAddRound,
 }: Props) {
@@ -34,6 +39,7 @@ export function RoundPagination({
   const showAddButton =
     allowAddRound &&
     !disabled &&
+    !navigationLocked &&
     (onLastFixedRound ||
       (!fixedTabs && activeIndex === roundCount - 1));
 
@@ -57,7 +63,10 @@ export function RoundPagination({
                   rounds,
                   roundBreakdowns,
                 );
-          const pageDisabled = disabled || !selectable;
+          const pageDisabled =
+            disabled ||
+            !selectable ||
+            (navigationLocked === true && index !== activeIndex);
 
           return (
             <Pressable
@@ -110,6 +119,8 @@ export function RoundPagination({
         <Text style={styles.hint}>
           Pulsa + al terminar la ronda para sumar puntos y seguir
         </Text>
+      ) : navigationLocked && lockedHint ? (
+        <Text style={styles.lockedHint}>{lockedHint}</Text>
       ) : null}
     </View>
   );
@@ -197,5 +208,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.textMuted,
     textAlign: 'center',
+  },
+  lockedHint: {
+    fontSize: 12,
+    color: theme.warning,
+    textAlign: 'center',
+    lineHeight: 17,
   },
 });

@@ -78,6 +78,30 @@ export function sortPlayersByPelusasScore(
     .sort((a, b) => b.score - a.score);
 }
 
+export function createInProgressPelusasMatch(
+  session: PelusasSession,
+  sessionId?: string | null,
+): Match {
+  const now = Date.now();
+  return {
+    id: createId(),
+    name: 'Pelusas',
+    gameMode: 'pelusas',
+    sessionId: sessionId ?? null,
+    pelusasRevolution: session.revolutionMode,
+    settings: { maxRounds: null, maxPointsToWin: null },
+    players: session.players,
+    rounds: [],
+    roundBreakdowns: [],
+    activeRoundIndex: 0,
+    roundScoringMode: {},
+    status: 'in_progress',
+    pelusasSession: session,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function createFinishedPelusasMatch(session: PelusasSession): Match {
   const now = Date.now();
   const scores: Record<string, number> = {};

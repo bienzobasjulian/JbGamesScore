@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import {
+  Dimensions,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +25,47 @@ type TriggerLayout = {
   width: number;
   height: number;
 };
+
+const DROPDOWN_GAP = 4;
+const DROPDOWN_MAX_HEIGHT = 360;
+const SCREEN_PADDING = 16;
+
+function getDropdownLayout(trigger: TriggerLayout) {
+  const windowHeight = Dimensions.get('window').height;
+  const triggerBottom = trigger.y + trigger.height;
+  const spaceBelow = windowHeight - triggerBottom - SCREEN_PADDING;
+  const spaceAbove = trigger.y - SCREEN_PADDING;
+  const openBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove;
+  const maxListHeight = Math.min(
+    DROPDOWN_MAX_HEIGHT,
+    Math.max(
+      120,
+      (openBelow ? spaceBelow : spaceAbove) - DROPDOWN_GAP,
+    ),
+  );
+
+  if (openBelow) {
+    return {
+      maxListHeight,
+      style: {
+        top: triggerBottom + DROPDOWN_GAP,
+        left: trigger.x,
+        width: trigger.width,
+        maxHeight: maxListHeight,
+      },
+    };
+  }
+
+  return {
+    maxListHeight,
+    style: {
+      bottom: windowHeight - trigger.y + DROPDOWN_GAP,
+      left: trigger.x,
+      width: trigger.width,
+      maxHeight: maxListHeight,
+    },
+  };
+}
 
 export function GameTypePicker({ selected, onSelect }: Props) {
   const [open, setOpen] = useState(false);
@@ -78,43 +121,46 @@ export function GameTypePicker({ selected, onSelect }: Props) {
         <View style={styles.backdrop}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} />
           {triggerLayout ? (
-            <View
-              style={[
-                styles.list,
-                {
-                  top: triggerLayout.y + triggerLayout.height + 4,
-                  left: triggerLayout.x,
-                  width: triggerLayout.width,
-                },
-              ]}
-            >
-              {CREATE_MATCH_GAMES.map((game, index) => {
-                const isSelected = selected === game.id;
-                const isLast = index === CREATE_MATCH_GAMES.length - 1;
-                return (
-                  <Pressable
-                    key={game.id}
-                    onPress={() => pick(game.id)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      isLast && styles.optionLast,
-                      isSelected && styles.optionSelected,
-                      pressed && styles.optionPressed,
-                    ]}
+            (() => {
+              const { style: listPosition } = getDropdownLayout(triggerLayout);
+              return (
+                <View style={[styles.list, listPosition]}>
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled
+                    bounces={false}
+                    showsVerticalScrollIndicator
                   >
-                    <Text
-                      style={[
-                        styles.optionTitle,
-                        isSelected && styles.optionTitleSelected,
-                      ]}
-                    >
-                      {game.name}
-                    </Text>
-                    <Text style={styles.optionSub}>{game.description}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    {CREATE_MATCH_GAMES.map((game, index) => {
+                      const isSelected = selected === game.id;
+                      const isLast = index === CREATE_MATCH_GAMES.length - 1;
+                      return (
+                        <Pressable
+                          key={game.id}
+                          onPress={() => pick(game.id)}
+                          style={({ pressed }) => [
+                            styles.option,
+                            isLast && styles.optionLast,
+                            isSelected && styles.optionSelected,
+                            pressed && styles.optionPressed,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.optionTitle,
+                              isSelected && styles.optionTitleSelected,
+                            ]}
+                          >
+                            {game.name}
+                          </Text>
+                          <Text style={styles.optionSub}>{game.description}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              );
+            })()
           ) : null}
         </View>
       </Modal>

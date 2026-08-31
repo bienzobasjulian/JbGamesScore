@@ -334,6 +334,30 @@ export function buildTiebreakSnapshot(
   };
 }
 
+export function createInProgressAventurerosTrenMatch(
+  session: AventurerosTrenSession,
+  sessionId?: string | null,
+): Match {
+  const now = Date.now();
+  return {
+    id: createId(),
+    name: getSubmodeLabel(session.submode),
+    gameMode: 'aventureros_tren',
+    sessionId: sessionId ?? null,
+    aventurerosTrenSubmode: session.submode,
+    settings: { maxRounds: null, maxPointsToWin: null },
+    players: session.players,
+    rounds: [],
+    roundBreakdowns: [],
+    activeRoundIndex: 0,
+    roundScoringMode: {},
+    status: 'in_progress',
+    aventurerosTrenSession: session,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function createFinishedAventurerosTrenMatch(
   session: AventurerosTrenSession,
 ): Match {

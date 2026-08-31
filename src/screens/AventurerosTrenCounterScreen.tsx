@@ -3,9 +3,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { AventurerosTrenPlayerPanel } from '../components/AventurerosTrenPlayerPanel';
 import { Button } from '../components/Button';
+import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
 import { theme } from '../constants';
+import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
   AventurerosTrenDestinationEntry,
   AventurerosTrenPhase,
@@ -21,7 +23,8 @@ import {
 
 type Props = {
   session: AventurerosTrenSession;
-  onBack: () => void;
+  onSaveAndExit: () => void;
+  onDeleteAndExit: () => void;
   onFinishMatch: () => void;
   onSetPhase: (phase: AventurerosTrenPhase) => void;
   onAddRoute: (playerId: string) => void;
@@ -46,7 +49,8 @@ type Props = {
 
 export function AventurerosTrenCounterScreen({
   session,
-  onBack,
+  onSaveAndExit,
+  onDeleteAndExit,
   onFinishMatch,
   onSetPhase,
   onAddRoute,
@@ -61,6 +65,11 @@ export function AventurerosTrenCounterScreen({
     () => new Set(),
   );
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const {
+    exitModalVisible,
+    setExitModalVisible,
+    requestExit,
+  } = useExitMatchModal();
 
   const phase = session.activePhase;
   const isConstruccion = phase === 'construccion';
@@ -93,7 +102,7 @@ export function AventurerosTrenCounterScreen({
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} onBack={onBack} />
+      <AppHeader title={title} onBack={requestExit} />
 
       <ScrollView
         style={styles.scroll}
@@ -191,6 +200,20 @@ export function AventurerosTrenCounterScreen({
         <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
       </View>
 
+      <ExitMatchModal
+        visible={exitModalVisible}
+        matchTitle={title}
+        onClose={() => setExitModalVisible(false)}
+        onSaveAndExit={() => {
+          setExitModalVisible(false);
+          onSaveAndExit();
+        }}
+        onDeleteAndExit={() => {
+          setExitModalVisible(false);
+          onDeleteAndExit();
+        }}
+      />
+
       <FinishMatchModal
         visible={finishModalVisible}
         matchTitle={title}
@@ -205,7 +228,7 @@ export function AventurerosTrenCounterScreen({
         }}
         onDelete={() => {
           setFinishModalVisible(false);
-          onBack();
+          onDeleteAndExit();
         }}
       />
     </View>

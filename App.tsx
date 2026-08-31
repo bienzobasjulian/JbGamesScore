@@ -27,6 +27,7 @@ import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SessionsListScreen } from './src/screens/SessionsListScreen';
 import { SelectPlayersScreen } from './src/screens/SelectPlayersScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
+import { PiliPiliCounterScreen } from './src/screens/PiliPiliCounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import {
   CreateMatchDraft,
@@ -158,16 +159,10 @@ function AppShell() {
             return true;
 
           case 'pelusasCount':
-            app.goPelusasSetup(true);
-            return true;
-
           case 'skullKingCount':
-            app.exitSkullKing();
-            return true;
-
+          case 'piliPiliCount':
           case 'aventurerosTrenCount':
-            app.exitAventurerosTren();
-            return true;
+            return false;
 
           case 'regicideCount':
             return false;
@@ -248,6 +243,9 @@ function AppShell() {
             onStartSkullKing={(players, sessionId) => {
               app.startSkullKingSession(players, sessionId);
             }}
+            onStartPiliPili={(players, sessionId) => {
+              app.startPiliPiliSession(players, sessionId);
+            }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
             }}
@@ -286,6 +284,9 @@ function AppShell() {
             }}
             onStartSkullKing={(players, sessionId) => {
               app.startSkullKingSession(players, sessionId);
+            }}
+            onStartPiliPili={(players, sessionId) => {
+              app.startPiliPiliSession(players, sessionId);
             }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
@@ -497,8 +498,10 @@ function AppShell() {
               match.winnerOnly ||
               match.gameMode === 'pelusas' ||
               match.gameMode === 'skull_king' ||
+              match.gameMode === 'pili_pili' ||
               match.gameMode === 'aventureros_tren'
             }
+            floorRoundTotalsAtZero={match.gameMode === 'pili_pili'}
             onAddBreakdownItem={(playerId, value) =>
               app.addBreakdownItem(match.id, playerId, value)
             }
@@ -591,7 +594,8 @@ function AppShell() {
         return (
           <PelusasCounterScreen
             session={app.pelusasSession}
-            onBack={() => app.goPelusasSetup(true)}
+            onSaveAndExit={app.savePelusasAndExit}
+            onDeleteAndExit={app.deletePelusasAndExit}
             onFinishMatch={app.finishPelusasSession}
             onSetRevolutionMode={app.setPelusasRevolutionMode}
             onSetCardCount={app.setPelusasCardCount}
@@ -605,10 +609,27 @@ function AppShell() {
         return (
           <SkullKingCounterScreen
             session={app.skullKingSession}
-            onBack={app.exitSkullKing}
+            onSaveAndExit={app.saveSkullKingAndExit}
+            onDeleteAndExit={app.deleteSkullKingAndExit}
             onFinishMatch={app.finishSkullKingSession}
             onGoToRound={app.goSkullKingRound}
             onUpdateRoundEntry={app.updateSkullKingRoundEntry}
+          />
+        );
+      }
+
+      case 'piliPiliCount': {
+        if (!app.piliPiliSession) return null;
+        return (
+          <PiliPiliCounterScreen
+            session={app.piliPiliSession}
+            onSaveAndExit={app.savePiliPiliAndExit}
+            onDeleteAndExit={app.deletePiliPiliAndExit}
+            onFinishMatch={app.finishPiliPiliSession}
+            onGoToRound={app.goPiliPiliRound}
+            onAddRound={app.addPiliPiliRound}
+            onUpdateRoundEntry={app.updatePiliPiliRoundEntry}
+            onUpdateRoundConfig={app.updatePiliPiliRoundConfig}
           />
         );
       }
@@ -618,7 +639,8 @@ function AppShell() {
         return (
           <AventurerosTrenCounterScreen
             session={app.aventurerosTrenSession}
-            onBack={app.exitAventurerosTren}
+            onSaveAndExit={app.saveAventurerosTrenAndExit}
+            onDeleteAndExit={app.deleteAventurerosTrenAndExit}
             onFinishMatch={app.finishAventurerosTrenSession}
             onSetPhase={app.setAventurerosTrenPhase}
             onAddRoute={app.addAventurerosTrenRoute}

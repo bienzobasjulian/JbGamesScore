@@ -19,6 +19,7 @@ import {
   getAventurerosTrenMatchRanking,
   getAventurerosTrenMatchWinners,
 } from './aventurerosTren';
+import { getPiliPiliPlayerTotalFromRounds } from './piliPili';
 import { formatRegicideMatchProgress } from './regicide';
 import {
   createInitialRounds,
@@ -30,6 +31,36 @@ export type RankedPlayer = {
   total: number;
   rank: number;
 };
+
+function getPiliPiliMatchRanking(match: Match): RankedPlayer[] {
+  const m = normalizeMatchRounds(match);
+  const sorted = match.players
+    .map((player) => ({
+      player,
+      total: getPiliPiliPlayerTotalFromRounds(m.rounds, player.id),
+    }))
+    .sort((a, b) => a.total - b.total);
+
+  let rank = 0;
+  let prevScore: number | null = null;
+
+  return sorted.map((entry, index) => {
+    if (prevScore === null || entry.total !== prevScore) {
+      rank = index + 1;
+      prevScore = entry.total;
+    }
+    return { ...entry, rank };
+  });
+}
+
+function getPiliPiliMatchWinners(match: Match): Player[] {
+  const ranked = getPiliPiliMatchRanking(match);
+  if (ranked.length === 0) return [];
+  const topScore = ranked[0].total;
+  return ranked
+    .filter((entry) => entry.total === topScore)
+    .map((entry) => entry.player);
+}
 
 export function matchToGameState(match: Match): GameState {
   const m = normalizeMatchRounds(match);
@@ -50,6 +81,7 @@ export function formatMatchTitle(match: Match): string {
   if (match.winnerOnly) return 'Partida con ganador';
   if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
+  if (match.gameMode === 'pili_pili') return 'Pili pili';
   if (match.gameMode === 'aventureros_tren') {
     return match.name?.trim() || 'Aventureros al tren';
   }
@@ -106,6 +138,9 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
   if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
     return getAventurerosTrenMatchRanking(match);
   }
+  if (match.gameMode === 'pili_pili') {
+    return getPiliPiliMatchRanking(match);
+  }
   return getMatchRankingFromState(matchToGameState(match));
 }
 
@@ -117,6 +152,10 @@ export function getMatchWinners(match: Match): Player[] {
 
   if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
     return getAventurerosTrenMatchWinners(match);
+  }
+
+  if (match.gameMode === 'pili_pili') {
+    return getPiliPiliMatchWinners(match);
   }
 
   const state = matchToGameState(match);
@@ -165,6 +204,9 @@ export function formatMatchListMeta(match: Match): string {
   }
   if (match.gameMode === 'skull_king') {
     parts.push('Skull King · 10 rondas');
+  }
+  if (match.gameMode === 'pili_pili') {
+    parts.push('Pili pili · menos Pilis gana');
   }
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));

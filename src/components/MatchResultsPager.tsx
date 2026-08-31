@@ -29,9 +29,15 @@ type Props = {
   ranking: RankedPlayer[];
   players: Player[];
   rounds: RoundScores[];
+  floorTotalAtZero?: boolean;
 };
 
-export function MatchResultsPager({ ranking, players, rounds }: Props) {
+export function MatchResultsPager({
+  ranking,
+  players,
+  rounds,
+  floorTotalAtZero = false,
+}: Props) {
   const listRef = useRef<FlatList<PageKey>>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -89,6 +95,7 @@ export function MatchResultsPager({ ranking, players, rounds }: Props) {
               <RoundHistory
                 players={players}
                 rounds={rounds}
+                floorTotalAtZero={floorTotalAtZero}
                 onHorizontalScrollStart={() => setPagerScrollEnabled(false)}
                 onHorizontalScrollEnd={() => setPagerScrollEnabled(true)}
               />

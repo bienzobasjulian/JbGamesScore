@@ -21,6 +21,9 @@ import {
   Player,
   SkullKingRoundEntry,
   SkullKingSession,
+  PiliPiliRoundConfig,
+  PiliPiliRoundEntry,
+  PiliPiliSession,
   RoundBreakdown,
   RoundScores,
   SavedPlayer,
@@ -68,6 +71,7 @@ import {
 } from '../utils/rounds';
 import {
   createFinishedPelusasMatch,
+  createInProgressPelusasMatch,
   createPelusasCountsByPlayer,
   emptyPelusasCounts,
   getPelusasCardValues,
@@ -75,15 +79,32 @@ import {
 } from '../utils/pelusas';
 import {
   createFinishedSkullKingMatch,
+  createInProgressSkullKingMatch,
   createSkullKingSession,
   emptySkullKingRoundEntry,
 } from '../utils/skullKing';
+import {
+  appendPiliPiliRound,
+  applyPiliPiliFirstLastTrickExclusivity,
+  clampPiliPiliRoundEntry,
+  createFinishedPiliPiliMatch,
+  createInProgressPiliPiliMatch,
+  createPiliPiliSession,
+  emptyPiliPiliRoundConfig,
+  emptyPiliPiliRoundEntry,
+  getPiliPiliMaxBid,
+  hasPiliPiliRoundErrors,
+  sanitizePiliPiliRoundBids,
+  PILI_PILI_MAX_PLAYERS,
+  PILI_PILI_MIN_PLAYERS,
+} from '../utils/piliPili';
 import {
   createAventurerosTrenDestinationEntry,
   createAventurerosTrenRouteEntry,
   createAventurerosTrenSession,
   createDefaultPlayerScoring,
   createFinishedAventurerosTrenMatch,
+  createInProgressAventurerosTrenMatch,
   AVENTUREROS_TREN_MAX_PLAYERS,
   AVENTUREROS_TREN_MIN_PLAYERS,
 } from '../utils/aventurerosTren';
@@ -205,11 +226,14 @@ export function useApp() {
   );
   const [skullKingSession, setSkullKingSession] =
     useState<SkullKingSession | null>(null);
+  const [piliPiliSession, setPiliPiliSession] =
+    useState<PiliPiliSession | null>(null);
   const [aventurerosTrenSession, setAventurerosTrenSession] =
     useState<AventurerosTrenSession | null>(null);
   const [regicideSession, setRegicideSession] =
     useState<RegicideSession | null>(null);
   const dedicatedMatchSessionIdRef = useRef<string | null>(null);
+  const dedicatedMatchIdRef = useRef<string | null>(null);
   const regicideMatchIdRef = useRef<string | null>(null);
   const playerSelectionRef = useRef<PlayerSelectionConfig | null>(null);
   const returningDraftRef = useRef<{
@@ -229,6 +253,91 @@ export function useApp() {
       saveAppData(data);
     }
   }, [data, loaded]);
+
+  const navigateAfterDedicatedExit = useCallback((playSessionId: string | null) => {
+    if (playSessionId) {
+      setScreen({ type: 'sessionDetail', sessionId: playSessionId });
+    } else {
+      setScreen({ type: 'home' });
+    }
+    setMenuOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !pelusasSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'pelusas'
+          ? {
+              ...match,
+              pelusasSession,
+              pelusasRevolution: pelusasSession.revolutionMode,
+              players: pelusasSession.players,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [pelusasSession]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !skullKingSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'skull_king'
+          ? {
+              ...match,
+              skullKingSession,
+              players: skullKingSession.players,
+              activeRoundIndex: skullKingSession.activeRoundIndex,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [skullKingSession]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !piliPiliSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'pili_pili'
+          ? {
+              ...match,
+              piliPiliSession,
+              players: piliPiliSession.players,
+              activeRoundIndex: piliPiliSession.activeRoundIndex,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [piliPiliSession]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !aventurerosTrenSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'aventureros_tren'
+          ? {
+              ...match,
+              aventurerosTrenSession,
+              aventurerosTrenSubmode: aventurerosTrenSession.submode,
+              players: aventurerosTrenSession.players,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [aventurerosTrenSession]);
 
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -269,15 +378,20 @@ export function useApp() {
       if (sessionId !== undefined) {
         dedicatedMatchSessionIdRef.current = sessionId;
       }
-      setData((prev) => ({
-        ...prev,
-        players: upsertRosterPlayers(prev.players, players),
-      }));
-      setPelusasSession({
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session: PelusasSession = {
         players,
         revolutionMode: false,
         countsByPlayer: createPelusasCountsByPlayer(players, false),
-      });
+      };
+      const match = createInProgressPelusasMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setPelusasSession(session);
       setScreen({ type: 'pelusasCount' });
     },
     [],
@@ -370,27 +484,67 @@ export function useApp() {
   }, []);
 
   const finishPelusasSession = useCallback(() => {
-    const sessionId = dedicatedMatchSessionIdRef.current;
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
     dedicatedMatchSessionIdRef.current = null;
     setPelusasSession((prev) => {
       if (!prev) return null;
-      const match = {
-        ...createFinishedPelusasMatch(prev),
-        sessionId: sessionId ?? null,
-      };
-      setData((data) =>
-        appendMatch(
-          {
-            ...data,
-            players: upsertRosterPlayers(data.players, prev.players),
-          },
-          match,
-        ),
-      );
-      setScreen({ type: 'game', matchId: match.id });
+      const finished = createFinishedPelusasMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            pelusasSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
       return null;
     });
   }, []);
+
+  const savePelusasAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setPelusasSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deletePelusasAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setPelusasSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
 
   const startSkullKingSession = useCallback(
     (players: Player[], sessionId?: string | null) => {
@@ -400,15 +554,50 @@ export function useApp() {
       if (sessionId !== undefined) {
         dedicatedMatchSessionIdRef.current = sessionId;
       }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createSkullKingSession(players);
+      const match = createInProgressSkullKingMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
       setData((prev) => ({
         ...prev,
         players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
       }));
-      setSkullKingSession(createSkullKingSession(players));
+      setSkullKingSession(session);
       setScreen({ type: 'skullKingCount' });
     },
     [],
   );
+
+  const saveSkullKingAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setSkullKingSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteSkullKingAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setSkullKingSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
 
   const exitSkullKing = useCallback(() => {
     setSkullKingSession(null);
@@ -463,24 +652,249 @@ export function useApp() {
   );
 
   const finishSkullKingSession = useCallback(() => {
-    const sessionId = dedicatedMatchSessionIdRef.current;
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
     dedicatedMatchSessionIdRef.current = null;
     setSkullKingSession((prev) => {
       if (!prev) return null;
-      const match = {
-        ...createFinishedSkullKingMatch(prev),
-        sessionId: sessionId ?? null,
-      };
-      setData((data) =>
-        appendMatch(
+      const finished = createFinishedSkullKingMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            skullKingSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
+      return null;
+    });
+  }, []);
+
+  const startPiliPiliSession = useCallback(
+    (players: Player[], sessionId?: string | null) => {
+      if (
+        players.length < PILI_PILI_MIN_PLAYERS ||
+        players.length > PILI_PILI_MAX_PLAYERS
+      ) {
+        return;
+      }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createPiliPiliSession(players);
+      const match = createInProgressPiliPiliMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setPiliPiliSession(session);
+      setScreen({ type: 'piliPiliCount' });
+    },
+    [],
+  );
+
+  const savePiliPiliAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setPiliPiliSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deletePiliPiliAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setPiliPiliSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const exitPiliPili = useCallback(() => {
+    setPiliPiliSession(null);
+    setScreen({ type: 'home' });
+    setMenuOpen(false);
+  }, []);
+
+  const goPiliPiliRound = useCallback((roundIndex: number) => {
+    setPiliPiliSession((prev) => {
+      if (!prev) return null;
+      if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+      if (roundIndex !== prev.activeRoundIndex) {
+        const activeRound = prev.rounds[prev.activeRoundIndex] ?? {};
+        const activeConfig =
+          prev.roundConfigs[prev.activeRoundIndex] ??
+          emptyPiliPiliRoundConfig();
+        if (
+          hasPiliPiliRoundErrors(
+            activeRound,
+            prev.players,
+            activeConfig,
+            prev.activeRoundIndex,
+          )
+        ) {
+          return prev;
+        }
+      }
+      return { ...prev, activeRoundIndex: roundIndex };
+    });
+  }, []);
+
+  const updatePiliPiliRoundEntry = useCallback(
+    (
+      roundIndex: number,
+      playerId: string,
+      patch: Partial<PiliPiliRoundEntry>,
+    ) => {
+      setPiliPiliSession((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        let round = { ...rounds[roundIndex] };
+        round = applyPiliPiliFirstLastTrickExclusivity(
+          round,
+          prev.players,
+          playerId,
+          patch,
+        );
+        const config =
+          prev.roundConfigs[roundIndex] ??
+          emptyPiliPiliRoundConfig();
+        const maxBid = getPiliPiliMaxBid(config);
+        const previous = round[playerId] ?? emptyPiliPiliRoundEntry();
+        const entry = clampPiliPiliRoundEntry(
           {
-            ...data,
-            players: upsertRosterPlayers(data.players, prev.players),
+            ...previous,
+            ...patch,
+            entered: true,
           },
-          match,
-        ),
-      );
-      setScreen({ type: 'game', matchId: match.id });
+          maxBid,
+        );
+        round[playerId] = entry;
+        rounds[roundIndex] = sanitizePiliPiliRoundBids(
+          round,
+          prev.players,
+          config,
+        );
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const updatePiliPiliRoundConfig = useCallback(
+    (roundIndex: number, patch: Partial<PiliPiliRoundConfig>) => {
+      setPiliPiliSession((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.roundConfigs.length) {
+          return prev;
+        }
+        const roundConfigs = [...prev.roundConfigs];
+        const next = {
+          ...roundConfigs[roundIndex],
+          ...patch,
+        };
+        if (patch.cardsDealt !== undefined) {
+          next.cardsDealt = Math.max(0, Math.floor(next.cardsDealt));
+        }
+        roundConfigs[roundIndex] = next;
+
+        if (patch.cardsDealt !== undefined) {
+          const rounds = [...prev.rounds];
+          rounds[roundIndex] = sanitizePiliPiliRoundBids(
+            rounds[roundIndex] ?? {},
+            prev.players,
+            next,
+          );
+          return { ...prev, roundConfigs, rounds };
+        }
+
+        return { ...prev, roundConfigs };
+      });
+    },
+    [],
+  );
+
+  const addPiliPiliRound = useCallback(() => {
+    setPiliPiliSession((prev) => {
+      if (!prev) return null;
+      const activeRound = prev.rounds[prev.activeRoundIndex] ?? {};
+      const activeConfig =
+        prev.roundConfigs[prev.activeRoundIndex] ??
+        emptyPiliPiliRoundConfig();
+      if (
+        hasPiliPiliRoundErrors(
+          activeRound,
+          prev.players,
+          activeConfig,
+          prev.activeRoundIndex,
+        )
+      ) {
+        return prev;
+      }
+      return appendPiliPiliRound(prev);
+    });
+  }, []);
+
+  const finishPiliPiliSession = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setPiliPiliSession((prev) => {
+      if (!prev) return null;
+      const finished = createFinishedPiliPiliMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            piliPiliSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
       return null;
     });
   }, []);
@@ -500,15 +914,50 @@ export function useApp() {
       if (sessionId !== undefined) {
         dedicatedMatchSessionIdRef.current = sessionId;
       }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createAventurerosTrenSession(players, submode);
+      const match = createInProgressAventurerosTrenMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
       setData((prev) => ({
         ...prev,
         players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
       }));
-      setAventurerosTrenSession(createAventurerosTrenSession(players, submode));
+      setAventurerosTrenSession(session);
       setScreen({ type: 'aventurerosTrenCount' });
     },
     [],
   );
+
+  const saveAventurerosTrenAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setAventurerosTrenSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteAventurerosTrenAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setAventurerosTrenSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
 
   const exitAventurerosTren = useCallback(() => {
     setAventurerosTrenSession(null);
@@ -637,24 +1086,34 @@ export function useApp() {
   );
 
   const finishAventurerosTrenSession = useCallback(() => {
-    const sessionId = dedicatedMatchSessionIdRef.current;
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
     dedicatedMatchSessionIdRef.current = null;
     setAventurerosTrenSession((prev) => {
       if (!prev) return null;
-      const match = {
-        ...createFinishedAventurerosTrenMatch(prev),
-        sessionId: sessionId ?? null,
-      };
-      setData((data) =>
-        appendMatch(
-          {
-            ...data,
-            players: upsertRosterPlayers(data.players, prev.players),
-          },
-          match,
-        ),
-      );
-      setScreen({ type: 'game', matchId: match.id });
+      const finished = createFinishedAventurerosTrenMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            aventurerosTrenSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
       return null;
     });
   }, []);
@@ -889,14 +1348,51 @@ export function useApp() {
   const openMatch = useCallback(
     (matchId: string) => {
       const match = data.matches.find((m) => m.id === matchId);
-      if (match?.gameMode === 'regicide' && match.regicideSession) {
+      if (!match) return;
+
+      if (match.gameMode === 'regicide' && match.regicideSession) {
         regicideMatchIdRef.current = matchId;
         dedicatedMatchSessionIdRef.current = match.sessionId ?? null;
         setRegicideSession(match.regicideSession);
         setScreen({ type: 'regicideCount' });
-      } else {
-        setScreen({ type: 'game', matchId });
+        setMenuOpen(false);
+        return;
       }
+
+      if (match.status === 'in_progress') {
+        dedicatedMatchIdRef.current = matchId;
+        dedicatedMatchSessionIdRef.current = match.sessionId ?? null;
+
+        if (match.gameMode === 'pelusas' && match.pelusasSession) {
+          setPelusasSession(match.pelusasSession);
+          setScreen({ type: 'pelusasCount' });
+          setMenuOpen(false);
+          return;
+        }
+        if (match.gameMode === 'skull_king' && match.skullKingSession) {
+          setSkullKingSession(match.skullKingSession);
+          setScreen({ type: 'skullKingCount' });
+          setMenuOpen(false);
+          return;
+        }
+        if (match.gameMode === 'pili_pili' && match.piliPiliSession) {
+          setPiliPiliSession(match.piliPiliSession);
+          setScreen({ type: 'piliPiliCount' });
+          setMenuOpen(false);
+          return;
+        }
+        if (
+          match.gameMode === 'aventureros_tren' &&
+          match.aventurerosTrenSession
+        ) {
+          setAventurerosTrenSession(match.aventurerosTrenSession);
+          setScreen({ type: 'aventurerosTrenCount' });
+          setMenuOpen(false);
+          return;
+        }
+      }
+
+      setScreen({ type: 'game', matchId });
       setMenuOpen(false);
     },
     [data.matches],
@@ -1153,12 +1649,20 @@ export function useApp() {
   );
 
   const deleteMatch = useCallback((matchId: string) => {
-    const isActiveRegicide =
-      regicideMatchIdRef.current === matchId;
+    const isActiveRegicide = regicideMatchIdRef.current === matchId;
+    const isActiveDedicated = dedicatedMatchIdRef.current === matchId;
     if (isActiveRegicide) {
       regicideMatchIdRef.current = null;
       dedicatedMatchSessionIdRef.current = null;
       setRegicideSession(null);
+    }
+    if (isActiveDedicated) {
+      dedicatedMatchIdRef.current = null;
+      dedicatedMatchSessionIdRef.current = null;
+      setPelusasSession(null);
+      setSkullKingSession(null);
+      setPiliPiliSession(null);
+      setAventurerosTrenSession(null);
     }
     setData((prev) => {
       const match = prev.matches.find((m) => m.id === matchId);
@@ -1176,6 +1680,15 @@ export function useApp() {
         return { type: 'home' };
       }
       if (current.type === 'regicideCount' && isActiveRegicide) {
+        return { type: 'home' };
+      }
+      if (
+        (current.type === 'pelusasCount' ||
+          current.type === 'skullKingCount' ||
+          current.type === 'piliPiliCount' ||
+          current.type === 'aventurerosTrenCount') &&
+        isActiveDedicated
+      ) {
         return { type: 'home' };
       }
       return current;
@@ -1544,41 +2057,88 @@ export function useApp() {
       if (!source) return;
 
       if (source.gameMode === 'pelusas') {
-        setData((prev) => ({
-          ...prev,
-          players: upsertRosterPlayers(prev.players, source.players),
-        }));
-        setPelusasSession({
+        const session: PelusasSession = {
           players: source.players,
           revolutionMode: Boolean(source.pelusasRevolution),
           countsByPlayer: createPelusasCountsByPlayer(
             source.players,
             Boolean(source.pelusasRevolution),
           ),
-        });
+        };
+        const match = createInProgressPelusasMatch(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setPelusasSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
         setScreen({ type: 'pelusasCount' });
         return;
       }
 
       if (source.gameMode === 'skull_king') {
-        setData((prev) => ({
-          ...prev,
-          players: upsertRosterPlayers(prev.players, source.players),
-        }));
-        setSkullKingSession(createSkullKingSession(source.players));
+        const session = createSkullKingSession(source.players);
+        const match = createInProgressSkullKingMatch(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setSkullKingSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
         setScreen({ type: 'skullKingCount' });
         return;
       }
 
+      if (source.gameMode === 'pili_pili') {
+        const session = createPiliPiliSession(source.players);
+        const match = createInProgressPiliPiliMatch(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setPiliPiliSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
+        setScreen({ type: 'piliPiliCount' });
+        return;
+      }
+
       if (source.gameMode === 'aventureros_tren') {
-        setData((prev) => ({
-          ...prev,
-          players: upsertRosterPlayers(prev.players, source.players),
-        }));
-        setAventurerosTrenSession(
-          createAventurerosTrenSession(
-            source.players,
-            source.aventurerosTrenSubmode ?? 'base',
+        const session = createAventurerosTrenSession(
+          source.players,
+          source.aventurerosTrenSubmode ?? 'base',
+        );
+        const match = createInProgressAventurerosTrenMatch(
+          session,
+          source.sessionId,
+        );
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setAventurerosTrenSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
           ),
         );
         setScreen({ type: 'aventurerosTrenCount' });
@@ -1680,15 +2240,31 @@ export function useApp() {
     setPelusasCardCount,
     resetPelusasCounts,
     finishPelusasSession,
+    savePelusasAndExit,
+    deletePelusasAndExit,
     skullKingSession,
     startSkullKingSession,
     exitSkullKing,
+    saveSkullKingAndExit,
+    deleteSkullKingAndExit,
     goSkullKingRound,
     updateSkullKingRoundEntry,
     finishSkullKingSession,
+    piliPiliSession,
+    startPiliPiliSession,
+    exitPiliPili,
+    savePiliPiliAndExit,
+    deletePiliPiliAndExit,
+    goPiliPiliRound,
+    updatePiliPiliRoundEntry,
+    updatePiliPiliRoundConfig,
+    addPiliPiliRound,
+    finishPiliPiliSession,
     aventurerosTrenSession,
     startAventurerosTrenSession,
     exitAventurerosTren,
+    saveAventurerosTrenAndExit,
+    deleteAventurerosTrenAndExit,
     setAventurerosTrenPhase,
     addAventurerosTrenRoute,
     updateAventurerosTrenRoute,

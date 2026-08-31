@@ -86,6 +86,29 @@ export function sortPlayersBySkullKingTotal(
     .sort((a, b) => b.total - a.total);
 }
 
+export function createInProgressSkullKingMatch(
+  session: SkullKingSession,
+  sessionId?: string | null,
+): Match {
+  const now = Date.now();
+  return {
+    id: createId(),
+    name: 'Skull King',
+    gameMode: 'skull_king',
+    sessionId: sessionId ?? null,
+    settings: { maxRounds: SKULL_KING_TOTAL_ROUNDS, maxPointsToWin: null },
+    players: session.players,
+    rounds: [],
+    roundBreakdowns: [],
+    activeRoundIndex: session.activeRoundIndex,
+    roundScoringMode: {},
+    status: 'in_progress',
+    skullKingSession: session,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function createFinishedSkullKingMatch(session: SkullKingSession): Match {
   const now = Date.now();
   const rounds = session.rounds.map((roundByPlayer, index) => {

@@ -2,10 +2,13 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
 import { Player, RoundScores } from '../types';
 import { getRoundScore } from '../utils/game';
+import { getPiliPiliEffectiveRoundDeltaFromRounds, getPiliPiliPlayerTotalFromRounds } from '../utils/piliPili';
 
 type Props = {
   players: Player[];
   rounds: RoundScores[];
+  /** Total y delta de ronda respetan el suelo en 0 (Pili pili). */
+  floorTotalAtZero?: boolean;
   onHorizontalScrollStart?: () => void;
   onHorizontalScrollEnd?: () => void;
 };
@@ -14,7 +17,15 @@ function getCumulativeAtRound(
   rounds: RoundScores[],
   roundIndex: number,
   playerId: string,
+  floorTotalAtZero: boolean,
 ): number {
+  if (floorTotalAtZero) {
+    return getPiliPiliPlayerTotalFromRounds(
+      rounds,
+      playerId,
+      roundIndex + 1,
+    );
+  }
   let total = 0;
   for (let i = 0; i <= roundIndex; i++) {
     total += rounds[i][playerId] ?? 0;
@@ -22,7 +33,18 @@ function getCumulativeAtRound(
   return total;
 }
 
-function getMatchTotals(rounds: RoundScores[], players: Player[]): Record<string, number> {
+function getMatchTotals(
+  rounds: RoundScores[],
+  players: Player[],
+  floorTotalAtZero: boolean,
+): Record<string, number> {
+  if (floorTotalAtZero) {
+    const totals: Record<string, number> = {};
+    players.forEach((p) => {
+      totals[p.id] = getPiliPiliPlayerTotalFromRounds(rounds, p.id);
+    });
+    return totals;
+  }
   const totals: Record<string, number> = {};
   players.forEach((p) => {
     totals[p.id] = 0;
@@ -61,12 +83,13 @@ function ScoreCell({ roundScore, cumulative }: ScoreCellProps) {
 export function RoundHistory({
   players,
   rounds,
+  floorTotalAtZero = false,
   onHorizontalScrollStart,
   onHorizontalScrollEnd,
 }: Props) {
   if (rounds.length === 0) return null;
 
-  const matchTotals = getMatchTotals(rounds, players);
+  const matchTotals = getMatchTotals(rounds, players, floorTotalAtZero);
 
   return (
     <View style={styles.container}>
@@ -104,8 +127,20 @@ export function RoundHistory({
                 {index + 1}
               </Text>
               {players.map((p) => {
-                const roundScore = getRoundScore(round, p.id);
-                const cumulative = getCumulativeAtRound(rounds, index, p.id);
+                const rawRoundScore = getRoundScore(round, p.id);
+                const roundScore = floorTotalAtZero
+                  ? getPiliPiliEffectiveRoundDeltaFromRounds(
+                      rounds,
+                      index,
+                      p.id,
+                    )
+                  : rawRoundScore;
+                const cumulative = getCumulativeAtRound(
+                  rounds,
+                  index,
+                  p.id,
+                  floorTotalAtZero,
+                );
                 return (
                   <View key={p.id} style={[styles.cell, styles.playerCol]}>
                     <ScoreCell

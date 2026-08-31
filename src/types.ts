@@ -35,6 +35,7 @@ export type MatchGameMode =
   | 'standard'
   | 'pelusas'
   | 'skull_king'
+  | 'pili_pili'
   | 'aventureros_tren'
   | 'regicide';
 
@@ -77,6 +78,11 @@ export type Match = {
   editingAfterFinish?: boolean;
   /** Estado persistido del asistente Regicide. */
   regicideSession?: import('./utils/regicide').RegicideSession;
+  /** Partida en curso guardada desde el contador. */
+  pelusasSession?: PelusasSession;
+  skullKingSession?: SkullKingSession;
+  piliPiliSession?: PiliPiliSession;
+  aventurerosTrenSession?: AventurerosTrenSession;
   createdAt: number;
   updatedAt: number;
 };
@@ -124,6 +130,40 @@ export type SkullKingSession = {
   players: Player[];
   activeRoundIndex: number;
   rounds: Record<string, SkullKingRoundEntry>[];
+};
+
+export type PiliPiliMissionType =
+  | 'exact_bet_discard'
+  | 'first_last_trick'
+  | 'mission_card_numbers'
+  | 'linked_player'
+  | 'forbidden_bet'
+  | 'no_copy_bid';
+
+export type PiliPiliRoundConfig = {
+  /** Como máximo una misión activa por ronda. */
+  mission: PiliPiliMissionType | null;
+  /** Cartas repartidas a cada jugador (informado manualmente por ronda). */
+  cardsDealt: number;
+  /** Misión «Prohibido apostar»: 0 o 1 según la carta de misión. */
+  forbiddenBidValue: 0 | 1 | null;
+};
+
+export type PiliPiliRoundEntry = {
+  bid: number;
+  tricksWon: number;
+  entered: boolean;
+  wonFirstTrick: boolean;
+  wonLastTrick: boolean;
+  missionCardTricksWon: number;
+  linkedPlayerId: string | null;
+};
+
+export type PiliPiliSession = {
+  players: Player[];
+  activeRoundIndex: number;
+  rounds: Record<string, PiliPiliRoundEntry>[];
+  roundConfigs: PiliPiliRoundConfig[];
 };
 
 export type AventurerosTrenPhase = 'construccion' | 'destinos';
@@ -194,6 +234,7 @@ export type AppScreen =
   | { type: 'pelusasSetup' }
   | { type: 'pelusasCount' }
   | { type: 'skullKingCount' }
+  | { type: 'piliPiliCount' }
   | { type: 'aventurerosTrenCount' }
   | { type: 'regicideCount' }
   | { type: 'sessionsList' }

@@ -7,11 +7,58 @@ type Props = {
   onChange: (value: number) => void;
   color?: string;
   max?: number;
+  /** Sin tope superior; solo evita negativos. La validación queda fuera del input. */
+  unbounded?: boolean;
+  isValueAllowed?: (value: number) => boolean;
 };
 
+function floorCount(value: number): number {
+  return Math.max(0, Math.floor(value));
+}
+
 function clampCount(value: number, max: number): number {
-  const n = Math.max(0, Math.floor(value));
-  return Math.min(n, max);
+  return Math.min(floorCount(value), max);
+}
+
+function isAllowed(
+  value: number,
+  max: number | null,
+  unbounded: boolean,
+  isValueAllowed?: (value: number) => boolean,
+): boolean {
+  if (value < 0) return false;
+  if (!unbounded && max != null && value > max) return false;
+  return isValueAllowed == null || isValueAllowed(value);
+}
+
+function resolveCount(
+  value: number,
+  max: number | null,
+  unbounded: boolean,
+  isValueAllowed?: (value: number) => boolean,
+): number {
+  const resolved = unbounded ? floorCount(value) : clampCount(value, max ?? 99);
+  if (isAllowed(resolved, max, unbounded, isValueAllowed)) {
+    return resolved;
+  }
+  return resolved;
+}
+
+function findStepValue(
+  base: number,
+  delta: number,
+  max: number | null,
+  unbounded: boolean,
+  isValueAllowed?: (value: number) => boolean,
+): number | null {
+  let next = base + delta;
+  while (next >= 0 && (unbounded || max == null || next <= max)) {
+    if (isAllowed(next, max, unbounded, isValueAllowed)) {
+      return next;
+    }
+    next += delta;
+  }
+  return null;
 }
 
 function tryParseCount(text: string): number | null {
@@ -26,12 +73,15 @@ export function CardCountStepper({
   onChange,
   color = theme.accent,
   max = 99,
+  unbounded = false,
+  isValueAllowed,
 }: Props) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
   const textRef = useRef(text);
   const focusedRef = useRef(focused);
-  const maxLength = Math.max(2, String(max).length);
+  const effectiveMax = unbounded ? null : max;
+  const maxLength = unbounded ? 3 : Math.max(2, String(max).length);
 
   textRef.current = text;
   focusedRef.current = focused;
@@ -47,18 +97,34 @@ export function CardCountStepper({
       if (focusedRef.current) {
         const trimmed = textRef.current.trim();
         const parsed = trimmed === '' ? 0 : parseInt(trimmed, 10);
-        const next = clampCount(Number.isNaN(parsed) ? 0 : parsed, max);
-        onChange(next);
+        const next = resolveCount(
+          Number.isNaN(parsed) ? 0 : parsed,
+          effectiveMax,
+          unbounded,
+          isValueAllowed,
+        );
+        if (isAllowed(next, effectiveMax, unbounded, isValueAllowed)) {
+          onChange(next);
+        }
       }
     };
-  }, [max, onChange]);
+  }, [effectiveMax, onChange, isValueAllowed, unbounded]);
 
   const commit = () => {
     const trimmed = text.trim();
     const parsed = trimmed === '' ? 0 : parseInt(trimmed, 10);
-    const next = clampCount(Number.isNaN(parsed) ? 0 : parsed, max);
-    onChange(next);
-    setText(String(next));
+    const next = resolveCount(
+      Number.isNaN(parsed) ? 0 : parsed,
+      effectiveMax,
+      unbounded,
+      isValueAllowed,
+    );
+    if (isAllowed(next, effectiveMax, unbounded, isValueAllowed)) {
+      onChange(next);
+      setText(String(next));
+    } else {
+      setText(String(value));
+    }
     setFocused(false);
   };
 
@@ -66,27 +132,51 @@ export function CardCountStepper({
     setText(next);
     const parsed = tryParseCount(next);
     if (parsed !== null) {
-      onChange(clampCount(parsed, max));
+      const resolved = resolveCount(
+        parsed,
+        effectiveMax,
+        unbounded,
+        isValueAllowed,
+      );
+      if (isAllowed(resolved, effectiveMax, unbounded, isValueAllowed)) {
+        onChange(resolved);
+      }
     }
   };
 
   const handleAdjust = (delta: number) => {
-    const base = focused ? clampCount(parseInt(text, 10) || 0, max) : value;
-    const next = clampCount(base + delta, max);
+    const base = focused
+      ? unbounded
+        ? Math.max(0, parseInt(text, 10) || 0)
+        : clampCount(parseInt(text, 10) || 0, max)
+      : value;
+    const next = findStepValue(
+      base,
+      delta,
+      effectiveMax,
+      unbounded,
+      isValueAllowed,
+    );
+    if (next == null) return;
     onChange(next);
     setText(String(next));
   };
+
+  const canDecrease =
+    findStepValue(value, -1, effectiveMax, unbounded, isValueAllowed) != null;
+  const canIncrease =
+    findStepValue(value, 1, effectiveMax, unbounded, isValueAllowed) != null;
 
   return (
     <View style={styles.row}>
       <Pressable
         onPress={() => handleAdjust(-1)}
-        disabled={value <= 0}
+        disabled={!canDecrease}
         style={({ pressed }) => [
           styles.btn,
           { borderColor: color },
-          value <= 0 && styles.btnDisabled,
-          pressed && value > 0 && styles.pressed,
+          !canDecrease && styles.btnDisabled,
+          pressed && canDecrease && styles.pressed,
         ]}
       >
         <Text style={[styles.btnText, { color }]}>−</Text>
@@ -107,12 +197,12 @@ export function CardCountStepper({
 
       <Pressable
         onPress={() => handleAdjust(1)}
-        disabled={value >= max}
+        disabled={!canIncrease}
         style={({ pressed }) => [
           styles.btn,
           { borderColor: color },
-          value >= max && styles.btnDisabled,
-          pressed && value < max && styles.pressed,
+          !canIncrease && styles.btnDisabled,
+          pressed && canIncrease && styles.pressed,
         ]}
       >
         <Text style={[styles.btnText, { color }]}>+</Text>
