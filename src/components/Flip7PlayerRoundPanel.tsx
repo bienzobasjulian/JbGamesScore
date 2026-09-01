@@ -1,53 +1,42 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants';
-import { Flip7Modifier, Flip7PlayerRoundStatus, Flip7RoundEntry, Player } from '../types';
+import { Flip7Modifier, Flip7RoundEntry, Player } from '../types';
 import {
   FLIP7_MAX_NUMBERS,
   FLIP7_MODIFIERS,
   FLIP7_NUMBERS,
-  formatFlip7RoundScoreBreakdown,
+  formatFlip7Calculation,
   getFlip7DisplayScore,
   hasFlip7Bonus,
-  isFlip7Eliminated,
 } from '../utils/flip7';
 import { getPlayerAvatarTextColor } from '../utils/players';
+import { Flip7ModifierCard } from './Flip7ModifierCard';
+import { Flip7NumberCard } from './Flip7NumberCard';
 
 type Props = {
   player: Player;
   entry: Flip7RoundEntry;
-  roundByPlayer: Record<string, Flip7RoundEntry>;
-  readOnly?: boolean;
   expanded: boolean;
   onToggle: () => void;
   onToggleNumber: (number: number) => void;
   onToggleModifier: (modifier: Flip7Modifier) => void;
-  onSetStatus: (status: Flip7PlayerRoundStatus) => void;
+  onClear: () => void;
 };
-
-function getFlip7StatusLabel(entry: Flip7RoundEntry, expanded: boolean): string {
-  if (entry.status === 'active') {
-    return `${entry.numbers.length}/${FLIP7_MAX_NUMBERS} números · ${expanded ? 'Ocultar' : 'Registrar cartas'}`;
-  }
-  if (isFlip7Eliminated(entry)) return 'Eliminado';
-  if (entry.status === 'frozen') return 'Congelado';
-  return 'Plantado';
-}
 
 export function Flip7PlayerRoundPanel({
   player,
   entry,
-  roundByPlayer,
-  readOnly = false,
   expanded,
   onToggle,
   onToggleNumber,
   onToggleModifier,
-  onSetStatus,
+  onClear,
 }: Props) {
   const roundScore = getFlip7DisplayScore(entry);
-  const isLocked = readOnly || entry.status !== 'active';
   const flip7Achieved = hasFlip7Bonus(entry);
-  const eliminated = isFlip7Eliminated(entry);
+  const calculation = formatFlip7Calculation(entry);
+  const hasSelection =
+    entry.numbers.length > 0 || entry.modifiers.length > 0;
 
   return (
     <View style={styles.panel}>
@@ -70,135 +59,66 @@ export function Flip7PlayerRoundPanel({
             {player.name}
           </Text>
           <Text style={styles.hint}>
-            {getFlip7StatusLabel(entry, expanded)}
+            {entry.numbers.length}/{FLIP7_MAX_NUMBERS} cartas
             {flip7Achieved ? ' · Flip 7' : ''}
+            {expanded ? ' · Ocultar' : ' · Registrar cartas'}
           </Text>
         </View>
         <View style={styles.scoreBox}>
           <Text style={styles.scoreLabel}>Ronda</Text>
-          <Text
-            style={[
-              styles.score,
-              eliminated && styles.scoreEliminated,
-              entry.status === 'active' && styles.scorePreview,
-            ]}
-          >
-            {roundScore}
-          </Text>
+          <Text style={styles.score}>{roundScore}</Text>
         </View>
         <Text style={styles.chevron}>{expanded ? '▲' : '▼'}</Text>
       </Pressable>
 
       {expanded ? (
         <View style={styles.body}>
-          {isLocked ? (
-            <View style={styles.lockedBlock}>
-              {!readOnly ? (
-                <Pressable
-                  onPress={() => onSetStatus('active')}
-                  style={({ pressed }) => [
-                    styles.resumeBtn,
-                    pressed && styles.actionBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.resumeBtnText}>Volver al juego</Text>
-                </Pressable>
-              ) : null}
+          <Text style={styles.sectionLabel}>Cartas</Text>
+          <View style={styles.cardGrid}>
+            {FLIP7_NUMBERS.map((number) => (
+              <Flip7NumberCard
+                key={number}
+                number={number}
+                selected={entry.numbers.includes(number)}
+                onPress={() => onToggleNumber(number)}
+              />
+            ))}
+          </View>
+
+          {flip7Achieved ? (
+            <View style={styles.flip7Banner}>
+              <Text style={styles.flip7BannerText}>🏅 Flip 7 · +15 pts</Text>
             </View>
-          ) : (
-            <>
-              <Text style={styles.sectionLabel}>Números (0–12)</Text>
-              <Text style={styles.sectionHint}>
-                Resaltadas: cartas de este jugador.
-              </Text>
-              <View style={styles.chipGrid}>
-                {FLIP7_NUMBERS.map((number) => {
-                  const selected = entry.numbers.includes(number);
-                  return (
-                    <Pressable
-                      key={number}
-                      disabled={isLocked}
-                      onPress={() => onToggleNumber(number)}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        selected && {
-                          backgroundColor: player.color + '33',
-                          borderColor: player.color,
-                        },
-                        pressed && !isLocked && styles.chipPressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {number}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+          ) : null}
 
-              <Text style={styles.sectionLabel}>Modificadores</Text>
-              <View style={styles.chipGrid}>
-                {FLIP7_MODIFIERS.map((modifier) => {
-                  const selected = entry.modifiers.includes(modifier);
-                  return (
-                    <Pressable
-                      key={modifier}
-                      disabled={isLocked}
-                      onPress={() => onToggleModifier(modifier)}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        styles.modifierChip,
-                        selected && {
-                          backgroundColor: theme.accent + '33',
-                          borderColor: theme.accent,
-                        },
-                        pressed && !isLocked && styles.chipPressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {modifier}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+          <Text style={styles.sectionLabel}>Bonificaciones</Text>
+          <View style={styles.modifierGrid}>
+            {FLIP7_MODIFIERS.map((modifier) => (
+              <Flip7ModifierCard
+                key={modifier}
+                modifier={modifier}
+                selected={entry.modifiers.includes(modifier)}
+                onPress={() => onToggleModifier(modifier)}
+              />
+            ))}
+          </View>
 
-              <View style={styles.actions}>
-                <Pressable
-                  onPress={() => onSetStatus('stood')}
-                  style={({ pressed }) => [
-                    styles.actionBtn,
-                    styles.standBtn,
-                    pressed && styles.actionBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.standBtnText}>Plantarse/Bloqueado</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => onSetStatus('eliminated')}
-                  style={({ pressed }) => [
-                    styles.actionBtn,
-                    styles.eliminatedBtn,
-                    pressed && styles.actionBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.eliminatedBtnText}>Eliminado</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
+          <View style={styles.calculation}>
+            <Text style={styles.calculationTitle}>Cálculo</Text>
+            <Text style={styles.calculationLine}>{calculation}</Text>
+          </View>
 
-          <Text style={styles.breakdown}>{formatFlip7RoundScoreBreakdown(entry)}</Text>
+          {hasSelection ? (
+            <Pressable
+              onPress={onClear}
+              style={({ pressed }) => [
+                styles.clearBtn,
+                pressed && styles.clearBtnPressed,
+              ]}
+            >
+              <Text style={styles.clearBtnText}>Limpiar</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -262,129 +182,90 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: theme.accent,
   },
-  scorePreview: {
-    color: theme.textMuted,
-  },
-  scoreEliminated: {
-    color: theme.danger,
-  },
   chevron: {
     fontSize: 12,
     color: theme.textMuted,
     marginLeft: 4,
   },
   body: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 16,
-    gap: 10,
+    gap: 12,
     borderTopWidth: 1,
     borderTopColor: theme.border,
   },
-  lockedBlock: {
-    paddingTop: 12,
-  },
-  resumeBtn: {
-    alignSelf: 'flex-start',
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: theme.border,
-    backgroundColor: theme.surfaceLight,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resumeBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.textMuted,
-  },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.text,
+    fontSize: 13,
+    fontWeight: '800',
+    color: theme.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     marginTop: 4,
   },
-  sectionHint: {
-    fontSize: 12,
-    color: theme.textMuted,
-    lineHeight: 17,
+  cardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'flex-start',
   },
-  chipGrid: {
+  modifierGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    justifyContent: 'flex-start',
   },
-  chip: {
-    minWidth: 44,
-    height: 40,
+  flip7Banner: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
+    backgroundColor: theme.warning + '22',
+    borderWidth: 1,
+    borderColor: theme.warning + '66',
+    alignItems: 'center',
+  },
+  flip7BannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.warning,
+  },
+  calculation: {
+    marginTop: 4,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.border,
+    gap: 4,
+  },
+  calculationTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  calculationLine: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.accent,
+    fontVariant: ['tabular-nums'],
+  },
+  clearBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: theme.border,
     backgroundColor: theme.surfaceLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
   },
-  modifierChip: {
-    minWidth: 52,
-  },
-  chipDisabled: {
-    opacity: 0.35,
-  },
-  chipPressed: {
+  clearBtnPressed: {
     opacity: 0.8,
   },
-  chipText: {
-    fontSize: 15,
+  clearBtnText: {
+    fontSize: 14,
     fontWeight: '700',
     color: theme.textMuted,
-  },
-  chipTextSelected: {
-    color: theme.text,
-    fontWeight: '800',
-  },
-  chipTextDisabled: {
-    color: theme.textMuted,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  actionBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  actionBtnPressed: {
-    opacity: 0.85,
-  },
-  standBtn: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accent + '18',
-  },
-  standBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: theme.accent,
-  },
-  eliminatedBtn: {
-    borderColor: theme.danger,
-    backgroundColor: theme.danger + '18',
-  },
-  eliminatedBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: theme.danger,
-  },
-  breakdown: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textMuted,
-    marginTop: 4,
   },
 });

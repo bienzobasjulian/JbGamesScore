@@ -25,7 +25,6 @@ import {
   PiliPiliRoundEntry,
   PiliPiliSession,
   Flip7Modifier,
-  Flip7PlayerRoundStatus,
   Flip7Session,
   RoundBreakdown,
   RoundScores,
@@ -103,23 +102,15 @@ import {
 } from '../utils/piliPili';
 import {
   appendFlip7Round,
+  clearFlip7PlayerRound,
   createFinishedFlip7Match,
   createFlip7Session,
   createInProgressFlip7Match,
   FLIP7_MIN_PLAYERS,
   normalizeFlip7Session,
+  toggleFlip7PlayerModifier,
+  toggleFlip7PlayerNumber,
 } from '../utils/flip7';
-import {
-  applyFlip7FlipThree,
-  applyFlip7Freeze,
-  applyFlip7WithUndo,
-  drawFlip7SecondChance,
-  registerFlip7Modifier,
-  registerFlip7Number,
-  setFlip7PlayerStatusWithTurn,
-  setFlip7TurnOrderIndex,
-  undoFlip7Action,
-} from '../utils/flip7Turn';
 import {
   createAventurerosTrenDestinationEntry,
   createAventurerosTrenRouteEntry,
@@ -993,123 +984,60 @@ export function useApp() {
     });
   }, []);
 
-  const registerFlip7RoundNumber = useCallback(
+  const toggleFlip7RoundNumber = useCallback(
     (roundIndex: number, playerId: string, number: number) => {
-      let result: { flip7Achieved: boolean } | null = null;
       setFlip7Session((prev) => {
         if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) => {
-          const registered = registerFlip7Number(
-            session,
-            roundIndex,
-            playerId,
-            number,
-          );
-          if (!registered) return null;
-          result = { flip7Achieved: registered.flip7Achieved };
-          return registered.session;
-        });
+        const normalized = normalizeFlip7Session(prev);
+        if (roundIndex < 0 || roundIndex >= normalized.rounds.length) {
+          return normalized;
+        }
+        const rounds = [...normalized.rounds];
+        rounds[roundIndex] = toggleFlip7PlayerNumber(
+          rounds[roundIndex] ?? {},
+          playerId,
+          number,
+        );
+        return { ...normalized, rounds };
       });
-      return result;
     },
     [],
   );
 
-  const registerFlip7RoundModifier = useCallback(
+  const toggleFlip7RoundModifier = useCallback(
     (roundIndex: number, playerId: string, modifier: Flip7Modifier) => {
       setFlip7Session((prev) => {
         if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) => {
-          const registered = registerFlip7Modifier(
-            session,
-            roundIndex,
-            playerId,
-            modifier,
-          );
-          return registered?.session ?? null;
-        });
-      });
-    },
-    [],
-  );
-
-  const setFlip7RoundPlayerStatus = useCallback(
-    (roundIndex: number, playerId: string, status: Flip7PlayerRoundStatus) => {
-      setFlip7Session((prev) => {
-        if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) =>
-          setFlip7PlayerStatusWithTurn(session, roundIndex, playerId, status),
+        const normalized = normalizeFlip7Session(prev);
+        if (roundIndex < 0 || roundIndex >= normalized.rounds.length) {
+          return normalized;
+        }
+        const rounds = [...normalized.rounds];
+        rounds[roundIndex] = toggleFlip7PlayerModifier(
+          rounds[roundIndex] ?? {},
+          playerId,
+          modifier,
         );
+        return { ...normalized, rounds };
       });
     },
     [],
   );
 
-  const applyFlip7RoundFreeze = useCallback(
-    (
-      roundIndex: number,
-      sourcePlayerId: string,
-      targetPlayerId: string,
-    ) => {
+  const clearFlip7RoundPlayer = useCallback(
+    (roundIndex: number, playerId: string) => {
       setFlip7Session((prev) => {
         if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) =>
-          applyFlip7Freeze(session, roundIndex, sourcePlayerId, targetPlayerId),
+        const normalized = normalizeFlip7Session(prev);
+        if (roundIndex < 0 || roundIndex >= normalized.rounds.length) {
+          return normalized;
+        }
+        const rounds = [...normalized.rounds];
+        rounds[roundIndex] = clearFlip7PlayerRound(
+          rounds[roundIndex] ?? {},
+          playerId,
         );
-      });
-    },
-    [],
-  );
-
-  const applyFlip7RoundFlipThree = useCallback(
-    (
-      roundIndex: number,
-      sourcePlayerId: string,
-      targetPlayerId: string,
-    ) => {
-      setFlip7Session((prev) => {
-        if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) =>
-          applyFlip7FlipThree(
-            session,
-            roundIndex,
-            sourcePlayerId,
-            targetPlayerId,
-          ),
-        );
-      });
-    },
-    [],
-  );
-
-  const drawFlip7RoundSecondChance = useCallback(
-    (
-      roundIndex: number,
-      playerId: string,
-      targetPlayerId?: string,
-    ) => {
-      setFlip7Session((prev) => {
-        if (!prev) return null;
-        return applyFlip7WithUndo(prev, (session) =>
-          drawFlip7SecondChance(session, roundIndex, playerId, targetPlayerId),
-        );
-      });
-    },
-    [],
-  );
-
-  const undoFlip7RoundAction = useCallback(() => {
-    setFlip7Session((prev) => {
-      if (!prev) return null;
-      return undoFlip7Action(prev);
-    });
-  }, []);
-
-  const setFlip7RoundTurnIndex = useCallback(
-    (roundIndex: number, turnOrderIndex: number) => {
-      setFlip7Session((prev) => {
-        if (!prev) return null;
-        return setFlip7TurnOrderIndex(prev, roundIndex, turnOrderIndex);
+        return { ...normalized, rounds };
       });
     },
     [],
@@ -2548,14 +2476,9 @@ export function useApp() {
     saveFlip7AndExit,
     deleteFlip7AndExit,
     goFlip7Round,
-    registerFlip7RoundNumber,
-    registerFlip7RoundModifier,
-    setFlip7RoundPlayerStatus,
-    applyFlip7RoundFreeze,
-    applyFlip7RoundFlipThree,
-    drawFlip7RoundSecondChance,
-    undoFlip7RoundAction,
-    setFlip7RoundTurnIndex,
+    toggleFlip7RoundNumber,
+    toggleFlip7RoundModifier,
+    clearFlip7RoundPlayer,
     addFlip7Round,
     finishFlip7Session,
     aventurerosTrenSession,

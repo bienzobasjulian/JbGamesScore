@@ -7,10 +7,16 @@ import {
   Player,
 } from '../types';
 import { createId } from './game';
-import { emptyFlip7RoundState, normalizeFlip7Session } from './flip7Turn';
 import { emptyRoundBreakdown } from './rounds';
 
-export { normalizeFlip7Session } from './flip7Turn';
+/** Limpia campos legacy de sesiones guardadas con el modo por turnos. */
+export function normalizeFlip7Session(session: Flip7Session): Flip7Session {
+  return {
+    players: session.players,
+    activeRoundIndex: session.activeRoundIndex,
+    rounds: session.rounds,
+  };
+}
 
 export const FLIP7_MIN_PLAYERS = 3;
 export const FLIP7_WIN_AT = 200;
@@ -40,7 +46,6 @@ export function emptyFlip7RoundEntry(): Flip7RoundEntry {
     status: 'active',
     numbers: [],
     modifiers: [],
-    hasSecondChance: false,
   };
 }
 
@@ -57,8 +62,6 @@ export function createFlip7Session(players: Player[]): Flip7Session {
     players,
     activeRoundIndex: 0,
     rounds: [emptyRoundByPlayer(players)],
-    roundStates: [emptyFlip7RoundState()],
-    undoStack: [],
   };
 }
 
@@ -105,21 +108,44 @@ export function canFlip7TakeNumber(
   number: number,
 ): boolean {
   const entry = roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
-  if (entry.status !== 'active') return false;
   if (entry.numbers.includes(number)) return true;
-  if (entry.numbers.length >= FLIP7_MAX_NUMBERS) return false;
-  return true;
+  return entry.numbers.length < FLIP7_MAX_NUMBERS;
 }
 
 export function canFlip7TakeModifier(
-  roundByPlayer: Record<string, Flip7RoundEntry>,
+  _roundByPlayer: Record<string, Flip7RoundEntry>,
   playerId: string,
   modifier: Flip7Modifier,
 ): boolean {
-  const entry = roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
-  if (entry.status !== 'active') return false;
-  if (entry.modifiers.includes(modifier)) return false;
+  const entry = _roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
+  if (entry.modifiers.includes(modifier)) return true;
   return true;
+}
+
+export function getFlip7RoundNumberErrors(
+  roundByPlayer: Record<string, Flip7RoundEntry>,
+): string[] {
+  const usage: Record<number, number> = {};
+
+  for (const entry of Object.values(roundByPlayer)) {
+    for (const number of entry.numbers) {
+      usage[number] = (usage[number] ?? 0) + 1;
+    }
+  }
+
+  const errors: string[] = [];
+  for (const number of FLIP7_NUMBERS) {
+    const used = usage[number] ?? 0;
+    const max = getFlip7NumberDeckSize(number);
+    if (used > max) {
+      const maxLabel = max === 1 ? '1 carta' : `${max} cartas`;
+      errors.push(
+        `El ${number} está marcado ${used} veces entre todos (solo hay ${maxLabel})`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 export function hasFlip7Bonus(entry: Flip7RoundEntry): boolean {
@@ -139,24 +165,63 @@ export function calculateFlip7EntryPoints(entry: Flip7RoundEntry): number {
 }
 
 export function calculateFlip7RoundScore(entry: Flip7RoundEntry): number {
-  if (entry.status === 'eliminated') return 0;
-  if (entry.status === 'stood' || entry.status === 'frozen') {
-    return calculateFlip7EntryPoints(entry);
-  }
-  return 0;
+  return calculateFlip7EntryPoints(entry);
 }
 
-/** Puntos en vivo para clasificación (incluye ronda abierta y cartas en juego). */
+/** Puntos en vivo para clasificación (incluye ronda abierta). */
 export function getFlip7LiveEntryScore(entry: Flip7RoundEntry): number {
   if (entry.closedScore !== undefined) return entry.closedScore;
-  if (entry.status === 'eliminated') return 0;
   return calculateFlip7EntryPoints(entry);
 }
 
 export function getFlip7DisplayScore(entry: Flip7RoundEntry): number {
   if (entry.closedScore !== undefined) return entry.closedScore;
-  if (entry.status === 'eliminated') return 0;
   return calculateFlip7EntryPoints(entry);
+}
+
+/** Una línea: suma → (×2) → modificadores → +15 Flip 7. */
+export function formatFlip7Calculation(entry: Flip7RoundEntry): string {
+  const numbers = [...entry.numbers].sort((a, b) => a - b);
+  const hasX2 = entry.modifiers.includes('x2');
+  const additiveMods = entry.modifiers.filter(
+    (m): m is Exclude<Flip7Modifier, 'x2'> => m !== 'x2',
+  );
+  const flip7Bonus = hasFlip7Bonus(entry);
+  const total = calculateFlip7EntryPoints(entry);
+
+  if (
+    numbers.length === 0 &&
+    !hasX2 &&
+    additiveMods.length === 0 &&
+    !flip7Bonus
+  ) {
+    return '0 pts';
+  }
+
+  const parts: string[] = [];
+
+  if (hasX2) {
+    if (numbers.length > 1) {
+      parts.push(`(${numbers.join(' + ')}) × 2`);
+    } else if (numbers.length === 1) {
+      parts.push(`${numbers[0]} × 2`);
+    } else {
+      parts.push('0 × 2');
+    }
+  } else if (numbers.length > 0) {
+    parts.push(numbers.join(' + '));
+  }
+
+  for (const mod of additiveMods) {
+    parts.push(mod);
+  }
+
+  if (flip7Bonus) {
+    parts.push('+ 15');
+  }
+
+  const expr = parts.length > 0 ? parts.join(' ') : '0';
+  return `${expr} = ${total} pts`;
 }
 
 export function isFlip7Eliminated(entry: Flip7RoundEntry): boolean {
@@ -207,37 +272,7 @@ export function isFlip7RoundComplete(
 }
 
 export function formatFlip7RoundScoreBreakdown(entry: Flip7RoundEntry): string {
-  if (entry.status === 'active') {
-    const preview = calculateFlip7EntryPoints(entry);
-    return preview > 0 ? `En juego · ${preview} pts posibles` : 'En juego';
-  }
-  if (entry.status === 'eliminated') return 'Eliminado · 0 pts';
-  if (entry.status === 'frozen') {
-    const pts = calculateFlip7EntryPoints(entry);
-    return pts > 0 ? `Congelado · ${pts} pts` : 'Congelado · 0 pts';
-  }
-
-  const numberSum = entry.numbers.reduce((sum, n) => sum + n, 0);
-  const hasX2 = entry.modifiers.includes('x2');
-  const additiveSum = entry.modifiers
-    .filter((m): m is Exclude<Flip7Modifier, 'x2'> => m !== 'x2')
-    .reduce((sum, m) => sum + Number(m.slice(1)), 0);
-  const flip7Bonus = hasFlip7Bonus(entry) ? FLIP7_FLIP7_BONUS : 0;
-
-  const parts: string[] = [];
-  if (entry.numbers.length > 0) {
-    parts.push(hasX2 ? `${numberSum}×2` : String(numberSum));
-  } else if (hasX2) {
-    parts.push('0×2');
-  }
-  if (additiveSum > 0) {
-    parts.push(`+${additiveSum}`);
-  }
-  if (flip7Bonus > 0) {
-    parts.push('Flip7 +15');
-  }
-  if (parts.length === 0) return '0 pts';
-  return `${parts.join(' ')} = ${calculateFlip7EntryPoints(entry)} pts`;
+  return formatFlip7Calculation(entry);
 }
 
 export function hasFlip7InRound(
@@ -316,7 +351,6 @@ export function toggleFlip7PlayerNumber(
   number: number,
 ): Record<string, Flip7RoundEntry> {
   const entry = roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
-  if (entry.status !== 'active') return roundByPlayer;
 
   if (entry.numbers.includes(number)) {
     return {
@@ -324,6 +358,7 @@ export function toggleFlip7PlayerNumber(
       [playerId]: {
         ...entry,
         numbers: entry.numbers.filter((n) => n !== number),
+        closedScore: undefined,
       },
     };
   }
@@ -333,14 +368,13 @@ export function toggleFlip7PlayerNumber(
   }
 
   const numbers = [...entry.numbers, number].sort((a, b) => a - b);
-  const achievedFlip7 = numbers.length >= FLIP7_MAX_NUMBERS;
 
   return {
     ...roundByPlayer,
     [playerId]: {
       ...entry,
       numbers,
-      status: achievedFlip7 ? 'stood' : entry.status,
+      closedScore: undefined,
     },
   };
 }
@@ -351,7 +385,6 @@ export function toggleFlip7PlayerModifier(
   modifier: Flip7Modifier,
 ): Record<string, Flip7RoundEntry> {
   const entry = roundByPlayer[playerId] ?? emptyFlip7RoundEntry();
-  if (entry.status !== 'active') return roundByPlayer;
 
   if (entry.modifiers.includes(modifier)) {
     return {
@@ -359,6 +392,7 @@ export function toggleFlip7PlayerModifier(
       [playerId]: {
         ...entry,
         modifiers: entry.modifiers.filter((m) => m !== modifier),
+        closedScore: undefined,
       },
     };
   }
@@ -372,7 +406,18 @@ export function toggleFlip7PlayerModifier(
     [playerId]: {
       ...entry,
       modifiers: [...entry.modifiers, modifier],
+      closedScore: undefined,
     },
+  };
+}
+
+export function clearFlip7PlayerRound(
+  roundByPlayer: Record<string, Flip7RoundEntry>,
+  playerId: string,
+): Record<string, Flip7RoundEntry> {
+  return {
+    ...roundByPlayer,
+    [playerId]: emptyFlip7RoundEntry(),
   };
 }
 
@@ -388,7 +433,7 @@ export function closeFlip7RoundByPlayer(
   for (const [playerId, entry] of Object.entries(roundByPlayer)) {
     closed[playerId] = {
       ...entry,
-      closedScore: calculateFlip7RoundScore(entry),
+      closedScore: calculateFlip7EntryPoints(entry),
     };
   }
   return closed;
@@ -413,19 +458,14 @@ export function setFlip7PlayerStatus(
 export function appendFlip7Round(session: Flip7Session): Flip7Session {
   const normalized = normalizeFlip7Session(session);
   const rounds = [...normalized.rounds];
-  const roundStates = [...normalized.roundStates];
   const closingIndex = normalized.activeRoundIndex;
   rounds[closingIndex] = closeFlip7RoundByPlayer(rounds[closingIndex] ?? {});
-  roundStates[closingIndex] = roundStates[closingIndex] ?? emptyFlip7RoundState();
   rounds.push(emptyRoundByPlayer(normalized.players));
-  roundStates.push(emptyFlip7RoundState());
 
   return {
     ...normalized,
     rounds,
-    roundStates,
     activeRoundIndex: rounds.length - 1,
-    undoStack: [],
   };
 }
 
