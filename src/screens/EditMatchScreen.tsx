@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { EditMatchDraft } from '../types/playerSelection';
 import { AppScreen, GameSettings, Match, Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers } from '../utils/players';
@@ -40,6 +40,9 @@ export function EditMatchScreen({
   onOpenPlayerSelection,
   onCreateNewPlayer,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [settings, setSettings] = useState<GameSettings>(
     restoredDraft?.settings ?? match.settings,
   );
@@ -121,7 +124,7 @@ export function EditMatchScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

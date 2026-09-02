@@ -13,7 +13,7 @@ import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateMatchDraft } from '../types/playerSelection';
 import {
   AppScreen,
@@ -119,6 +119,9 @@ export function CreateMatchScreen({
   onStartRegicide,
   onCreateNewPlayer,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const templateInitial = buildInitialFromTemplate(
     templates,
     savedPlayers,
@@ -427,7 +430,7 @@ export function CreateMatchScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

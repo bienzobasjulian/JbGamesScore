@@ -5,7 +5,7 @@ import {
   FLIP7_MODIFIER_CARD_WIDTH,
 } from '../constants/flip7Cards';
 import { Flip7Modifier } from '../types';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   modifier: Flip7Modifier;
@@ -14,6 +14,9 @@ type Props = {
 };
 
 export function Flip7ModifierCard({ modifier, selected, onPress }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const palette = FLIP7_MODIFIER_CARD_STYLE;
   const valueSize = modifier === 'x2' ? 22 : modifier === '+10' ? 18 : 20;
 
@@ -57,7 +60,7 @@ export function Flip7ModifierCard({ modifier, selected, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     width: FLIP7_MODIFIER_CARD_WIDTH,
     height: FLIP7_MODIFIER_CARD_HEIGHT,

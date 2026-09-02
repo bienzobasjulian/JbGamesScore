@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { SessionListRow } from '../components/SessionListRow';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession } from '../types';
 import { getAllSessionsSorted } from '../utils/session';
 
@@ -21,6 +21,9 @@ export function SessionsListScreen({
   onCreateSession,
   onOpenSession,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const sorted = getAllSessionsSorted(sessions);
 
   return (
@@ -59,7 +62,7 @@ export function SessionsListScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

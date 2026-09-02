@@ -12,7 +12,7 @@ import {
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Button } from '../components/Button';
 import { ExitMatchModal } from '../components/ExitMatchModal';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   applyRegicideAttackToBoss,
   canAddRegicideCard,
@@ -61,13 +61,12 @@ const BOSS_FADE_DURATION_MS = 900;
 
 type DefeatTransitionPhase = 'none' | 'stats' | 'fade';
 
-const SUIT_COLORS: Record<RegicideSuit, string> = {
+const getSuitColors = (theme: AppTheme): Record<RegicideSuit, string> => ({
   hearts: '#E85D4C',
   diamonds: '#E85D4C',
   clubs: theme.text,
   spades: theme.text,
-};
-
+});
 const STANDARD_CARD_ROWS: RegicideCardRank[][] = [
   ['A', '2', '3', '4', '5'],
   ['6', '7', '8', '9', '10'],
@@ -133,6 +132,10 @@ export function RegicideCounterScreen({
   onSaveAndExit,
   onDeleteAndExit,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const suitColors = useMemo(() => getSuitColors(theme), [theme]);
+
   const [mode, setMode] = useState<ScreenMode>(
     session.activeBossId ? 'combat' : 'select_boss',
   );
@@ -610,12 +613,12 @@ export function RegicideCounterScreen({
             disabled={isCombatLocked}
             style={({ pressed }) => [
               styles.suitCardBtn,
-              { borderColor: SUIT_COLORS[suit] },
+              { borderColor: suitColors[suit] },
               isCombatLocked && styles.iconBtnDisabled,
               pressed && !isCombatLocked && styles.suitCardBtnPressed,
             ]}
           >
-            <Text style={[styles.suitCardEmoji, { color: SUIT_COLORS[suit] }]}>
+            <Text style={[styles.suitCardEmoji, { color: suitColors[suit] }]}>
               {REGICIDE_SUIT_EMOJI[suit]}
             </Text>
           </Pressable>
@@ -649,12 +652,16 @@ function MiniBossCard({
   suit: RegicideSuit;
   active?: boolean;
 }) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const suitColors = getSuitColors(theme);
+
   return (
     <View style={[styles.miniBossCard, active && styles.miniBossCardActive]}>
-      <Text style={[styles.miniBossRank, { color: SUIT_COLORS[suit] }]}>
+      <Text style={[styles.miniBossRank, { color: suitColors[suit] }]}>
         {rank}
       </Text>
-      <Text style={[styles.miniBossSuit, { color: SUIT_COLORS[suit] }]}>
+      <Text style={[styles.miniBossSuit, { color: suitColors[suit] }]}>
         {REGICIDE_SUIT_EMOJI[suit]}
       </Text>
     </View>
@@ -672,6 +679,7 @@ function AnimatedStatPanel({
   animation: { from: number; to: number; delta: number } | null;
   accent: string;
 }) {
+  const styles = useThemedStyles(createStyles);
   const anim = useRef(new Animated.Value(value)).current;
   const [display, setDisplay] = useState(value);
   const [showDelta, setShowDelta] = useState(false);
@@ -738,16 +746,20 @@ function AnimatedStatPanel({
 }
 
 function BossCenterPanel({ boss }: { boss: RegicideBossState }) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const suitColors = getSuitColors(theme);
+
   return (
     <View style={styles.centerPanelOuter}>
       <View style={styles.bossPortraitCard}>
         <Text
-          style={[styles.bossRank, { color: SUIT_COLORS[boss.suit] }]}
+          style={[styles.bossRank, { color: suitColors[boss.suit] }]}
         >
           {boss.rank}
         </Text>
         <Text
-          style={[styles.bossSuitLarge, { color: SUIT_COLORS[boss.suit] }]}
+          style={[styles.bossSuitLarge, { color: suitColors[boss.suit] }]}
         >
           {REGICIDE_SUIT_EMOJI[boss.suit]}
         </Text>
@@ -769,12 +781,16 @@ function CardFace({
   card: RegicideCard;
   selected?: boolean;
 }) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const suitColors = getSuitColors(theme);
+
   return (
     <View style={[styles.cardBtn, selected && styles.cardBtnSelected]}>
-      <Text style={[styles.cardBtnRank, { color: SUIT_COLORS[card.suit] }]}>
+      <Text style={[styles.cardBtnRank, { color: suitColors[card.suit] }]}>
         {card.rank}
       </Text>
-      <Text style={[styles.cardBtnSuit, { color: SUIT_COLORS[card.suit] }]}>
+      <Text style={[styles.cardBtnSuit, { color: suitColors[card.suit] }]}>
         {REGICIDE_SUIT_EMOJI[card.suit]}
       </Text>
     </View>
@@ -790,6 +806,7 @@ function CardPickerRows({
   draftCards: RegicideCard[];
   onSelectCard: (card: RegicideCard) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const rows = buildCardPickerRows(cards, draftCards);
 
   if (rows.length === 0) {
@@ -828,6 +845,9 @@ function BossSelectCard({
   boss: RegicideBossState;
   onPress: () => void;
 }) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const suitColors = getSuitColors(theme);
   const disabled = boss.defeated;
   return (
     <Pressable
@@ -842,7 +862,7 @@ function BossSelectCard({
       <Text
         style={[
           styles.bossCardLabel,
-          { color: SUIT_COLORS[boss.suit] },
+          { color: suitColors[boss.suit] },
           disabled && styles.bossCardLabelDefeated,
         ]}
       >
@@ -852,7 +872,7 @@ function BossSelectCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.bg,

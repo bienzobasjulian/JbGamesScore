@@ -5,7 +5,7 @@ import {
   FLIP7_NUMBER_CARD_WIDTH,
   FLIP7_NUMBER_COLORS,
 } from '../constants/flip7Cards';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   number: number;
@@ -14,6 +14,9 @@ type Props = {
 };
 
 export function Flip7NumberCard({ number, selected, onPress }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const shared = FLIP7_CARD_SHARED;
   const numberColor = FLIP7_NUMBER_COLORS[number];
 
@@ -64,7 +67,7 @@ export function Flip7NumberCard({ number, selected, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     width: FLIP7_NUMBER_CARD_WIDTH,
     height: FLIP7_NUMBER_CARD_HEIGHT,

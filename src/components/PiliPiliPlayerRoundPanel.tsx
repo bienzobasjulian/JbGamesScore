@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   Player,
   PiliPiliRoundConfig,
@@ -46,6 +46,9 @@ export function PiliPiliPlayerRoundPanel({
   onToggle,
   onChange,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const rawRoundScore = calculatePiliPiliRoundScore(roundByPlayer, config, player.id);
   const roundScore = getPiliPiliEffectiveRoundDelta(
     totalBeforeRound,
@@ -295,7 +298,7 @@ export function PiliPiliPlayerRoundPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

@@ -9,7 +9,7 @@ import { EditGroupSheet } from '../components/EditGroupSheet';
 import { EditPlayerSheet } from '../components/EditPlayerSheet';
 import { ListRow } from '../components/ListRow';
 import { SectionLabel } from '../components/SectionLabel';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, PlayerGroup, SavedPlayer } from '../types';
 import { formatGroupSubtitle, sortGroupsByName } from '../utils/groups';
 import { formatPlayerLastUsed } from '../utils/players';
@@ -67,6 +67,9 @@ export function PlayersListScreen({
   onRemovePlayer,
   onRemovePlayers,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
@@ -290,7 +293,7 @@ export function PlayersListScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

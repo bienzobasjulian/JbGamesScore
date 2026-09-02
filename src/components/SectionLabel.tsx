@@ -1,15 +1,18 @@
 import { StyleSheet, Text } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   label: string;
 };
 
 export function SectionLabel({ label }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return <Text style={styles.label}>{label}</Text>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match } from '../types';
 import { formatMatchListSubtitle, formatMatchTitle } from '../utils/match';
 
@@ -20,6 +20,9 @@ export function MatchListRow({
   selectionMode = false,
   selected = false,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const isFinished = match.status === 'finished';
   const subtitle = formatMatchListSubtitle(match);
   const subtitleLines = subtitle.split('\n');
@@ -87,7 +90,7 @@ export function MatchListRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',

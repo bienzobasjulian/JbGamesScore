@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { GameOverResult } from '../utils/game';
 
 type Props = {
@@ -7,6 +7,9 @@ type Props = {
 };
 
 export function GameOverBanner({ result }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   if (!result.isOver) return null;
 
   const winnerNames = result.winners.map((p) => p.name).join(', ');
@@ -29,7 +32,7 @@ export function GameOverBanner({ result }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   banner: {
     backgroundColor: theme.accent + '22',
     borderRadius: 16,

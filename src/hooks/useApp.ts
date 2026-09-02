@@ -1385,6 +1385,11 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
+  const goSettings = useCallback(() => {
+    setScreen({ type: 'settings' });
+    setMenuOpen(false);
+  }, []);
+
   const goSessionsList = useCallback(() => {
     setScreen({ type: 'sessionsList' });
     setMenuOpen(false);
@@ -2503,6 +2508,7 @@ export function useApp() {
     goMatchesList,
     goPlayersList,
     goTemplatesList,
+    goSettings,
     goSessionsList,
     goCreateSession,
     goSessionDetail,

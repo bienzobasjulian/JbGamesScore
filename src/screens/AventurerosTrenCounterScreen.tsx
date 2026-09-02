@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
   AventurerosTrenDestinationEntry,
@@ -61,6 +61,9 @@ export function AventurerosTrenCounterScreen({
   onRemoveDestination,
   onUpdatePlayerScoring,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
   );
@@ -235,7 +238,7 @@ export function AventurerosTrenCounterScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

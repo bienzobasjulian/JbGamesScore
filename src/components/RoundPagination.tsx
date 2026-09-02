@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { RoundBreakdown, RoundScores } from '../types';
 import { isRoundSelectable } from '../utils/rounds';
 
@@ -35,6 +35,9 @@ export function RoundPagination({
   onSelectRound,
   onAddRound,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const fixedTabs = maxRounds != null;
   const displayCount = fixedTabs ? maxRounds : roundCount;
   const onLastFixedRound =
@@ -132,7 +135,7 @@ export function RoundPagination({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     gap: 6,
     paddingVertical: 4,

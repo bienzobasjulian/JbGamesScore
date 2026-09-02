@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession } from '../types';
 import { formatSessionSubtitle, getSessionMatches } from '../utils/session';
 
@@ -10,6 +10,9 @@ type Props = {
 };
 
 export function SessionListRow({ session, matches, onPress }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const sessionMatches = getSessionMatches(session.id, matches);
   const subtitle = formatSessionSubtitle(session, sessionMatches);
   const isActive = session.status === 'active';
@@ -59,7 +62,7 @@ export function SessionListRow({ session, matches, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',

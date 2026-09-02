@@ -263,4 +263,5 @@ export type AppScreen =
   | { type: 'sessionDetail'; sessionId: string }
   | { type: 'createSessionMatch'; sessionId: string }
   | { type: 'createWinnerMatch'; sessionId: string }
-  | { type: 'selectPlayers' };
+  | { type: 'selectPlayers' }
+  | { type: 'settings' };

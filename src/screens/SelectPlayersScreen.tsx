@@ -13,7 +13,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { CardCountStepper } from '../components/CardCountStepper';
 import { CreatePlayerSheet } from '../components/CreatePlayerSheet';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, PlayerGroup, SavedPlayer } from '../types';
 import {
   formatGroupSubtitle,
@@ -51,6 +51,8 @@ function PlayerSelectRow({
   onToggle: () => void;
   subtitle?: string;
 }) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onToggle}
@@ -105,6 +107,9 @@ export function SelectPlayersScreen({
   onConfirm,
   onCreatePlayer,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const initial = useMemo(
     () => parseRosterPlayers(initialPlayers),
     [initialPlayers],
@@ -394,7 +399,7 @@ export function SelectPlayersScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
@@ -578,7 +583,7 @@ const styles = StyleSheet.create({
   checkboxMark: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F1419',
+    color: theme.onAccent,
   },
   empty: {
     fontSize: 14,

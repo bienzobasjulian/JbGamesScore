@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { EditTemplateDraft } from '../types/playerSelection';
 import { AppScreen, GameSettings, MatchTemplate, Player, SavedPlayer } from '../types';
 import { defaultSettings } from '../utils/game';
@@ -55,6 +55,9 @@ export function EditTemplateScreen({
   onDelete,
   onOpenPlayerSelection,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const isNew = template == null;
   const [name, setName] = useState(restoredDraft?.name ?? template?.name ?? '');
   const [settings, setSettings] = useState<GameSettings>(
@@ -197,7 +200,7 @@ export function EditTemplateScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

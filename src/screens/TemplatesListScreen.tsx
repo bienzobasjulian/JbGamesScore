@@ -4,7 +4,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { TemplateListRow } from '../components/TemplateListRow';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { MatchTemplate, SavedPlayer } from '../types';
 import { formatTemplateSubtitle } from '../utils/template';
 
@@ -27,6 +27,9 @@ export function TemplatesListScreen({
   onEditTemplate,
   onDeleteTemplate,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [toDelete, setToDelete] = useState<MatchTemplate | null>(null);
   const sorted = [...templates].sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -88,7 +91,7 @@ export function TemplatesListScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

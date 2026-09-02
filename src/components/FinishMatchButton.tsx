@@ -1,11 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   onPress: () => void;
 };
 
 export function FinishMatchButton({ onPress }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onPress}
@@ -19,7 +22,7 @@ export function FinishMatchButton({ onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   btn: {
     flexDirection: 'row',
     alignItems: 'center',

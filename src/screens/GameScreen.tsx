@@ -17,7 +17,7 @@ import { MatchResultsPager } from '../components/MatchResultsPager';
 import { PlayerCard } from '../components/PlayerCard';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { GameState, ScoringMode } from '../types';
 import {
   checkGameOver,
@@ -81,6 +81,9 @@ export function GameScreen({
   onRepeatMatch,
   onDeleteMatch,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [finishModalVisible, setFinishModalVisible] = useState(false);
   const [exitModalVisible, setExitModalVisible] = useState(false);
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
@@ -433,7 +436,7 @@ export function GameScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

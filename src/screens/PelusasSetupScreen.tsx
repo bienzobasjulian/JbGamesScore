@@ -4,7 +4,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PelusasSetupDraft } from '../types/playerSelection';
 import { AppScreen, Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers } from '../utils/players';
@@ -35,6 +35,9 @@ export function PelusasSetupScreen({
   onOpenPlayerSelection,
   onCreateNewPlayer,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [players, setPlayers] = useState<Player[]>(
     restoredDraft?.players ?? initialPlayers,
   );
@@ -89,7 +92,7 @@ export function PelusasSetupScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

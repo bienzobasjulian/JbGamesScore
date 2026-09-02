@@ -1,5 +1,5 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { AventurerosTrenDestinationEntry } from '../types';
 import {
   formatDestinationPlaces,
@@ -22,6 +22,9 @@ export function AventurerosTrenDestinationRow({
   onChange,
   onRemove,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const net = getDestinationEntryPoints(entry);
   const places = formatDestinationPlaces(entry);
   const pointsLabel = `${net > 0 ? '+' : ''}${net} pts`;
@@ -71,7 +74,7 @@ export function AventurerosTrenDestinationRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',

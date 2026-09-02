@@ -8,8 +8,9 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { HamburgerMenu } from './src/components/HamburgerMenu';
-import { theme } from './src/constants';
 import { useApp } from './src/hooks/useApp';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ThemeProvider, useTheme, useThemeContext, useThemedStyles, type AppTheme } from './src/theme';
 import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
 import { CreateSessionScreen } from './src/screens/CreateSessionScreen';
 import { CreateWinnerMatchScreen } from './src/screens/CreateWinnerMatchScreen';
@@ -50,7 +51,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <AppShell />
+        <ThemeProvider>
+          <AppShell />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -58,6 +61,9 @@ export default function App() {
 
 function AppShell() {
   const app = useApp();
+  const { colorScheme } = useThemeContext();
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
   const isHome = app.screen.type === 'home';
   const insets = useSafeAreaInsets();
 
@@ -144,6 +150,10 @@ function AppShell() {
             return true;
 
           case 'templatesList':
+            app.goHome();
+            return true;
+
+          case 'settings':
             app.goHome();
             return true;
 
@@ -484,6 +494,9 @@ function AppShell() {
           />
         );
 
+      case 'settings':
+        return <SettingsScreen onBack={app.goHome} />;
+
       case 'game': {
         const match = app.getMatch(app.screen.matchId);
         if (!match) return null;
@@ -709,7 +722,7 @@ function AppShell() {
         },
       ]}
     >
-      <StatusBar style="light" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       {renderScreen()}
       {isHome && (
         <HamburgerMenu
@@ -724,6 +737,7 @@ function AppShell() {
               label: 'Plantillas de partida',
               onPress: app.goTemplatesList,
             },
+            { label: 'Ajustes', onPress: app.goSettings },
           ]}
         />
       )}
@@ -735,14 +749,18 @@ const styles = StyleSheet.create({
   gestureRoot: {
     flex: 1,
   },
-  root: {
-    flex: 1,
-    backgroundColor: theme.bg,
-  },
-  loading: {
-    flex: 1,
-    backgroundColor: theme.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
+
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    loading: {
+      flex: 1,
+      backgroundColor: theme.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

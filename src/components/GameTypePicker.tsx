@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   CREATE_MATCH_GAMES,
   CreateMatchGameType,
@@ -68,6 +68,9 @@ function getDropdownLayout(trigger: TriggerLayout) {
 }
 
 export function GameTypePicker({ selected, onSelect }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [open, setOpen] = useState(false);
   const [triggerLayout, setTriggerLayout] = useState<TriggerLayout | null>(
     null,
@@ -168,7 +171,7 @@ export function GameTypePicker({ selected, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

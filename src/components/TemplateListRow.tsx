@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   title: string;
@@ -16,6 +16,9 @@ export function TemplateListRow({
   onEdit,
   onDelete,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.row}>
       <View style={styles.texts}>
@@ -51,7 +54,7 @@ export function TemplateListRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   row: {
     paddingVertical: 14,
     paddingHorizontal: 4,

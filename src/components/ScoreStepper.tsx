@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   value: number;
@@ -37,6 +37,9 @@ export function ScoreStepper({
   color,
   disabled,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
   const textRef = useRef(text);
@@ -135,7 +138,7 @@ export function ScoreStepper({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',

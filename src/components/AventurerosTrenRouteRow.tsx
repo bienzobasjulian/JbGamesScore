@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { AventurerosTrenRouteEntry, AventurerosTrenSubmode } from '../types';
 import {
   formatRouteCollapsedMeta,
@@ -27,6 +27,9 @@ export function AventurerosTrenRouteRow({
   onChange,
   onRemove,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const lengthOptions = getRouteLengthOptions(submode);
   const pointsByLength = getRoutePointsByLength(submode);
   const points = getRouteEntryPoints(entry, submode);
@@ -98,7 +101,7 @@ export function AventurerosTrenRouteRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   modeToggle: {
     alignSelf: 'flex-start',
   },

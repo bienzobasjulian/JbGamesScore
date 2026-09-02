@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { formatBreakdownItem } from '../utils/scoring';
 
 type Props = {
@@ -33,6 +33,9 @@ export function BreakdownEditor({
   onAdd,
   onRemove,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [draft, setDraft] = useState('');
   const inputRef = useRef<TextInput>(null);
   const refocusAfterAdd = useRef(false);
@@ -136,7 +139,7 @@ export function BreakdownEditor({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     flex: 1,
     gap: 10,

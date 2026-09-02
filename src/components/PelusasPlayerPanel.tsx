@@ -1,5 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PelusasPlayerCounts, Player } from '../types';
 import { getPelusaImageSource } from '../utils/pelusaAssets';
 import {
@@ -27,6 +27,9 @@ export function PelusasPlayerPanel({
   onToggle,
   onChangeCount,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const score = calculatePelusasScore(counts, revolutionMode);
   const cards = getPelusasCardValues(revolutionMode);
 
@@ -102,7 +105,7 @@ export function PelusasPlayerPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

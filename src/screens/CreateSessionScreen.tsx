@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   onBack: () => void;
@@ -11,6 +11,9 @@ type Props = {
 };
 
 export function CreateSessionScreen({ onBack, onCreated, onSave }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [name, setName] = useState('');
 
   const handleSave = () => {
@@ -49,7 +52,7 @@ export function CreateSessionScreen({ onBack, onCreated, onSave }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

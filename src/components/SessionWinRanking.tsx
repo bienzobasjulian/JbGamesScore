@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { SessionWinEntry } from '../utils/session';
 import { getPlayerAvatarTextColor } from '../utils/players';
 
@@ -10,6 +10,9 @@ type Props = {
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 export function SessionWinRanking({ ranking }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const withWins = ranking.filter((e) => e.wins > 0);
   if (withWins.length === 0) {
     return (
@@ -117,7 +120,7 @@ export function SessionWinRanking({ ranking }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     backgroundColor: theme.surface,
     borderRadius: 16,

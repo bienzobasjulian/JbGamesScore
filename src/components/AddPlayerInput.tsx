@@ -5,7 +5,7 @@ import {
   Text,
   TextInput,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   onAdd: (name: string) => boolean;
@@ -13,6 +13,9 @@ type Props = {
 };
 
 export function AddPlayerInput({ onAdd, disabled = false }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [name, setName] = useState('');
 
   const handleAdd = () => {
@@ -40,7 +43,7 @@ export function AddPlayerInput({ onAdd, disabled = false }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   input: {
     backgroundColor: theme.surface,
     borderWidth: 1,

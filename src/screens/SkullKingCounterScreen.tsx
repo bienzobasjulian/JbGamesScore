@@ -7,7 +7,7 @@ import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { SkullKingPlayerRoundPanel } from '../components/SkullKingPlayerRoundPanel';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { SkullKingRoundEntry, SkullKingSession } from '../types';
 import {
@@ -40,6 +40,9 @@ export function SkullKingCounterScreen({
   onGoToRound,
   onUpdateRoundEntry,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
   );
@@ -212,7 +215,7 @@ export function SkullKingCounterScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

@@ -3,7 +3,7 @@ import { Button } from './Button';
 import { AventurerosTrenDestinationRow } from './AventurerosTrenDestinationRow';
 import { AventurerosTrenEndgameFields } from './AventurerosTrenEndgameFields';
 import { AventurerosTrenRouteRow } from './AventurerosTrenRouteRow';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   AventurerosTrenDestinationEntry,
   AventurerosTrenPhase,
@@ -62,6 +62,9 @@ export function AventurerosTrenPlayerPanel({
   onRemoveDestination,
   onUpdateScoring,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const constrTotal = routes.reduce(
     (sum, entry) => sum + getRouteEntryPoints(entry, submode),
     0,
@@ -188,7 +191,7 @@ export function AventurerosTrenPlayerPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

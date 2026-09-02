@@ -1,5 +1,5 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { AventurerosTrenPlayerScoring, AventurerosTrenSubmode } from '../types';
 import {
   EUROPA_MAX_STATIONS,
@@ -21,6 +21,9 @@ export function AventurerosTrenEndgameFields({
   color,
   onChange,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const isEuropa = submode === 'europa';
 
   return (
@@ -84,7 +87,7 @@ export function AventurerosTrenEndgameFields({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   box: {
     gap: 12,
     padding: 12,

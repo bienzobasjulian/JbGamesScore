@@ -10,7 +10,7 @@ import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { CardCountStepper } from '../components/CardCountStepper';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
   PiliPiliRoundConfig,
@@ -59,6 +59,9 @@ export function PiliPiliCounterScreen({
   onUpdateRoundEntry,
   onUpdateRoundConfig,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
   );
@@ -320,7 +323,7 @@ export function PiliPiliCounterScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

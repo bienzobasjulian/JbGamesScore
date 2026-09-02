@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { GameSettings } from '../types';
 
 type Props = {
@@ -20,6 +20,9 @@ function parseLimit(text: string): number | null {
 }
 
 export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const maxRoundsEnabled = settings.maxRounds != null;
   const maxPointsEnabled = settings.maxPointsToWin != null;
 
@@ -185,7 +188,7 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

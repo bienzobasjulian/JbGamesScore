@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { RankedPlayer } from '../utils/match';
 import { getPlayerAvatarTextColor } from '../utils/players';
 
@@ -11,6 +11,9 @@ type Props = {
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 export function MatchRanking({ ranking, showPodium = true }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   if (ranking.length === 0) return null;
 
   const podiumOrder = showPodium
@@ -112,7 +115,7 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     backgroundColor: theme.surface,
     borderRadius: 16,

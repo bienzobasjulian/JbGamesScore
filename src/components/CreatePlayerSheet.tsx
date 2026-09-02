@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { pickPlayerColor } from '../utils/match';
 import { getPlayerAvatarTextColor } from '../utils/players';
@@ -28,6 +28,9 @@ export function CreatePlayerSheet({
   onClose,
   onCreate,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +151,7 @@ export function CreatePlayerSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

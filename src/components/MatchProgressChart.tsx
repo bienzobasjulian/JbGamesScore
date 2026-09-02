@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, RoundScores } from '../types';
 import { getMatchProgressSeries } from '../utils/chartData';
 
@@ -17,6 +17,9 @@ const PAD_TOP = 16;
 const PAD_BOTTOM = 28;
 
 export function MatchProgressChart({ players, rounds }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [width, setWidth] = useState(0);
   const series = useMemo(
     () => getMatchProgressSeries(players, rounds),
@@ -174,7 +177,7 @@ export function MatchProgressChart({ players, rounds }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     backgroundColor: theme.surface,
     borderRadius: 16,

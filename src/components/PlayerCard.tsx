@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { getPlayerAvatarTextColor } from '../utils/players';
 import { RoundScoringPanel } from './RoundScoringPanel';
@@ -40,6 +40,9 @@ export function PlayerCard({
   showTotal = true,
   controlsDisabled,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -105,7 +108,7 @@ export function PlayerCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   card: {
     backgroundColor: theme.surface,
     borderRadius: 16,

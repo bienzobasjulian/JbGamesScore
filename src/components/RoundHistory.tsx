@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, RoundScores } from '../types';
 import { getRoundScore } from '../utils/game';
 import { getPiliPiliEffectiveRoundDeltaFromRounds, getPiliPiliPlayerTotalFromRounds } from '../utils/piliPili';
@@ -68,6 +68,8 @@ type ScoreCellProps = {
 };
 
 function ScoreCell({ roundScore, cumulative }: ScoreCellProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.scoreCell}>
       <Text
@@ -87,6 +89,9 @@ export function RoundHistory({
   onHorizontalScrollStart,
   onHorizontalScrollEnd,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   if (rounds.length === 0) return null;
 
   const matchTotals = getMatchTotals(rounds, players, floorTotalAtZero);
@@ -168,7 +173,7 @@ export function RoundHistory({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     gap: 10,
   },

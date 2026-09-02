@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { DeleteMatchModal } from '../components/DeleteMatchModal';
 import { MatchListRow } from '../components/MatchListRow';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match } from '../types';
 import { formatMatchTitle } from '../utils/match';
 
@@ -26,6 +26,9 @@ export function MatchesListScreen({
   onDeleteMatch,
   onDeleteMatches,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -137,7 +140,7 @@ export function MatchesListScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

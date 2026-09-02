@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type MenuItem = {
   label: string;
@@ -19,6 +19,9 @@ type Props = {
 };
 
 export function HamburgerMenu({ visible, onClose, items }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Modal
       visible={visible}
@@ -60,7 +63,7 @@ export function HamburgerMenu({ visible, onClose, items }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-start',

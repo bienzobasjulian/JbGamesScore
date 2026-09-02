@@ -11,7 +11,7 @@ import {
   View,
   ViewToken,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, RoundScores } from '../types';
 import { RankedPlayer } from '../utils/match';
 import { MatchProgressChart } from './MatchProgressChart';
@@ -38,6 +38,9 @@ export function MatchResultsPager({
   rounds,
   floorTotalAtZero = false,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const listRef = useRef<FlatList<PageKey>>(null);
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -177,7 +180,7 @@ export function MatchResultsPager({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     flex: 1,
     minHeight: 0,
@@ -207,7 +210,7 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
   },
   tabTextActive: {
-    color: '#0F1419',
+    color: theme.onAccent,
   },
   pager: {
     flex: 1,

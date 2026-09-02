@@ -5,7 +5,7 @@ import { MatchListRow } from '../components/MatchListRow';
 import { SectionBlock } from '../components/SectionBlock';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionListRow } from '../components/SessionListRow';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession, SavedPlayer } from '../types';
 import { formatPlayerLastUsed } from '../utils/players';
 
@@ -36,6 +36,9 @@ export function HomeScreen({
   onOpenSession,
   onViewAllPlayers,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const hasAnyMatch =
     inProgressMatches.length > 0 || recentFinishedMatches.length > 0;
 
@@ -152,7 +155,7 @@ export function HomeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

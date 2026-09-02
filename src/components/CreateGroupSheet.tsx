@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   visible: boolean;
@@ -19,6 +19,9 @@ type Props = {
 };
 
 export function CreateGroupSheet({ visible, onClose, onCreate }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +122,7 @@ export function CreateGroupSheet({ visible, onClose, onCreate }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

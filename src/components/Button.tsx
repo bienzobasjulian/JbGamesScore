@@ -5,7 +5,7 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   label: string;
@@ -24,6 +24,9 @@ export function Button({
   loading,
   style,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onPress}
@@ -56,7 +59,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   base: {
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -89,7 +92,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   primaryLabel: {
-    color: '#0F1419',
+    color: theme.onAccent,
   },
   secondaryLabel: {
     color: theme.text,

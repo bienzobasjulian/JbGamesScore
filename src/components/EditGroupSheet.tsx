@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmModal } from './ConfirmModal';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PlayerGroup, SavedPlayer } from '../types';
 import { formatGroupMemberCount } from '../utils/groups';
 import { getPlayerAvatarTextColor } from '../utils/players';
@@ -38,6 +38,8 @@ function MemberRow({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       onPress={onToggle}
@@ -80,6 +82,9 @@ export function EditGroupSheet({
   onSave,
   onDelete,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
@@ -245,7 +250,7 @@ export function EditGroupSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -373,7 +378,7 @@ const styles = StyleSheet.create({
   checkboxMark: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#0F1419',
+    color: theme.onAccent,
   },
   actions: {
     flexDirection: 'row',

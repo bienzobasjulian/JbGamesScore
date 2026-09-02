@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Step = 'choose' | 'confirmDelete';
 
@@ -27,6 +27,9 @@ export function FinishMatchModal({
   onSaveFinished,
   onDelete,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [step, setStep] = useState<Step>('choose');
 
   useEffect(() => {
@@ -183,7 +186,7 @@ export function FinishMatchModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

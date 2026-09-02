@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { getPlayerAvatarTextColor } from '../utils/players';
 
@@ -16,6 +16,9 @@ export function TurnOrderPlayerCard({
   onDrag,
   onRemove,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={[styles.card, isActive && styles.cardActive]}>
       <View style={styles.header}>
@@ -58,7 +61,7 @@ export function TurnOrderPlayerCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   card: {
     backgroundColor: theme.surface,
     borderRadius: 16,

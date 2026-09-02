@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   PiliPiliMissionType,
   PiliPiliRoundConfig,
@@ -31,6 +31,9 @@ export function PiliPiliRoundMissionsPanel({
   onToggle,
   onChange,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const selectMission = (mission: PiliPiliMissionType) => {
     if (config.mission === mission) {
       onChange({ mission: null, forbiddenBidValue: null });
@@ -130,7 +133,7 @@ export function PiliPiliRoundMissionsPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

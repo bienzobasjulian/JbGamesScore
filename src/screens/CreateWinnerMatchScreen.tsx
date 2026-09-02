@@ -10,7 +10,7 @@ import {
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateWinnerMatchDraft } from '../types/playerSelection';
 import { AppScreen, Player, SavedPlayer } from '../types';
 import { ensureMatchPlayers, getPlayerAvatarTextColor } from '../utils/players';
@@ -47,6 +47,9 @@ export function CreateWinnerMatchScreen({
   onOpenPlayerSelection,
   onCreateNewPlayer,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [matchName, setMatchName] = useState(restoredDraft?.matchName ?? '');
   const [players, setPlayers] = useState<Player[]>(restoredDraft?.players ?? []);
   const [winnerIds, setWinnerIds] = useState<Set<string>>(
@@ -206,7 +209,7 @@ export function CreateWinnerMatchScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

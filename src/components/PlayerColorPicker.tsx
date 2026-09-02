@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { PLAYER_COLORS, theme } from '../constants';
+import { PLAYER_COLORS } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
@@ -13,6 +14,9 @@ function isLightColor(hex: string): boolean {
 }
 
 export function PlayerColorPicker({ value, onChange }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const normalizedValue = value.trim().toUpperCase();
 
   const colors = useMemo(() => {
@@ -52,7 +56,7 @@ export function PlayerColorPicker({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -75,7 +79,7 @@ const styles = StyleSheet.create({
     borderColor: theme.text,
   },
   swatchSelectedLight: {
-    borderColor: '#0F1419',
+    borderColor: theme.text,
   },
   swatchPressed: {
     opacity: 0.85,
@@ -86,6 +90,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   checkDark: {
-    color: '#0F1419',
+    color: theme.text,
   },
 });

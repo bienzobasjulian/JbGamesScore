@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { ScoringMode } from '../types';
 import { BreakdownEditor } from './BreakdownEditor';
 import { ScoreStepper } from './ScoreStepper';
@@ -29,6 +29,9 @@ export function RoundScoringPanel({
   onAddBreakdownItem,
   onRemoveBreakdownItem,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.modeRow}>
@@ -92,7 +95,7 @@ export function RoundScoringPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   wrap: {
     flex: 1,
     gap: 10,

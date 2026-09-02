@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { MatchTemplate, SavedPlayer } from '../types';
 import { formatTemplateSubtitle } from '../utils/template';
 
@@ -17,6 +17,9 @@ export function TemplatePicker({
   selectedId,
   onSelect,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [open, setOpen] = useState(false);
 
   if (templates.length === 0) {
@@ -114,7 +117,7 @@ export function TemplatePicker({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

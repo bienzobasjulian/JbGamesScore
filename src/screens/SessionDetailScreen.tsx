@@ -6,7 +6,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { MatchListRow } from '../components/MatchListRow';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionWinRanking } from '../components/SessionWinRanking';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession } from '../types';
 import {
   collectSessionPlayers,
@@ -38,6 +38,9 @@ export function SessionDetailScreen({
   onReopenSession,
   onDeleteSession,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const sessionMatches = getSessionMatches(session.id, matches);
   const winRanking = getSessionWinRanking(sessionMatches);
@@ -135,7 +138,7 @@ export function SessionDetailScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,

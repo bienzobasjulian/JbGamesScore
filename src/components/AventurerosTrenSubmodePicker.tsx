@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { AventurerosTrenSubmode } from '../types';
 import { AVENTUREROS_TREN_SUBMODES } from '../utils/aventurerosTren';
 
@@ -10,6 +10,9 @@ type Props = {
 };
 
 export function AventurerosTrenSubmodePicker({ selected, onSelect }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [open, setOpen] = useState(false);
   const current = AVENTUREROS_TREN_SUBMODES.find((s) => s.id === selected)!;
 
@@ -70,7 +73,7 @@ export function AventurerosTrenSubmodePicker({ selected, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

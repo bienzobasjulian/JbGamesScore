@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   value: number;
@@ -71,11 +71,15 @@ function tryParseCount(text: string): number | null {
 export function CardCountStepper({
   value,
   onChange,
-  color = theme.accent,
+  color,
   max = 99,
   unbounded = false,
   isValueAllowed,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const accentColor = color ?? theme.accent;
+
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
   const textRef = useRef(text);
@@ -174,16 +178,16 @@ export function CardCountStepper({
         disabled={!canDecrease}
         style={({ pressed }) => [
           styles.btn,
-          { borderColor: color },
+          { borderColor: accentColor },
           !canDecrease && styles.btnDisabled,
           pressed && canDecrease && styles.pressed,
         ]}
       >
-        <Text style={[styles.btnText, { color }]}>−</Text>
+        <Text style={[styles.btnText, { color: accentColor }]}>−</Text>
       </Pressable>
 
       <TextInput
-        style={[styles.input, focused && { borderColor: color }]}
+        style={[styles.input, focused && { borderColor: accentColor }]}
         value={text}
         onChangeText={handleChangeText}
         onFocus={() => setFocused(true)}
@@ -200,18 +204,18 @@ export function CardCountStepper({
         disabled={!canIncrease}
         style={({ pressed }) => [
           styles.btn,
-          { borderColor: color },
+          { borderColor: accentColor },
           !canIncrease && styles.btnDisabled,
           pressed && canIncrease && styles.pressed,
         ]}
       >
-        <Text style={[styles.btnText, { color }]}>+</Text>
+        <Text style={[styles.btnText, { color: accentColor }]}>+</Text>
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',

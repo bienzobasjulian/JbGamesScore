@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   collapsed: boolean;
@@ -25,6 +25,9 @@ export function CollapsibleTrenEntryCard({
   onRemove,
   children,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const expanded = !collapsed;
 
   return (
@@ -71,7 +74,7 @@ export function CollapsibleTrenEntryCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surfaceLight,
     borderRadius: 12,

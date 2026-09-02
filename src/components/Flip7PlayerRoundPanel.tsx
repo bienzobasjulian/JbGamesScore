@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Flip7Modifier, Flip7RoundEntry, Player } from '../types';
 import {
   FLIP7_MAX_NUMBERS,
@@ -32,6 +32,9 @@ export function Flip7PlayerRoundPanel({
   onToggleModifier,
   onClear,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const roundScore = getFlip7DisplayScore(entry);
   const flip7Achieved = hasFlip7Bonus(entry);
   const calculation = formatFlip7Calculation(entry);
@@ -125,7 +128,7 @@ export function Flip7PlayerRoundPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   panel: {
     backgroundColor: theme.surface,
     borderRadius: 16,

@@ -1,5 +1,5 @@
 import { Modal, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { Button } from './Button';
 
@@ -10,6 +10,9 @@ type Props = {
 };
 
 export function Flip7CelebrationModal({ visible, player, onNextRound }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   if (!player) return null;
 
   return (
@@ -38,7 +41,7 @@ export function Flip7CelebrationModal({ visible, player, onNextRound }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'center',

@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { RankedPlayer } from '../utils/match';
 import { MatchRanking } from './MatchRanking';
 
@@ -10,6 +10,9 @@ type Props = {
 };
 
 export function CurrentRankingModal({ visible, onClose, ranking }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Modal
       visible={visible}
@@ -45,7 +48,7 @@ export function CurrentRankingModal({ visible, onClose, ranking }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

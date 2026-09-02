@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { SectionActionButton } from './SectionActionButton';
 
 type ActionVariant = 'matches' | 'players' | 'sessions';
@@ -22,6 +22,9 @@ export function SectionBlock({
   children,
   style,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={[styles.block, style]}>
       <Text style={styles.title}>{title}</Text>
@@ -35,7 +38,7 @@ export function SectionBlock({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   block: {
     backgroundColor: theme.surface,
     borderRadius: 16,

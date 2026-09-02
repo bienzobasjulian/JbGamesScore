@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from './Button';
-import { theme } from '../constants';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   playerCount: number;
@@ -19,6 +19,9 @@ export function MatchPlayerRoster({
   soloHint,
   maxPlayers,
 }: Props) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const maxLabel =
     maxPlayers != null && Number.isFinite(maxPlayers)
       ? ` · máx. ${maxPlayers}`
@@ -40,7 +43,7 @@ export function MatchPlayerRoster({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   section: {
     gap: 10,
   },
