@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { MatchListRow } from '../components/MatchListRow';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionWinRanking } from '../components/SessionWinRanking';
+import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession } from '../types';
 import {
@@ -40,13 +41,13 @@ export function SessionDetailScreen({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const isActive = session.status === 'active';
+  useAutoTour('session', { enabled: isActive });
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const sessionMatches = getSessionMatches(session.id, matches);
   const winRanking = getSessionWinRanking(sessionMatches);
   const allPlayers = collectSessionPlayers(sessionMatches);
-  const isActive = session.status === 'active';
-
   return (
     <View style={styles.container}>
       <AppHeader
@@ -74,15 +75,19 @@ export function SessionDetailScreen({
         <View style={styles.actions}>
           {isActive ? (
             <>
-              <Button
-                label="Registrar partida con puntuación"
-                onPress={onCreateScoredMatch}
-              />
-              <Button
-                label="Registrar partida con ganador"
-                onPress={onCreateWinnerMatch}
-                variant="secondary"
-              />
+              <TourAnchor id="session.scored">
+                <Button
+                  label="Registrar partida con puntuación"
+                  onPress={onCreateScoredMatch}
+                />
+              </TourAnchor>
+              <TourAnchor id="session.winner">
+                <Button
+                  label="Registrar partida con ganador"
+                  onPress={onCreateWinnerMatch}
+                  variant="secondary"
+                />
+              </TourAnchor>
               <Button
                 label="Cerrar sesión"
                 onPress={onCloseSession}

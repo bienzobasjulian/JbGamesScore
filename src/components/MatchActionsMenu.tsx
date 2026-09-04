@@ -8,6 +8,8 @@ type Props = {
   onEditMatch: () => void;
   onFinishMatch: () => void;
   canEditMatch?: boolean;
+  onViewTutorial?: () => void;
+  onHowToPlay?: () => void;
 };
 
 export function MatchActionsMenu({
@@ -17,6 +19,8 @@ export function MatchActionsMenu({
   onEditMatch,
   onFinishMatch,
   canEditMatch = true,
+  onViewTutorial,
+  onHowToPlay,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -63,6 +67,42 @@ export function MatchActionsMenu({
               <Text style={styles.optionTitle}>Editar partida</Text>
               <Text style={styles.optionHint}>
                 Cambia nombre, reglas o jugadores sin perder los puntos
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {onViewTutorial ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onViewTutorial();
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text style={styles.optionTitle}>Ver tutorial</Text>
+              <Text style={styles.optionHint}>
+                Repasa los botones de esta pantalla
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {onHowToPlay ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onHowToPlay();
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text style={styles.optionTitle}>Cómo jugar</Text>
+              <Text style={styles.optionHint}>
+                Resumen de las reglas
               </Text>
             </Pressable>
           ) : null}

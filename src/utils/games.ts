@@ -1,3 +1,5 @@
+import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
+
 export type CreateMatchGameType =
   | 'standard'
   | 'pelusas'
@@ -17,7 +19,7 @@ export function getCreateMatchPlayerLimits(
 ): CreateMatchPlayerLimits {
   switch (gameType) {
     case 'skull_king':
-      return { min: 1, max: 6 };
+      return { min: SKULL_KING_MIN_PLAYERS, max: SKULL_KING_MAX_PLAYERS };
     case 'pili_pili':
       return { min: 2, max: 8 };
     case 'flip7':

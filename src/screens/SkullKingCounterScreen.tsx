@@ -1,12 +1,22 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { SkullKingPlayerRoundPanel } from '../components/SkullKingPlayerRoundPanel';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { SkullKingRoundEntry, SkullKingSession } from '../types';
@@ -15,6 +25,8 @@ import {
   emptySkullKingRoundEntry,
   getSkullKingCardsDealt,
   getSkullKingRoundNumber,
+  getSkullKingRoundRoles,
+  SKULL_KING_HOW_TO_PLAY_SECTIONS,
   SKULL_KING_TOTAL_ROUNDS,
   sortPlayersBySkullKingTotal,
 } from '../utils/skullKing';
@@ -42,6 +54,8 @@ export function SkullKingCounterScreen({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { startTour } = useOnboarding();
+  useAutoTour('skullKing');
 
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
@@ -49,6 +63,7 @@ export function SkullKingCounterScreen({
   const [finishModalVisible, setFinishModalVisible] = useState(false);
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
   const [rankingModalVisible, setRankingModalVisible] = useState(false);
+  const [howToVisible, setHowToVisible] = useState(false);
   const {
     exitModalVisible,
     setExitModalVisible,
@@ -59,6 +74,14 @@ export function SkullKingCounterScreen({
   const roundNumber = getSkullKingRoundNumber(roundIndex);
   const cardsDealt = getSkullKingCardsDealt(roundIndex);
   const roundByPlayer = session.rounds[roundIndex] ?? {};
+  const { dealerId, starterId } = getSkullKingRoundRoles(
+    session.players,
+    roundIndex,
+  );
+  const dealerName =
+    session.players.find((player) => player.id === dealerId)?.name;
+  const starterName =
+    session.players.find((player) => player.id === starterId)?.name;
 
   const completedRounds = useMemo(
     () =>
@@ -97,6 +120,30 @@ export function SkullKingCounterScreen({
     onFinishMatch();
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (howToVisible) {
+        setHowToVisible(false);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [howToVisible]);
+
+  if (howToVisible) {
+    return (
+      <View style={styles.container}>
+        <HowToPlayScreen
+          title="Cómo jugar"
+          sections={SKULL_KING_HOW_TO_PLAY_SECTIONS}
+          onBack={() => setHowToVisible(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -108,13 +155,15 @@ export function SkullKingCounterScreen({
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Skull King</Text>
-        <Pressable
-          onPress={() => setActionsMenuVisible(true)}
-          hitSlop={12}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-        >
-          <Text style={styles.menuIcon}>⋮</Text>
-        </Pressable>
+        <TourAnchor id="rounds.menu">
+          <Pressable
+            onPress={() => setActionsMenuVisible(true)}
+            hitSlop={12}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </Pressable>
+        </TourAnchor>
       </View>
 
       <ScrollView
@@ -131,6 +180,11 @@ export function SkullKingCounterScreen({
             {cardsDealt} {cardsDealt === 1 ? 'carta' : 'cartas'} por jugador ·
             Apuesta de 0 a {roundNumber}
           </Text>
+          {dealerName && starterName ? (
+            <Text style={styles.roundRoles}>
+              Reparte {dealerName} · Jugador inicial de la ronda: {starterName}
+            </Text>
+          ) : null}
         </View>
 
         {completedRounds.length > 0 ? (
@@ -138,33 +192,46 @@ export function SkullKingCounterScreen({
         ) : null}
 
         <Text style={styles.sectionHint}>
-          Toca un jugador para registrar apuesta, bazas ganadas y bonificaciones
-          de esta ronda.
+          El jugador inicial abre la primera baza de la ronda. Toca un jugador
+          para registrar apuesta, bazas y bonificaciones.
         </Text>
 
-        {session.players.map((player) => (
-          <SkullKingPlayerRoundPanel
-            key={player.id}
-            player={player}
-            roundIndex={roundIndex}
-            entry={roundByPlayer[player.id] ?? emptySkullKingRoundEntry()}
-            expanded={expandedPlayers.has(player.id)}
-            onToggle={() => togglePlayer(player.id)}
-            onChange={(patch) =>
-              onUpdateRoundEntry(roundIndex, player.id, patch)
-            }
-          />
-        ))}
+        {session.players.map((player, index) => {
+          const panel = (
+            <SkullKingPlayerRoundPanel
+              player={player}
+              roundIndex={roundIndex}
+              entry={roundByPlayer[player.id] ?? emptySkullKingRoundEntry()}
+              expanded={expandedPlayers.has(player.id)}
+              isDealer={player.id === dealerId}
+              isRoundStarter={player.id === starterId}
+              onToggle={() => togglePlayer(player.id)}
+              onChange={(patch) =>
+                onUpdateRoundEntry(roundIndex, player.id, patch)
+              }
+            />
+          );
+          if (index === 0) {
+            return (
+              <TourAnchor id="skullKing.players" key={player.id}>
+                {panel}
+              </TourAnchor>
+            );
+          }
+          return <View key={player.id}>{panel}</View>;
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
-        <RoundPagination
-          roundCount={SKULL_KING_TOTAL_ROUNDS}
-          activeIndex={roundIndex}
-          maxRounds={SKULL_KING_TOTAL_ROUNDS}
-          onSelectRound={onGoToRound}
-          onAddRound={() => setFinishModalVisible(true)}
-        />
+        <TourAnchor id="skullKing.rounds">
+          <RoundPagination
+            roundCount={SKULL_KING_TOTAL_ROUNDS}
+            activeIndex={roundIndex}
+            maxRounds={SKULL_KING_TOTAL_ROUNDS}
+            onSelectRound={onGoToRound}
+            onAddRound={() => setFinishModalVisible(true)}
+          />
+        </TourAnchor>
       </View>
 
       <ExitMatchModal
@@ -200,6 +267,8 @@ export function SkullKingCounterScreen({
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}
+        onViewTutorial={() => startTour('skullKing', { force: true })}
+        onHowToPlay={() => setHowToVisible(true)}
       />
 
       <CurrentRankingModal
@@ -280,6 +349,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 14,
     color: theme.textMuted,
     lineHeight: 20,
+  },
+  roundRoles: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.text,
+    lineHeight: 19,
   },
   sectionHint: {
     fontSize: 13,

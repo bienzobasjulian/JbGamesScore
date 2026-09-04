@@ -28,7 +28,7 @@ type Props = {
     allowAnonymous: boolean;
     returnScreen: AppScreen;
   }) => void;
-  onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
+  selfPlayer?: Player | null;
 };
 
 export function EditMatchScreen({
@@ -38,7 +38,7 @@ export function EditMatchScreen({
   onBack,
   onSave,
   onOpenPlayerSelection,
-  onCreateNewPlayer,
+  selfPlayer = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -65,7 +65,7 @@ export function EditMatchScreen({
   };
 
   const handleSave = () => {
-    const roster = ensureMatchPlayers(players, onCreateNewPlayer);
+    const roster = ensureMatchPlayers(players, selfPlayer);
     onSave(roster, settings, matchName.trim() || null);
   };
 

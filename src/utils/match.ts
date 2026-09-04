@@ -26,6 +26,11 @@ import {
   createInitialRounds,
   normalizeMatchRounds,
 } from './rounds';
+import {
+  comparePelusasRanking,
+  getPelusasMatchRanking as sortPelusasMatch,
+  getPelusasMatchWinners,
+} from './pelusas';
 
 export type RankedPlayer = {
   player: Player;
@@ -91,6 +96,24 @@ function getFlip7MatchWinners(match: Match): Player[] {
   return ranked
     .filter((entry) => entry.total === topScore)
     .map((entry) => entry.player);
+}
+
+function getPelusasMatchRanking(match: Match): RankedPlayer[] {
+  const sorted = sortPelusasMatch(match);
+  const session = match.pelusasSession;
+  const counts = session?.countsByPlayer ?? {};
+  const revolution =
+    session?.revolutionMode ?? Boolean(match.pelusasRevolution);
+  let rank = 0;
+
+  return sorted.map((entry, index) => {
+    const prev = sorted[index - 1];
+    const tied =
+      prev != null &&
+      comparePelusasRanking(entry, prev, counts, revolution) === 0;
+    if (!tied) rank = index + 1;
+    return { player: entry.player, total: entry.score, rank };
+  });
 }
 
 export function matchToGameState(match: Match): GameState {
@@ -176,6 +199,9 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
   if (match.gameMode === 'flip7') {
     return getFlip7MatchRanking(match);
   }
+  if (match.gameMode === 'pelusas') {
+    return getPelusasMatchRanking(match);
+  }
   return getMatchRankingFromState(matchToGameState(match));
 }
 
@@ -195,6 +221,10 @@ export function getMatchWinners(match: Match): Player[] {
 
   if (match.gameMode === 'flip7') {
     return getFlip7MatchWinners(match);
+  }
+
+  if (match.gameMode === 'pelusas') {
+    return getPelusasMatchWinners(match);
   }
 
   const state = matchToGameState(match);
@@ -393,5 +423,12 @@ export function pickPlayerColor(existing: Player[]): string {
 }
 
 export function initialAppData(): AppData {
-  return { players: [], groups: [], matches: [], templates: [], sessions: [] };
+  return {
+    players: [],
+    groups: [],
+    matches: [],
+    templates: [],
+    sessions: [],
+    selfPlayerId: null,
+  };
 }

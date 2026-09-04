@@ -1,4 +1,5 @@
 import { Match } from '../types';
+import type { HowToPlaySection } from '../types/howToPlay';
 import { createId, normalizeSettings } from './game';
 
 export const REGICIDE_SUITS = [
@@ -107,6 +108,161 @@ export const REGICIDE_TIER_LABEL: Record<RegicideTier, string> = {
   Q: 'Reinas',
   K: 'Reyes',
 };
+
+export const REGICIDE_HOW_TO_PLAY =
+  'Cooperativo: ganáis al derrotar a los 12 enemigos, en orden. La app lleva vida, ataque e inmunidad; el resto se juega en mesa.';
+
+export const REGICIDE_HOW_TO_PLAY_SECTIONS: HowToPlaySection[] = [
+  {
+    title: 'Palabras clave',
+    terms: [
+      {
+        term: 'Mazo del Castillo',
+        definition:
+          'Los 12 enemigos. Abajo los reyes, encima las reinas, arriba las jotas. Se voltea el de encima: ese es el enemigo actual.',
+      },
+      {
+        term: 'Taberna',
+        definition: 'El mazo de robo.',
+      },
+      {
+        term: 'Mascotas',
+        definition: 'Los ases. Valen 1.',
+      },
+      {
+        term: 'Descarte',
+        definition:
+          'Cartas gastadas y enemigos derrotados con daño de más.',
+      },
+    ],
+  },
+  {
+    title: 'Preparación',
+    body: 'Monta el Castillo y voltea una jota. La Taberna son los 2–10, las 4 mascotas y los bufones de la tabla. Reparte hasta el máximo de mano.',
+    items: [
+      {
+        type: 'table',
+        align: 'center',
+        headers: ['Jugadores', 'Bufones', 'Max. cartas'],
+        rows: [
+          ['1', '0', '8'],
+          ['2', '0', '7'],
+          ['3', '1', '6'],
+          ['4', '2', '5'],
+        ],
+      },
+      {
+        type: 'heading',
+        title: 'Enemigos',
+        body: 'El palo del enemigo bloquea ese poder; el número sí cuenta.',
+      },
+      {
+        type: 'table',
+        align: 'center',
+        headers: ['Rango', 'Vida', 'Ataque'],
+        rows: [
+          ['Jota', '20', '10'],
+          ['Reina', '30', '15'],
+          ['Rey', '40', '20'],
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Turno',
+    body: 'Cuatro pasos. En la app anotas el ataque; el resto se resuelve en mesa.',
+    items: [
+      {
+        type: 'heading',
+        title: 'Paso 1 — Jugar',
+        body: 'Juega una carta de tu mano. El número es el valor de ataque (un 7♥ ataca 7). En la app, selecciona esa carta o combo. En vez de jugar, puedes pasar y ir al paso 4.',
+      },
+      {
+        type: 'heading',
+        title: 'Paso 2 — Poder del palo',
+        body: 'Activa el poder. Es obligatorio. Los rojos al jugar; los negros más tarde.',
+      },
+      {
+        type: 'table',
+        align: 'text',
+        headers: ['Palo', 'Poder'],
+        rows: [
+          [
+            '♥ Corazones',
+            'Al jugar: baraja el descarte y pon debajo de la Taberna tantas cartas como el valor. Sin mirar.',
+          ],
+          [
+            '♦ Diamantes',
+            'Al jugar: robad en sentido horario tantas como el valor. Salta quien tenga la mano llena. Sin penalización si la Taberna está vacía.',
+          ],
+          ['♣ Tréboles', 'Paso 3: el daño cuenta doble (8♣ = 16).'],
+          [
+            '♠ Picas',
+            'Paso 4: baja el ataque del enemigo en el valor jugado. Se acumula hasta derrotarlo.',
+          ],
+        ],
+      },
+      {
+        type: 'heading',
+        title: 'Paso 3 — Daño',
+        body: 'Inflige daño igual al valor de ataque (tréboles ×2). Si el total de todos llega a la vida del enemigo, cae: al descarte, o encima de la Taberna si el daño es exacto. Las cartas jugadas van al descarte. Voltea el siguiente del Castillo. Quien lo derrota se salta el paso 4 y empieza otro turno contra el nuevo enemigo.',
+      },
+      {
+        type: 'heading',
+        title: 'Paso 4 — Sufrir daño',
+        body: 'Si el enemigo sobrevive , ataca al jugador activo. Descarta cartas que sumen al menos su ataque (tras las picas), de una en una al descarte. Mascota = 1, bufón = 0. Si no puedes, perdéis. Está permitido quedarse sin cartas en mano. Sigue el jugador de la izquierda, paso 1.',
+      },
+    ],
+  },
+  {
+    title: 'Mascotas',
+    body: 'En el paso 1 puedes jugarlas solas, con otra carta (no bufón) o con otra mascota. Valen 1 y aplican su palo al total. Ejemplo: 8♦ + A♣ = ataque 9, robáis 9 y hacéis 18 de daño. Mismo palo: el poder una sola vez. Si hay corazones y diamantes, primero cura y luego roba.',
+  },
+  {
+    title: 'Combos',
+    body: 'En el paso 1 puedes juntar 2, 3 o 4 cartas del mismo número si suman 10 o menos. Todos los palos se aplican al total. Las mascotas no entran en un combo. Ejemplo: 3♦ + 3♠ + 3♣ = robáis 9, ataque −9 y 18 de daño. Corazones antes que diamantes.',
+  },
+  {
+    title: 'Inmunidad',
+    body: 'El enemigo ignora el poder de su palo. El número sí suma al daño. El bufón cancela esa inmunidad.',
+  },
+  {
+    title: 'Bufón',
+    body: 'Solo, vale 0. Quita la inmunidad de este enemigo. Salta los pasos 3 y 4, y eliges quién sigue. Hasta que juegue, se puede decir «tengo una buena jugada» o «prefiero no ser el siguiente», sin revelar la mano. En picas, las picas anteriores empiezan a bajar el ataque; en tréboles, los tréboles anteriores no se doblan.',
+  },
+  {
+    title: 'Enemigo derrotado',
+    body: 'Si lo derrotáis, el valor de la carta al jugarla o al cubrir daño es el de la tabla. El palo se aplica al jugarla.',
+    items: [
+      {
+        type: 'table',
+        align: 'center',
+        headers: ['Carta', 'Valor'],
+        rows: [
+          ['Jota', '10'],
+          ['Reina', '15'],
+          ['Rey', '20'],
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Pasar turno',
+    body: 'Di «paso» y ve al paso 4. No puedes pasar si todos los demás pasaron en su último turno.',
+  },
+  {
+    title: 'Comunicación',
+    body: 'No se puede insinuar la mano. Sí lo público: «tengo dos cartas», «quedan 3 en la Taberna». No: «tengo un 10♣», «juega un diamante», «no mates a ese». Tras un bufón, hasta el siguiente turno, sí «tengo una buena jugada» o «prefiero no ser el siguiente».',
+  },
+  {
+    title: 'Fin del juego',
+    body: 'Ganáis al derrotar al último rey. Perdéis si alguien no puede cubrir el ataque, o no puede jugar ni pasar.',
+  },
+  {
+    title: 'Solitario',
+    body: 'Los 2 bufones van aparte. Mano de 8. Voltear uno descarta la mano y roba 8 (no cuenta como robo de diamantes ni quita inmunidad). Se puede al inicio del paso 1 o del paso 4. Dos veces por partida. 2 usados = bronce, 1 = plata, 0 = oro.',
+  },
+];
 
 const NUMERIC_RANKS: RegicideCardRank[] = [
   'A',

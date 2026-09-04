@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { BackHandler, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { AventurerosTrenPlayerPanel } from '../components/AventurerosTrenPlayerPanel';
 import { Button } from '../components/Button';
+import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchButton } from '../components/FinishMatchButton';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { HowToPlayScreen } from '../components/HowToPlayScreen';
+import { MatchActionsMenu } from '../components/MatchActionsMenu';
+import { PlayerAvatar } from '../components/PlayerAvatar';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
@@ -17,6 +22,8 @@ import {
 } from '../types';
 import {
   createDefaultPlayerScoring,
+  compareAventurerosTrenCriteria,
+  getAventurerosTrenHowToPlay,
   getSubmodeLabel,
   sortPlayersByAventurerosTrenTotal,
 } from '../utils/aventurerosTren';
@@ -63,11 +70,15 @@ export function AventurerosTrenCounterScreen({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { startTour, skipTour, activeStep, activeTourId } = useOnboarding();
 
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
   );
   const [finishModalVisible, setFinishModalVisible] = useState(false);
+  const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
+  const [rankingModalVisible, setRankingModalVisible] = useState(false);
+  const [howToVisible, setHowToVisible] = useState(false);
   const {
     exitModalVisible,
     setExitModalVisible,
@@ -76,11 +87,31 @@ export function AventurerosTrenCounterScreen({
 
   const phase = session.activePhase;
   const isConstruccion = phase === 'construccion';
+  const phaseTourId = isConstruccion
+    ? 'aventurerosConstruccion'
+    : 'aventurerosDestinos';
+  useAutoTour('aventurerosConstruccion', { enabled: isConstruccion });
+  useAutoTour('aventurerosDestinos', { enabled: !isConstruccion });
   const title = getSubmodeLabel(session.submode);
 
-  const ranking = useMemo(
-    () => sortPlayersByAventurerosTrenTotal(session),
-    [session],
+  const ranking = useMemo(() => {
+    const sorted = sortPlayersByAventurerosTrenTotal(session);
+    let rank = 0;
+    let prev: (typeof sorted)[number] | null = null;
+    return sorted.map((row, index) => {
+      if (
+        !prev ||
+        compareAventurerosTrenCriteria(row, prev, session.submode) !== 0
+      ) {
+        rank = index + 1;
+        prev = row;
+      }
+      return { ...row, rank };
+    });
+  }, [session]);
+  const howToPlay = useMemo(
+    () => getAventurerosTrenHowToPlay(session.submode),
+    [session.submode],
   );
 
   const togglePlayer = (playerId: string) => {
@@ -95,17 +126,68 @@ export function AventurerosTrenCounterScreen({
     });
   };
 
+  const firstPlayerId = session.players[0]?.id;
+  useEffect(() => {
+    const stepId = activeStep?.id;
+    if (!stepId?.startsWith('aventureros.')) return;
+    if (!firstPlayerId) return;
+    setExpandedPlayers((prev) => {
+      if (prev.size === 1 && prev.has(firstPlayerId)) return prev;
+      return new Set([firstPlayerId]);
+    });
+  }, [activeStep?.id, firstPlayerId]);
+
+  useEffect(() => {
+    if (!activeTourId) return;
+    if (isConstruccion && activeTourId === 'aventurerosDestinos') {
+      skipTour();
+    }
+    if (!isConstruccion && activeTourId === 'aventurerosConstruccion') {
+      skipTour();
+    }
+  }, [activeTourId, isConstruccion, skipTour]);
+
   const phaseIntro = isConstruccion
     ? session.submode === 'europa'
       ? 'Longitudes de vía: 1, 2, 3, 4, 6 y 8. Origen y destino opcionales.'
-      : 'Longitudes de vía: 1, 2, 3, 5 y 6. Origen y destino opcionales.'
+      : 'Longitudes de vía: 1, 2, 3, 4, 5 y 6. Origen y destino opcionales.'
     : session.submode === 'europa'
       ? 'Destinos, ruta más larga (+10) y estaciones sin usar (+4 c/u).'
       : 'Destinos y bonificación de ruta más larga (+10). Desempate por billetes completados.';
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (howToVisible) {
+        setHowToVisible(false);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [howToVisible]);
+
+  if (howToVisible) {
+    return (
+      <View style={styles.container}>
+        <HowToPlayScreen
+          title="Cómo jugar"
+          body={howToPlay.body}
+          items={howToPlay.items}
+          onBack={() => setHowToVisible(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <AppHeader title={title} onBack={requestExit} />
+      <AppHeader
+        title={title}
+        onBack={requestExit}
+        onMenuPress={() => setActionsMenuVisible(true)}
+        menuIcon="more"
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -121,14 +203,22 @@ export function AventurerosTrenCounterScreen({
         <View style={styles.rankingPanel}>
           <Text style={styles.rankingTitle}>Clasificación</Text>
           {ranking.map(
-            (
-              { player, construccion, destinosCards, bonuses, total },
-              index,
-            ) => (
+            ({
+              player,
+              construccion,
+              destinosCards,
+              bonuses,
+              total,
+              rank,
+            }) => (
               <View key={player.id} style={styles.rankingRow}>
-                <Text style={styles.rankingPos}>{index + 1}.</Text>
-                <View
-                  style={[styles.rankingDot, { backgroundColor: player.color }]}
+                <Text style={styles.rankingPos}>{rank}.</Text>
+                <PlayerAvatar
+                  name={player.name}
+                  color={player.color}
+                  avatar={player.avatar}
+                  size={28}
+                  radius={8}
                 />
                 <View style={styles.rankingTexts}>
                   <Text style={styles.rankingName} numberOfLines={1}>
@@ -154,52 +244,63 @@ export function AventurerosTrenCounterScreen({
           )}
         </View>
 
-        {session.players.map((player) => (
-          <AventurerosTrenPlayerPanel
-            key={player.id}
-            player={player}
-            submode={session.submode}
-            phase={phase}
-            routes={session.construccion[player.id] ?? []}
-            destinations={session.destinos[player.id] ?? []}
-            scoring={
-              session.scoring[player.id] ??
-              createDefaultPlayerScoring(session.submode)
-            }
-            expanded={expandedPlayers.has(player.id)}
-            onToggle={() => togglePlayer(player.id)}
-            onAddRoute={() => onAddRoute(player.id)}
-            onUpdateRoute={(routeId, patch) =>
-              onUpdateRoute(player.id, routeId, patch)
-            }
-            onRemoveRoute={(routeId) => onRemoveRoute(player.id, routeId)}
-            onAddDestination={() => onAddDestination(player.id)}
-            onUpdateDestination={(destId, patch) =>
-              onUpdateDestination(player.id, destId, patch)
-            }
-            onRemoveDestination={(destId) =>
-              onRemoveDestination(player.id, destId)
-            }
-            onUpdateScoring={(patch) =>
-              onUpdatePlayerScoring(player.id, patch)
-            }
-          />
-        ))}
+        {session.players.map((player, index) => {
+          const panel = (
+            <AventurerosTrenPlayerPanel
+              player={player}
+              submode={session.submode}
+              phase={phase}
+              routes={session.construccion[player.id] ?? []}
+              destinations={session.destinos[player.id] ?? []}
+              scoring={
+                session.scoring[player.id] ??
+                createDefaultPlayerScoring(session.submode)
+              }
+              expanded={expandedPlayers.has(player.id)}
+              onToggle={() => togglePlayer(player.id)}
+              onAddRoute={() => onAddRoute(player.id)}
+              onUpdateRoute={(routeId, patch) =>
+                onUpdateRoute(player.id, routeId, patch)
+              }
+              onRemoveRoute={(routeId) => onRemoveRoute(player.id, routeId)}
+              onAddDestination={() => onAddDestination(player.id)}
+              onUpdateDestination={(destId, patch) =>
+                onUpdateDestination(player.id, destId, patch)
+              }
+              onRemoveDestination={(destId) =>
+                onRemoveDestination(player.id, destId)
+              }
+              onUpdateScoring={(patch) =>
+                onUpdatePlayerScoring(player.id, patch)
+              }
+            />
+          );
+          if (index === 0) {
+            return (
+              <TourAnchor id="aventureros.players" key={player.id}>
+                {panel}
+              </TourAnchor>
+            );
+          }
+          return <View key={player.id}>{panel}</View>;
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
-        {isConstruccion ? (
-          <Button
-            label="Finalizar fase de construcción"
-            onPress={() => onSetPhase('destinos')}
-          />
-        ) : (
-          <Button
-            label="Volver a construcción"
-            onPress={() => onSetPhase('construccion')}
-            variant="secondary"
-          />
-        )}
+        <TourAnchor id="aventureros.phase">
+          {isConstruccion ? (
+            <Button
+              label="Finalizar fase de construcción"
+              onPress={() => onSetPhase('destinos')}
+            />
+          ) : (
+            <Button
+              label="Volver a construcción"
+              onPress={() => onSetPhase('construccion')}
+              variant="secondary"
+            />
+          )}
+        </TourAnchor>
         <FinishMatchButton onPress={() => setFinishModalVisible(true)} />
       </View>
 
@@ -233,6 +334,27 @@ export function AventurerosTrenCounterScreen({
           setFinishModalVisible(false);
           onDeleteAndExit();
         }}
+      />
+
+      <MatchActionsMenu
+        visible={actionsMenuVisible}
+        onClose={() => setActionsMenuVisible(false)}
+        onViewRanking={() => setRankingModalVisible(true)}
+        onEditMatch={() => {}}
+        onFinishMatch={() => setFinishModalVisible(true)}
+        canEditMatch={false}
+        onViewTutorial={() => startTour(phaseTourId, { force: true })}
+        onHowToPlay={() => setHowToVisible(true)}
+      />
+
+      <CurrentRankingModal
+        visible={rankingModalVisible}
+        onClose={() => setRankingModalVisible(false)}
+        ranking={ranking.map((entry) => ({
+          player: entry.player,
+          total: entry.total,
+          rank: entry.rank,
+        }))}
       />
     </View>
   );

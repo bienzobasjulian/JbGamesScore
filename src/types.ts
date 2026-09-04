@@ -2,6 +2,8 @@ export type Player = {
   id: string;
   name: string;
   color: string;
+  /** Icono opcional. Si falta, se muestra la inicial del nombre. */
+  avatar?: string | null;
 };
 
 export type SavedPlayer = Player & {
@@ -240,6 +242,8 @@ export type AppData = {
   matches: Match[];
   templates: MatchTemplate[];
   sessions: PlaySession[];
+  /** Jugador guardado que representa al usuario de este dispositivo. */
+  selfPlayerId?: string | null;
 };
 
 export type AppScreen =

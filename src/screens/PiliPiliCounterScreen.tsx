@@ -1,8 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchModal } from '../components/FinishMatchModal';
+import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { PiliPiliPlayerRoundPanel } from '../components/PiliPiliPlayerRoundPanel';
 import { PiliPiliRoundMissionsPanel } from '../components/PiliPiliRoundMissionsPanel';
@@ -10,6 +19,7 @@ import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { CardCountStepper } from '../components/CardCountStepper';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
@@ -27,6 +37,7 @@ import {
   getPiliPiliRoundErrors,
   getPiliPiliRoundNumber,
   hasPiliPiliGameOver,
+  PILI_PILI_HOW_TO_PLAY,
   PILI_PILI_LOSE_AT,
   sortPlayersByPiliPiliTotal,
 } from '../utils/piliPili';
@@ -61,6 +72,8 @@ export function PiliPiliCounterScreen({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { startTour } = useOnboarding();
+  useAutoTour('piliPili');
 
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
@@ -70,6 +83,7 @@ export function PiliPiliCounterScreen({
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
   const [rankingModalVisible, setRankingModalVisible] = useState(false);
   const [roundErrorsModalVisible, setRoundErrorsModalVisible] = useState(false);
+  const [howToVisible, setHowToVisible] = useState(false);
   const {
     exitModalVisible,
     setExitModalVisible,
@@ -154,6 +168,30 @@ export function PiliPiliCounterScreen({
     onFinishMatch();
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (howToVisible) {
+        setHowToVisible(false);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [howToVisible]);
+
+  if (howToVisible) {
+    return (
+      <View style={styles.container}>
+        <HowToPlayScreen
+          title="Cómo jugar"
+          body={PILI_PILI_HOW_TO_PLAY}
+          onBack={() => setHowToVisible(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -165,13 +203,15 @@ export function PiliPiliCounterScreen({
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Pili pili</Text>
-        <Pressable
-          onPress={() => setActionsMenuVisible(true)}
-          hitSlop={12}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-        >
-          <Text style={styles.menuIcon}>⋮</Text>
-        </Pressable>
+        <TourAnchor id="piliPili.menu">
+          <Pressable
+            onPress={() => setActionsMenuVisible(true)}
+            hitSlop={12}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </Pressable>
+        </TourAnchor>
       </View>
 
       <ScrollView
@@ -186,21 +226,23 @@ export function PiliPiliCounterScreen({
             Reparte {playersInOrder[0]?.name ?? '—'}
           </Text>
 
-          <View style={styles.cardsDealtRow}>
-            <View style={styles.cardsDealtInfo}>
-              <Text style={styles.cardsDealtLabel}>Cartas repartidas</Text>
-              <Text style={styles.cardsDealtHint}>
-                Por jugador en esta ronda
-              </Text>
+          <TourAnchor id="piliPili.cards">
+            <View style={styles.cardsDealtRow}>
+              <View style={styles.cardsDealtInfo}>
+                <Text style={styles.cardsDealtLabel}>Cartas repartidas</Text>
+                <Text style={styles.cardsDealtHint}>
+                  Por jugador en esta ronda
+                </Text>
+              </View>
+              <CardCountStepper
+                value={cardsDealt}
+                onChange={(next) =>
+                  onUpdateRoundConfig(roundIndex, { cardsDealt: next })
+                }
+                max={52}
+              />
             </View>
-            <CardCountStepper
-              value={cardsDealt}
-              onChange={(next) =>
-                onUpdateRoundConfig(roundIndex, { cardsDealt: next })
-              }
-              max={52}
-            />
-          </View>
+          </TourAnchor>
 
           {cardsDealt > 0 ? (
             <Text style={styles.roundSub}>
@@ -223,50 +265,63 @@ export function PiliPiliCounterScreen({
           />
         ) : null}
 
-        <PiliPiliRoundMissionsPanel
-          config={roundConfig}
-          expanded={missionsExpanded}
-          onToggle={() => setMissionsExpanded((v) => !v)}
-          onChange={(patch) => onUpdateRoundConfig(roundIndex, patch)}
-        />
+        <TourAnchor id="piliPili.missions">
+          <PiliPiliRoundMissionsPanel
+            config={roundConfig}
+            expanded={missionsExpanded}
+            onToggle={() => setMissionsExpanded((v) => !v)}
+            onChange={(patch) => onUpdateRoundConfig(roundIndex, patch)}
+          />
+        </TourAnchor>
 
         <Text style={styles.sectionHint}>
           Orden de apuestas: empieza el repartidor. Toca un jugador para registrar
           apuesta y bazas ganadas.
         </Text>
 
-        {playersInOrder.map((player) => (
-          <PiliPiliPlayerRoundPanel
-            key={player.id}
-            player={player}
-            allPlayers={session.players}
-            players={playersInOrder}
-            roundIndex={roundIndex}
-            roundByPlayer={roundByPlayer}
-            config={roundConfig}
-            entry={roundByPlayer[player.id] ?? emptyPiliPiliRoundEntry()}
-            totalBeforeRound={getPiliPiliPlayerTotal(
-              session,
-              player.id,
-              roundIndex,
-            )}
-            expanded={expandedPlayers.has(player.id)}
-            onToggle={() => togglePlayer(player.id)}
-            onChange={(patch) =>
-              onUpdateRoundEntry(roundIndex, player.id, patch)
-            }
-          />
-        ))}
+        {playersInOrder.map((player, index) => {
+          const panel = (
+            <PiliPiliPlayerRoundPanel
+              player={player}
+              allPlayers={session.players}
+              players={playersInOrder}
+              roundIndex={roundIndex}
+              roundByPlayer={roundByPlayer}
+              config={roundConfig}
+              entry={roundByPlayer[player.id] ?? emptyPiliPiliRoundEntry()}
+              totalBeforeRound={getPiliPiliPlayerTotal(
+                session,
+                player.id,
+                roundIndex,
+              )}
+              expanded={expandedPlayers.has(player.id)}
+              onToggle={() => togglePlayer(player.id)}
+              onChange={(patch) =>
+                onUpdateRoundEntry(roundIndex, player.id, patch)
+              }
+            />
+          );
+          if (index === 0) {
+            return (
+              <TourAnchor id="piliPili.players" key={player.id}>
+                {panel}
+              </TourAnchor>
+            );
+          }
+          return <View key={player.id}>{panel}</View>;
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
-        <RoundPagination
-          roundCount={session.rounds.length}
-          activeIndex={roundIndex}
-          maxRounds={null}
-          onSelectRound={onGoToRound}
-          onAddRound={handleAddRound}
-        />
+        <TourAnchor id="piliPili.rounds">
+          <RoundPagination
+            roundCount={session.rounds.length}
+            activeIndex={roundIndex}
+            maxRounds={null}
+            onSelectRound={onGoToRound}
+            onAddRound={handleAddRound}
+          />
+        </TourAnchor>
       </View>
 
       <ExitMatchModal
@@ -308,6 +363,8 @@ export function PiliPiliCounterScreen({
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}
+        onViewTutorial={() => startTour('piliPili', { force: true })}
+        onHowToPlay={() => setHowToVisible(true)}
       />
 
       <CurrentRankingModal

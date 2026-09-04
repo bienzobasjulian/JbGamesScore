@@ -4,16 +4,19 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerColorPicker } from './PlayerColorPicker';
+import { PlayerAvatar } from './PlayerAvatar';
+import { PlayerAvatarPicker } from './PlayerAvatarPicker';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { SavedPlayer } from '../types';
-import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   visible: boolean;
@@ -21,8 +24,10 @@ type Props = {
   onClose: () => void;
   onSave: (
     playerId: string,
-    patch: { name: string; color: string },
+    patch: { name: string; color: string; avatar?: string | null },
   ) => boolean;
+  isSelf?: boolean;
+  onSetSelf?: (isSelf: boolean) => void;
 };
 
 export function EditPlayerSheet({
@@ -30,6 +35,8 @@ export function EditPlayerSheet({
   player,
   onClose,
   onSave,
+  isSelf: isSelfProp = false,
+  onSetSelf,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -37,28 +44,31 @@ export function EditPlayerSheet({
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [isSelf, setIsSelf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible && player) {
       setName(player.name);
       setColor(player.color);
+      setAvatar(player.avatar ?? null);
+      setIsSelf(isSelfProp);
       setError(null);
     }
-  }, [player, visible]);
+  }, [isSelfProp, player, visible]);
 
   if (!player) return null;
 
   const handleSave = () => {
-    const saved = onSave(player.id, { name, color });
+    const saved = onSave(player.id, { name, color, avatar });
     if (saved) {
+      onSetSelf?.(isSelf);
       onClose();
       return;
     }
     setError('Introduce un nombre válido y único');
   };
-
-  const initial = (name.trim().charAt(0) || '?').toUpperCase();
 
   return (
     <Modal
@@ -81,39 +91,65 @@ export function EditPlayerSheet({
           <View style={styles.handle} />
 
           <Text style={styles.title}>Editar jugador</Text>
-
-          <View style={styles.previewRow}>
-            <View style={[styles.avatar, { backgroundColor: color }]}>
-              <Text
-                style={[
-                  styles.avatarText,
-                  { color: getPlayerAvatarTextColor(color) },
-                ]}
-              >
-                {initial}
-              </Text>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.sheetBody}
+          >
+            <View style={styles.previewRow}>
+              <PlayerAvatar
+                name={name}
+                color={color}
+                avatar={avatar}
+                size={56}
+                radius={16}
+              />
+              <View style={styles.nameField}>
+                <Text style={styles.label}>Nombre</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    setError(null);
+                  }}
+                  onSubmitEditing={handleSave}
+                  returnKeyType="done"
+                  maxLength={24}
+                  autoFocus
+                />
+              </View>
             </View>
-            <View style={styles.nameField}>
-              <Text style={styles.label}>Nombre</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={(text) => {
-                  setName(text);
-                  setError(null);
-                }}
-                onSubmitEditing={handleSave}
-                returnKeyType="done"
-                maxLength={24}
-                autoFocus
+
+            <Text style={styles.labelCentered}>Color</Text>
+            <PlayerColorPicker value={color} onChange={setColor} />
+
+            <Text style={styles.labelCentered}>Avatar</Text>
+            <PlayerAvatarPicker
+              value={avatar}
+              onChange={setAvatar}
+              previewName={name}
+              previewColor={color}
+            />
+
+            <View style={[styles.selfRow, isSelf && styles.selfRowActive]}>
+              <View style={styles.selfText}>
+                <Text style={styles.selfTitle}>Este jugador soy yo</Text>
+                <Text style={styles.selfHint}>
+                  En partidas sin elegir jugadores se usará su nombre, color y
+                  avatar.
+                </Text>
+              </View>
+              <Switch
+                value={isSelf}
+                onValueChange={setIsSelf}
+                trackColor={{ false: theme.border, true: theme.accentDark }}
+                thumbColor={isSelf ? theme.accent : theme.textMuted}
               />
             </View>
-          </View>
 
-          <Text style={styles.labelCentered}>Color</Text>
-          <PlayerColorPicker value={color} onChange={setColor} />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </ScrollView>
 
           <View style={styles.actions}>
             <Pressable
@@ -169,6 +205,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     gap: 14,
+    maxHeight: '88%',
+  },
+  sheetBody: {
+    gap: 14,
+    paddingBottom: 8,
   },
   handle: {
     alignSelf: 'center',
@@ -188,18 +229,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
   },
   nameField: {
     flex: 1,
@@ -232,6 +261,34 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 13,
     color: theme.danger,
     textAlign: 'center',
+  },
+  selfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  selfRowActive: {
+    borderColor: theme.accent,
+  },
+  selfText: {
+    flex: 1,
+    gap: 4,
+  },
+  selfTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  selfHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: theme.textMuted,
   },
   actions: {
     flexDirection: 'row',

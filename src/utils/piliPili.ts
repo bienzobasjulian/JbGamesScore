@@ -14,6 +14,16 @@ export const PILI_PILI_MIN_PLAYERS = 2;
 export const PILI_PILI_MAX_PLAYERS = 8;
 export const PILI_PILI_LOSE_AT = 7;
 
+export const PILI_PILI_HOW_TO_PLAY = [
+  'El objetivo es adivinar cuántas bazas vas a ganar. Una baza son las cartas de un turno: gana el número más alto.',
+  'Hay cartas del 1 al 55 (solo cuenta el número) y un comodín, que eliges si es la más alta o la más baja.',
+  'Sin misión, lo habitual son 5 cartas por jugador. Con misión, reparte las que indique la carta.',
+  'Tras ver la mano, empieza a apostar el repartidor. La suma total de apuestas no puede ser igual a las cartas repartidas: el último ajusta la suya.',
+  'Se juega empezando por el repartidor. Puedes echar cualquiera. Quien gane la baza lidera la siguiente, hasta acabar las cartas.',
+  'Recibes 1 Pili por cada baza de más o de menos respecto a tu apuesta. Algunas misiones suman o quitan más Pilis.',
+  `Cuando alguien llega a ${PILI_PILI_LOSE_AT} Pilis, termina. Gana quien menos tenga.`,
+].join('\n\n');
+
 export const PILI_PILI_MISSION_LABELS: Record<PiliPiliMissionType, string> = {
   exact_bet_discard:
     'Apuesta acertada: descarta Pilis igual al valor de la apuesta',

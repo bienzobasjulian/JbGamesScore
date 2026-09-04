@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { ListRow } from '../components/ListRow';
@@ -5,7 +6,8 @@ import { MatchListRow } from '../components/MatchListRow';
 import { SectionBlock } from '../components/SectionBlock';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionListRow } from '../components/SessionListRow';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useAutoTour } from '../onboarding';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession, SavedPlayer } from '../types';
 import { formatPlayerLastUsed } from '../utils/players';
 
@@ -15,11 +17,14 @@ type Props = {
   recentSessions: PlaySession[];
   allMatches: Match[];
   recentPlayers: SavedPlayer[];
+  selfPlayerId?: string | null;
   onMenuPress: () => void;
   onCreateMatch: () => void;
   onCreateSession: () => void;
   onOpenMatch: (matchId: string) => void;
   onOpenSession: (sessionId: string) => void;
+  onViewAllSessions: () => void;
+  onViewAllMatches: () => void;
   onViewAllPlayers: () => void;
 };
 
@@ -29,15 +34,23 @@ export function HomeScreen({
   recentSessions,
   allMatches,
   recentPlayers,
+  selfPlayerId,
   onMenuPress,
   onCreateMatch,
   onCreateSession,
   onOpenMatch,
   onOpenSession,
+  onViewAllSessions,
+  onViewAllMatches,
   onViewAllPlayers,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const scrollRef = useRef<ScrollView>(null);
+  useAutoTour('home');
+
+  const scrollToPlayers = useCallback(() => {
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, []);
 
   const hasAnyMatch =
     inProgressMatches.length > 0 || recentFinishedMatches.length > 0;
@@ -49,9 +62,11 @@ export function HomeScreen({
         subtitle="Contador de puntos para tus partidas"
         onMenuPress={onMenuPress}
         showLogo
+        menuTourAnchorId="home.menu"
       />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -61,6 +76,9 @@ export function HomeScreen({
           actionLabel="Nueva sesión"
           actionVariant="sessions"
           onAction={onCreateSession}
+          tourAnchorId="home.sessions"
+          onTitlePress={onViewAllSessions}
+          titleAccessibilityLabel="Ver todas las sesiones"
         >
           {recentSessions.length === 0 ? (
             <Text style={styles.empty}>
@@ -84,6 +102,9 @@ export function HomeScreen({
           actionVariant="matches"
           onAction={onCreateMatch}
           style={styles.sectionSpaced}
+          tourAnchorId="home.matches"
+          onTitlePress={onViewAllMatches}
+          titleAccessibilityLabel="Ver todas las partidas"
         >
           {!hasAnyMatch ? (
             <Text style={styles.empty}>No hay partidas guardadas</Text>
@@ -128,6 +149,8 @@ export function HomeScreen({
           actionVariant="players"
           onAction={onViewAllPlayers}
           style={styles.sectionSpaced}
+          tourAnchorId="home.players"
+          tourOnFocus={scrollToPlayers}
         >
           {recentPlayers.length === 0 ? (
             <Text style={styles.empty}>
@@ -144,7 +167,10 @@ export function HomeScreen({
                   key={player.id}
                   title={player.name}
                   subtitle={formatPlayerLastUsed(player.lastUsedAt)}
+                  badge={player.id === selfPlayerId ? 'Tú' : undefined}
                   color={player.color}
+                  avatar={player.avatar}
+                  playerName={player.name}
                 />
               ))}
             </>

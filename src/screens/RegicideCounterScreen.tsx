@@ -12,6 +12,9 @@ import {
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Button } from '../components/Button';
 import { ExitMatchModal } from '../components/ExitMatchModal';
+import { GameOverflowMenu } from '../components/GameOverflowMenu';
+import { HowToPlayScreen } from '../components/HowToPlayScreen';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   applyRegicideAttackToBoss,
@@ -28,9 +31,10 @@ import {
   getRegicideTierBosses,
   getRemainingRegicideBosses,
   previewRegicideAttack,
+  REGICIDE_HOW_TO_PLAY,
+  REGICIDE_HOW_TO_PLAY_SECTIONS,
   REGICIDE_SUIT_EMOJI,
   REGICIDE_SUITS,
-  REGICIDE_TIER_LABEL,
   RegicideBossId,
   RegicideBossState,
   RegicideCard,
@@ -135,6 +139,7 @@ export function RegicideCounterScreen({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const suitColors = useMemo(() => getSuitColors(theme), [theme]);
+  const { startTour, skipTour, activeTourId } = useOnboarding();
 
   const [mode, setMode] = useState<ScreenMode>(
     session.activeBossId ? 'combat' : 'select_boss',
@@ -144,6 +149,8 @@ export function RegicideCounterScreen({
   const [pendingJoker, setPendingJoker] = useState(false);
   const [statAnimation, setStatAnimation] = useState<StatAnimation | null>(null);
   const [exitModalVisible, setExitModalVisible] = useState(false);
+  const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
+  const [howToVisible, setHowToVisible] = useState(false);
   const [pendingSession, setPendingSession] = useState<RegicideSession | null>(
     null,
   );
@@ -152,8 +159,38 @@ export function RegicideCounterScreen({
   const bossOpacity = useRef(new Animated.Value(1)).current;
 
   const isCombatLocked = defeatTransitionPhase !== 'none';
+  const isSelectBoss = !session.victory && mode === 'select_boss';
+  const isCombat = !session.victory && mode === 'combat';
+
+  useAutoTour('regicideSelect', {
+    enabled: isSelectBoss && !howToVisible,
+  });
+  useAutoTour('regicideCombat', {
+    enabled: isCombat && !howToVisible,
+  });
+
+  useEffect(() => {
+    if (!activeTourId) return;
+    if (mode !== 'select_boss' && activeTourId === 'regicideSelect') {
+      skipTour();
+    }
+    if (mode !== 'combat' && activeTourId === 'regicideCombat') {
+      skipTour();
+    }
+  }, [activeTourId, mode, skipTour]);
 
   const handleRequestExit = () => setExitModalVisible(true);
+  const handleOpenHowTo = () => {
+    skipTour();
+    setHowToVisible(true);
+  };
+  const handleReplayTutorial = () => {
+    if (mode === 'select_boss') {
+      startTour('regicideSelect', { force: true });
+      return;
+    }
+    startTour('regicideCombat', { force: true });
+  };
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -161,6 +198,10 @@ export function RegicideCounterScreen({
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
+        if (howToVisible) {
+          setHowToVisible(false);
+          return true;
+        }
         if (exitModalVisible) {
           setExitModalVisible(false);
           return true;
@@ -171,12 +212,17 @@ export function RegicideCounterScreen({
     );
 
     return () => subscription.remove();
-  }, [exitModalVisible]);
+  }, [exitModalVisible, howToVisible]);
 
   useEffect(() => {
     ScreenOrientation.lockAsync(
-      ScreenOrientation.OrientationLock.LANDSCAPE,
+      howToVisible
+        ? ScreenOrientation.OrientationLock.PORTRAIT_UP
+        : ScreenOrientation.OrientationLock.LANDSCAPE,
     ).catch(() => undefined);
+  }, [howToVisible]);
+
+  useEffect(() => {
     return () => {
       ScreenOrientation.lockAsync(
         ScreenOrientation.OrientationLock.PORTRAIT_UP,
@@ -385,6 +431,48 @@ export function RegicideCounterScreen({
     />
   );
 
+  const overflowMenu = (
+    <GameOverflowMenu
+      visible={actionsMenuVisible}
+      onClose={() => setActionsMenuVisible(false)}
+      items={[
+        {
+          title: 'Ver tutorial',
+          hint: 'Repasa los botones de esta pantalla',
+          onPress: handleReplayTutorial,
+        },
+        {
+          title: 'Cómo jugar',
+          hint: 'Resumen de las reglas de Regicide',
+          onPress: handleOpenHowTo,
+        },
+      ]}
+    />
+  );
+
+  const menuButton = (
+    <Pressable
+      onPress={() => setActionsMenuVisible(true)}
+      style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+      accessibilityLabel="Más acciones"
+    >
+      <Text style={styles.menuDots}>⋮</Text>
+    </Pressable>
+  );
+
+  if (howToVisible) {
+    return (
+      <View style={styles.container}>
+        <HowToPlayScreen
+          title="Cómo jugar"
+          body={REGICIDE_HOW_TO_PLAY}
+          sections={REGICIDE_HOW_TO_PLAY_SECTIONS}
+          onBack={() => setHowToVisible(false)}
+        />
+      </View>
+    );
+  }
+
   if (session.victory) {
     return (
       <>
@@ -398,6 +486,7 @@ export function RegicideCounterScreen({
           </View>
         </View>
         {exitModal}
+        {overflowMenu}
       </>
     );
   }
@@ -410,20 +499,22 @@ export function RegicideCounterScreen({
             <Pressable onPress={handleRequestExit} style={styles.topBtn}>
               <Text style={styles.topBtnText}>← Salir</Text>
             </Pressable>
-          <Text style={styles.screenTitle}>Selecciona el enemigo actual</Text>
-        </View>
+            <Text style={styles.screenTitle}>Selecciona el enemigo actual</Text>
+            {menuButton}
+          </View>
 
-        <View style={styles.bossSelectRow}>
-          {tierBosses.map((boss) => (
-            <BossSelectCard
-              key={boss.id}
-              boss={boss}
-              onPress={() => handleSelectBoss(boss.id)}
-            />
-          ))}
-        </View>
+          <TourAnchor id="regicide.bosses" style={styles.bossSelectRow}>
+            {tierBosses.map((boss) => (
+              <BossSelectCard
+                key={boss.id}
+                boss={boss}
+                onPress={() => handleSelectBoss(boss.id)}
+              />
+            ))}
+          </TourAnchor>
         </View>
         {exitModal}
+        {overflowMenu}
       </>
     );
   }
@@ -533,43 +624,50 @@ export function RegicideCounterScreen({
           <Pressable onPress={handleRequestExit} style={styles.topBtn}>
             <Text style={styles.topBtnText}>← Salir</Text>
           </Pressable>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.remainingBossesScroll}
-          contentContainerStyle={styles.remainingBossesRow}
-        >
-          {remainingBosses.map((boss) => (
-            <MiniBossCard
-              key={boss.id}
-              rank={boss.rank}
-              suit={boss.suit}
-              active={boss.id === session.activeBossId}
-            />
-          ))}
-        </ScrollView>
-        <View style={styles.topActions}>
-          <Pressable
-            onPress={handleUndo}
-            disabled={!session.undoSnapshot || isCombatLocked}
-            style={[
-              styles.iconBtn,
-              (!session.undoSnapshot || isCombatLocked) && styles.iconBtnDisabled,
-            ]}
-          >
-            <Text style={styles.iconBtnText}>↩</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleChangeBoss}
-            disabled={isCombatLocked}
-            style={[styles.iconBtn, isCombatLocked && styles.iconBtnDisabled]}
-          >
-            <Text style={styles.iconBtnText}>⇄</Text>
-          </Pressable>
+          <TourAnchor id="regicide.top" style={styles.topTourWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.remainingBossesScroll}
+              contentContainerStyle={styles.remainingBossesRow}
+            >
+              {remainingBosses.map((boss) => (
+                <MiniBossCard
+                  key={boss.id}
+                  rank={boss.rank}
+                  suit={boss.suit}
+                  active={boss.id === session.activeBossId}
+                />
+              ))}
+            </ScrollView>
+            <View style={styles.topActions}>
+              <Pressable
+                onPress={handleUndo}
+                disabled={!session.undoSnapshot || isCombatLocked}
+                style={[
+                  styles.iconBtn,
+                  (!session.undoSnapshot || isCombatLocked) &&
+                    styles.iconBtnDisabled,
+                ]}
+              >
+                <Text style={styles.iconBtnText}>↩</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleChangeBoss}
+                disabled={isCombatLocked}
+                style={[
+                  styles.iconBtn,
+                  isCombatLocked && styles.iconBtnDisabled,
+                ]}
+              >
+                <Text style={styles.iconBtnText}>⇄</Text>
+              </Pressable>
+            </View>
+          </TourAnchor>
+          {menuButton}
         </View>
-      </View>
 
-      <View style={styles.combatRow}>
+        <TourAnchor id="regicide.stats" style={styles.combatRow}>
         <AnimatedStatPanel
           title="Vida"
           value={combatStatBoss?.currentHp ?? activeBoss.currentHp}
@@ -603,9 +701,12 @@ export function RegicideCounterScreen({
           }
           accent={theme.warning}
         />
-      </View>
+        </TourAnchor>
 
-      <View style={[styles.suitRow, isCombatLocked && styles.suitRowDisabled]}>
+        <TourAnchor
+          id="regicide.suits"
+          style={[styles.suitRow, isCombatLocked && styles.suitRowDisabled]}
+        >
         {REGICIDE_SUITS.map((suit) => (
           <Pressable
             key={suit}
@@ -636,9 +737,10 @@ export function RegicideCounterScreen({
         >
           <Text style={styles.suitCardEmoji}>🃏</Text>
         </Pressable>
-      </View>
+        </TourAnchor>
       </View>
       {exitModal}
+      {overflowMenu}
     </>
   );
 }
@@ -912,9 +1014,24 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     gap: 8,
     flexShrink: 0,
   },
+  topTourWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    minWidth: 0,
+  },
+  iconBtnPressed: {
+    opacity: 0.8,
+  },
+  menuDots: {
+    color: theme.text,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
   remainingBossesScroll: {
     flex: 1,
-    marginHorizontal: 8,
   },
   remainingBossesRow: {
     flexGrow: 1,

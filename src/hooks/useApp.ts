@@ -59,7 +59,11 @@ import {
   getActiveSessions,
   getRecentSessions,
 } from '../utils/session';
-import { isAnonymousPlayer } from '../utils/playerSelection';
+import {
+  getSelfPlayer,
+  isUnsavedRosterPlayer,
+  toMatchPlayer,
+} from '../utils/players';
 import {
   RECENT_FINISHED_MATCHES_LIMIT,
   RECENT_PLAYERS_HOME_LIMIT,
@@ -84,6 +88,8 @@ import {
   createInProgressSkullKingMatch,
   createSkullKingSession,
   emptySkullKingRoundEntry,
+  SKULL_KING_MAX_PLAYERS,
+  SKULL_KING_MIN_PLAYERS,
 } from '../utils/skullKing';
 import {
   appendPiliPiliRound,
@@ -166,7 +172,15 @@ function upsertSavedPlayer(
     return touchPlayer(
       players.map((p) =>
         p.id === player.id
-          ? { ...p, name: player.name, color: player.color }
+          ? {
+              ...p,
+              name: player.name,
+              color: player.color,
+              avatar:
+                player.avatar === undefined
+                  ? p.avatar ?? null
+                  : player.avatar,
+            }
           : p,
       ),
       player.id,
@@ -184,7 +198,7 @@ function upsertRosterPlayers(
 ): SavedPlayer[] {
   return roster.reduce(
     (acc, player) =>
-      isAnonymousPlayer(player) ? acc : upsertSavedPlayer(acc, player),
+      isUnsavedRosterPlayer(player) ? acc : upsertSavedPlayer(acc, player),
     players,
   );
 }
@@ -230,6 +244,7 @@ export function useApp() {
     matches: [],
     templates: [],
     sessions: [],
+    selfPlayerId: null,
   });
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
@@ -399,6 +414,11 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
+  const goPelusasCount = useCallback(() => {
+    setScreen({ type: 'pelusasCount' });
+    setMenuOpen(false);
+  }, []);
+
   const exitPelusas = useCallback(() => {
     setPelusasSession(null);
     setScreen({ type: 'home' });
@@ -536,7 +556,7 @@ export function useApp() {
             id: matchId,
             sessionId: match.sessionId ?? playSessionId ?? null,
             createdAt: match.createdAt,
-            pelusasSession: undefined,
+            pelusasSession: prev,
           }));
         }
         return appendMatch(base, {
@@ -581,7 +601,10 @@ export function useApp() {
 
   const startSkullKingSession = useCallback(
     (players: Player[], sessionId?: string | null) => {
-      if (players.length < 1 || players.length > 6) {
+      if (
+        players.length < SKULL_KING_MIN_PLAYERS ||
+        players.length > SKULL_KING_MAX_PLAYERS
+      ) {
         return;
       }
       if (sessionId !== undefined) {
@@ -1437,21 +1460,29 @@ export function useApp() {
     [],
   );
 
-  const createSavedPlayerForSelection = useCallback((name: string): Player | null => {
-    const trimmed = name.trim();
-    if (!trimmed) return null;
-    let result: Player | null = null;
-    setData((prev) => {
-      const duplicate = prev.players.some(
-        (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
-      );
-      if (duplicate) return prev;
-      const saved = createSavedPlayer(trimmed, prev.players);
-      result = { id: saved.id, name: saved.name, color: saved.color };
-      return { ...prev, players: [...prev.players, saved] };
-    });
-    return result;
-  }, []);
+  const createSavedPlayerForSelection = useCallback(
+    (name: string, avatar?: string | null): Player | null => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      let result: Player | null = null;
+      setData((prev) => {
+        const duplicate = prev.players.some(
+          (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (duplicate) return prev;
+        const saved = createSavedPlayer(trimmed, prev.players, avatar);
+        result = {
+          id: saved.id,
+          name: saved.name,
+          color: saved.color,
+          avatar: saved.avatar ?? null,
+        };
+        return { ...prev, players: [...prev.players, saved] };
+      });
+      return result;
+    },
+    [],
+  );
 
   const goCreateSession = useCallback((returnTo: 'home' | 'sessionsList' = 'home') => {
     setScreen({ type: 'createSession', returnTo });
@@ -1508,12 +1539,16 @@ export function useApp() {
     }));
   }, []);
 
-  const deleteSession = useCallback((sessionId: string) => {
+  const deleteSessions = useCallback((sessionIds: string[]) => {
+    const ids = new Set(sessionIds);
+    if (ids.size === 0) return;
     setData((prev) => ({
       ...prev,
-      sessions: prev.sessions.filter((s) => s.id !== sessionId),
+      sessions: prev.sessions.filter((s) => !ids.has(s.id)),
       matches: prev.matches.map((m) =>
-        m.sessionId === sessionId ? { ...m, sessionId: null } : m,
+        m.sessionId && ids.has(m.sessionId)
+          ? { ...m, sessionId: null }
+          : m,
       ),
     }));
     setScreen((current) => {
@@ -1521,13 +1556,17 @@ export function useApp() {
         (current.type === 'sessionDetail' ||
           current.type === 'createSessionMatch' ||
           current.type === 'createWinnerMatch') &&
-        current.sessionId === sessionId
+        ids.has(current.sessionId)
       ) {
         return { type: 'sessionsList' };
       }
       return current;
     });
   }, []);
+
+  const deleteSession = useCallback((sessionId: string) => {
+    deleteSessions([sessionId]);
+  }, [deleteSessions]);
 
   const goEditTemplate = useCallback((templateId?: string) => {
     setScreen({ type: 'editTemplate', templateId });
@@ -1602,6 +1641,7 @@ export function useApp() {
         ...t,
         playerIds: t.playerIds.filter((id) => id !== playerId),
       })),
+      selfPlayerId: prev.selfPlayerId === playerId ? null : prev.selfPlayerId,
     }));
   }, []);
 
@@ -1616,6 +1656,7 @@ export function useApp() {
         ...t,
         playerIds: t.playerIds.filter((id) => !ids.has(id)),
       })),
+      selfPlayerId: ids.has(prev.selfPlayerId ?? '') ? null : prev.selfPlayerId,
     }));
   }, []);
 
@@ -1682,8 +1723,17 @@ export function useApp() {
     }));
   }, []);
 
+  const setSelfPlayerId = useCallback((playerId: string | null) => {
+    setData((prev) => {
+      if (playerId && !prev.players.some((player) => player.id === playerId)) {
+        return prev;
+      }
+      return { ...prev, selfPlayerId: playerId };
+    });
+  }, []);
+
   const updateSavedPlayer = useCallback(
-    (playerId: string, patch: { name: string; color: string }): boolean => {
+    (playerId: string, patch: { name: string; color: string; avatar?: string | null }): boolean => {
       const trimmed = patch.name.trim();
       if (!trimmed) return false;
 
@@ -1701,14 +1751,24 @@ export function useApp() {
           ...prev,
           players: prev.players.map((player) =>
             player.id === playerId
-              ? { ...player, name: trimmed, color: patch.color }
+              ? {
+                  ...player,
+                  name: trimmed,
+                  color: patch.color,
+                  avatar: patch.avatar ?? null,
+                }
               : player,
           ),
           matches: prev.matches.map((match) => ({
             ...match,
             players: match.players.map((player) =>
               player.id === playerId
-                ? { ...player, name: trimmed, color: patch.color }
+                ? {
+                    ...player,
+                    name: trimmed,
+                    color: patch.color,
+                    avatar: patch.avatar ?? null,
+                  }
                 : player,
             ),
           })),
@@ -2408,11 +2468,7 @@ export function useApp() {
       ...prev,
       players: touchPlayer(prev.players, saved.id),
     }));
-    return {
-      id: saved.id,
-      name: saved.name,
-      color: saved.color,
-    };
+    return toMatchPlayer(saved);
   }, []);
 
   const inProgressMatches = getInProgressMatches(data.matches);
@@ -2439,6 +2495,8 @@ export function useApp() {
     inProgressMatches,
     recentFinishedMatches,
     recentPlayers,
+    selfPlayerId: data.selfPlayerId ?? null,
+    selfPlayer: getSelfPlayer(data.players, data.selfPlayerId),
     activeSessions,
     recentSessions,
     openMenu,
@@ -2448,6 +2506,7 @@ export function useApp() {
     playTemplate,
     pelusasSession,
     goPelusasSetup,
+    goPelusasCount,
     exitPelusas,
     startPelusasSession,
     updatePelusasPlayers,
@@ -2519,6 +2578,7 @@ export function useApp() {
     closeSession,
     reopenSession,
     deleteSession,
+    deleteSessions,
     goEditTemplate,
     getTemplate,
     saveTemplate,
@@ -2539,6 +2599,7 @@ export function useApp() {
     deletePlayerGroup,
     deletePlayerGroups,
     updateSavedPlayer,
+    setSelfPlayerId,
     createAndStartMatch,
     createAndSaveWinnerMatch,
     deleteMatch,

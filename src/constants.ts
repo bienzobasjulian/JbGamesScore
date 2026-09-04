@@ -1,17 +1,21 @@
-export const PLAYER_COLORS = [
-  '#FF0000',
-  '#008000',
-  '#0000FF',
-  '#FFFF00',
-  '#00FFFF',
-  '#FF00FF',
-  '#FFFFFF',
-  '#000000',
-  '#808080',
-  '#FFA500',
-  '#A52A2A',
-  '#EE82EE',
-];
+export const PLAYER_COLOR_OPTIONS = [
+  { name: 'Negro', value: '#000000' },
+  { name: 'Blanco', value: '#FFFFFF' },
+  { name: 'Gris', value: '#808080' },
+  { name: 'Rojo', value: '#FF0000' },
+  { name: 'Naranja', value: '#FFA500' },
+  { name: 'Amarillo', value: '#FFFF00' },
+  { name: 'Verde lima', value: '#00FF00' },
+  { name: 'Verde', value: '#008000' },
+  { name: 'Cian', value: '#00FFFF' },
+  { name: 'Azul', value: '#0000FF' },
+  { name: 'Púrpura', value: '#800080' },
+  { name: 'Magenta', value: '#FF00FF' },
+  { name: 'Rosa', value: '#FF69B4' },
+  { name: 'Marrón', value: '#8B4513' },
+] as const;
+
+export const PLAYER_COLORS = PLAYER_COLOR_OPTIONS.map((color) => color.value);
 
 export const STORAGE_KEY = '@jbgamesscore/app';
 export const LEGACY_STORAGE_KEY = '@jbgamesscore/game';

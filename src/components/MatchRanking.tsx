@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { RankedPlayer } from '../utils/match';
-import { getPlayerAvatarTextColor } from '../utils/players';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   ranking: RankedPlayer[];
@@ -69,21 +69,13 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
                     <Text style={styles.pedestalScore}>{entry.total}</Text>
                     <Text style={styles.pedestalPts}>pts</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.avatar,
-                      { backgroundColor: entry.player.color },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.avatarText,
-                        { color: getPlayerAvatarTextColor(entry.player.color) },
-                      ]}
-                    >
-                      {entry.player.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  <PlayerAvatar
+                    name={entry.player.name}
+                    color={entry.player.color}
+                    avatar={entry.player.avatar}
+                    size={36}
+                    radius={10}
+                  />
                   <Text style={styles.podiumName} numberOfLines={1}>
                     {entry.player.name}
                   </Text>
@@ -101,8 +93,12 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
         {ranking.map((entry) => (
           <View key={entry.player.id} style={styles.listRow}>
             <Text style={styles.listRank}>#{entry.rank}</Text>
-            <View
-              style={[styles.listDot, { backgroundColor: entry.player.color }]}
+            <PlayerAvatar
+              name={entry.player.name}
+              color={entry.player.color}
+              avatar={entry.player.avatar}
+              size={28}
+              radius={8}
             />
             <Text style={styles.listName} numberOfLines={1}>
               {entry.player.name}

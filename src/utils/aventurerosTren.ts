@@ -9,6 +9,7 @@ import {
   Match,
   Player,
 } from '../types';
+import type { HowToPlayItem } from '../types/howToPlay';
 import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
@@ -24,8 +25,8 @@ const ROUTE_CONFIG: Record<
   { lengths: readonly number[]; points: Record<number, number> }
 > = {
   base: {
-    lengths: [1, 2, 3, 5, 6],
-    points: { 1: 1, 2: 2, 3: 4, 5: 10, 6: 15 },
+    lengths: [1, 2, 3, 4, 5, 6],
+    points: { 1: 1, 2: 2, 3: 4, 4: 7, 5: 10, 6: 15 },
   },
   europa: {
     lengths: [1, 2, 3, 4, 6, 8],
@@ -42,13 +43,13 @@ export const AVENTUREROS_TREN_SUBMODES: {
     id: 'base',
     name: 'Aventureros al tren',
     description:
-      'Vías 1–3, 5 y 6. Bonificación +10 por ruta más larga. Desempate: billetes, luego ruta.',
+      'Vías 1–6. Bonificación +10 por ruta más larga. Desempate: billetes, luego ruta.',
   },
   {
     id: 'europa',
     name: 'Aventureros al tren Europa',
     description:
-      'Vías 1–4, 6 y 8. Estaciones sin usar (+4 c/u). Misma bonificación y desempates.',
+      'Vías 1–4, 6 y 8. Estaciones sin usar (+4 c/u). Desempate: billetes, estaciones, ruta.',
   },
 ];
 
@@ -68,6 +69,73 @@ export function getSubmodeLabel(submode: AventurerosTrenSubmode): string {
   return submode === 'europa'
     ? 'Aventureros al tren Europa'
     : 'Aventureros al tren';
+}
+
+export function getRouteScoringTableRows(
+  submode: AventurerosTrenSubmode,
+): [string, string][] {
+  const points = getRoutePointsByLength(submode);
+  return getRouteLengthOptions(submode).map((length) => [
+    String(length),
+    String(points[length]),
+  ]);
+}
+
+export function getAventurerosTrenHowToPlay(submode: AventurerosTrenSubmode): {
+  body: string;
+  items: HowToPlayItem[];
+} {
+  const isEuropa = submode === 'europa';
+  const body = [
+    'Gana quien más puntos tenga.',
+    'Puntos: cubrir recorridos, completar billetes de destino y la ruta continua más larga (+10; si hay empate, todos la reciben). Un billete no completado resta sus puntos.',
+    'Si al acabar tu turno te quedan 2 vagones o menos, todos (tú incluido) juegan un turno más y se puntúa.',
+  ].join('\n\n');
+
+  const items: HowToPlayItem[] = [
+    {
+      type: 'heading',
+      title: 'Preparación',
+      body: isEuropa
+        ? '45 vagones y 3 estaciones. 4 cartas de vagón y 5 boca arriba. 1 billete largo y 3 normales; guarda al menos 2. Los descartados van a la caja.'
+        : '45 vagones. 4 cartas de vagón y 5 boca arriba. 3 billetes de destino; guarda al menos 2. Los descartados van bajo el mazo. Los billetes se ocultan hasta el final.',
+    },
+    {
+      type: 'heading',
+      title: 'Recorridos',
+      body: 'Al cubrir un tramo, suma según la longitud:',
+    },
+    {
+      type: 'table',
+      headers: ['Longitud', 'Puntos'],
+      rows: getRouteScoringTableRows(submode),
+    },
+  ];
+
+  if (isEuropa) {
+    items.push(
+      {
+        type: 'heading',
+        title: 'Estaciones',
+        body: 'Hasta 3. En una ciudad libre te permiten usar una sola vía de otro jugador para tus billetes. Máximo una por turno. Coste: 1ª = 1 carta; 2ª = 2 del mismo color; 3ª = 3 del mismo color. Al final, +4 por cada estación sin usar. Las vías por estación no cuentan para la ruta más larga.',
+      },
+      {
+        type: 'heading',
+        title: 'Túneles',
+        body: 'Pagas el tramo y se revelan 3 cartas: por cada una del color (o locomotora) debes pagar una extra, o no cubres el recorrido. Las 3 se descartan.',
+      },
+    );
+  }
+
+  items.push({
+    type: 'heading',
+    title: 'Desempate',
+    body: isEuropa
+      ? 'Más puntos. Si empatan: más billetes completados, luego menos estaciones usadas, luego la ruta más larga.'
+      : 'Más puntos. Si empatan: más billetes completados, luego la ruta más larga.',
+  });
+
+  return { body, items };
 }
 
 export function createDefaultPlayerScoring(
@@ -293,9 +361,15 @@ function buildRankingRow(
   };
 }
 
-export function compareAventurerosTrenRanking(
-  a: AventurerosTrenRankingRow,
-  b: AventurerosTrenRankingRow,
+export function compareAventurerosTrenCriteria(
+  a: Pick<
+    AventurerosTrenRankingRow,
+    'total' | 'completedTickets' | 'stationsUsed' | 'longestRouteLength'
+  >,
+  b: Pick<
+    AventurerosTrenRankingRow,
+    'total' | 'completedTickets' | 'stationsUsed' | 'longestRouteLength'
+  >,
   submode: AventurerosTrenSubmode,
 ): number {
   if (a.total !== b.total) return b.total - a.total;
@@ -308,6 +382,16 @@ export function compareAventurerosTrenRanking(
   if (a.longestRouteLength !== b.longestRouteLength) {
     return b.longestRouteLength - a.longestRouteLength;
   }
+  return 0;
+}
+
+export function compareAventurerosTrenRanking(
+  a: AventurerosTrenRankingRow,
+  b: AventurerosTrenRankingRow,
+  submode: AventurerosTrenSubmode,
+): number {
+  const byRules = compareAventurerosTrenCriteria(a, b, submode);
+  if (byRules !== 0) return byRules;
   return a.player.name.localeCompare(b.player.name, 'es');
 }
 
@@ -421,21 +505,35 @@ function buildTiebreakPlayer(
   };
 }
 
+function compareAventurerosTrenMatchCriteria(
+  a: TiebreakPlayer,
+  b: TiebreakPlayer,
+  submode: AventurerosTrenSubmode,
+): number {
+  return compareAventurerosTrenCriteria(
+    {
+      total: a.total,
+      completedTickets: a.snapshot.completedTickets,
+      stationsUsed: a.stationsUsed,
+      longestRouteLength: a.snapshot.longestRouteLength,
+    },
+    {
+      total: b.total,
+      completedTickets: b.snapshot.completedTickets,
+      stationsUsed: b.stationsUsed,
+      longestRouteLength: b.snapshot.longestRouteLength,
+    },
+    submode,
+  );
+}
+
 export function compareAventurerosTrenMatchPlayers(
   a: TiebreakPlayer,
   b: TiebreakPlayer,
   submode: AventurerosTrenSubmode,
 ): number {
-  if (a.total !== b.total) return b.total - a.total;
-  if (a.snapshot.completedTickets !== b.snapshot.completedTickets) {
-    return b.snapshot.completedTickets - a.snapshot.completedTickets;
-  }
-  if (submode === 'europa' && a.stationsUsed !== b.stationsUsed) {
-    return a.stationsUsed - b.stationsUsed;
-  }
-  if (a.snapshot.longestRouteLength !== b.snapshot.longestRouteLength) {
-    return b.snapshot.longestRouteLength - a.snapshot.longestRouteLength;
-  }
+  const byRules = compareAventurerosTrenMatchCriteria(a, b, submode);
+  if (byRules !== 0) return byRules;
   return a.player.name.localeCompare(b.player.name, 'es');
 }
 
@@ -461,7 +559,11 @@ export function getAventurerosTrenMatchRanking(
     const row = buildTiebreakPlayer(match, player);
     if (
       !prev ||
-      compareAventurerosTrenMatchPlayers(row, prev, match.aventurerosTrenSubmode ?? 'base') !== 0
+      compareAventurerosTrenMatchCriteria(
+        row,
+        prev,
+        match.aventurerosTrenSubmode ?? 'base',
+      ) !== 0
     ) {
       rank = index + 1;
       prev = row;
@@ -473,15 +575,10 @@ export function getAventurerosTrenMatchRanking(
 export function getAventurerosTrenMatchWinners(match: Match): Player[] {
   const sorted = sortAventurerosTrenMatchPlayers(match);
   if (sorted.length === 0) return [];
+  const submode = match.aventurerosTrenSubmode ?? 'base';
   const top = buildTiebreakPlayer(match, sorted[0]);
   return sorted.filter((p) => {
     const row = buildTiebreakPlayer(match, p);
-    return (
-      row.total === top.total &&
-      row.snapshot.completedTickets === top.snapshot.completedTickets &&
-      (match.aventurerosTrenSubmode !== 'europa' ||
-        row.stationsUsed === top.stationsUsed) &&
-      row.snapshot.longestRouteLength === top.snapshot.longestRouteLength
-    );
+    return compareAventurerosTrenMatchCriteria(row, top, submode) === 0;
   });
 }

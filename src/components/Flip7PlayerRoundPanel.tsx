@@ -9,9 +9,9 @@ import {
   getFlip7DisplayScore,
   hasFlip7Bonus,
 } from '../utils/flip7';
-import { getPlayerAvatarTextColor } from '../utils/players';
 import { Flip7ModifierCard } from './Flip7ModifierCard';
 import { Flip7NumberCard } from './Flip7NumberCard';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   player: Player;
@@ -47,16 +47,13 @@ export function Flip7PlayerRoundPanel({
         onPress={onToggle}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
-        <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text
-            style={[
-              styles.avatarText,
-              { color: getPlayerAvatarTextColor(player.color) },
-            ]}
-          >
-            {player.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <PlayerAvatar
+          name={player.name}
+          color={player.color}
+          avatar={player.avatar}
+          size={44}
+          radius={12}
+        />
         <View style={styles.headerText}>
           <Text style={styles.name} numberOfLines={1}>
             {player.name}
@@ -94,7 +91,7 @@ export function Flip7PlayerRoundPanel({
             </View>
           ) : null}
 
-          <Text style={styles.sectionLabel}>Bonificaciones</Text>
+          <Text style={styles.sectionLabel}>Modificadores</Text>
           <View style={styles.modifierGrid}>
             {FLIP7_MODIFIERS.map((modifier) => (
               <Flip7ModifierCard

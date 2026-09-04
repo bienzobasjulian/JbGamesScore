@@ -7,8 +7,8 @@ import {
   formatPelusasCardLabel,
   getPelusasCardValues,
 } from '../utils/pelusas';
-import { getPlayerAvatarTextColor } from '../utils/players';
 import { CardCountStepper } from './CardCountStepper';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   player: Player;
@@ -39,16 +39,13 @@ export function PelusasPlayerPanel({
         onPress={onToggle}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
-        <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text
-            style={[
-              styles.avatarText,
-              { color: getPlayerAvatarTextColor(player.color) },
-            ]}
-          >
-            {player.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <PlayerAvatar
+          name={player.name}
+          color={player.color}
+          avatar={player.avatar}
+          size={44}
+          radius={12}
+        />
         <View style={styles.headerText}>
           <Text style={styles.name} numberOfLines={1}>
             {player.name}

@@ -4,6 +4,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,13 +14,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { pickPlayerColor } from '../utils/match';
-import { getPlayerAvatarTextColor } from '../utils/players';
+import { PlayerAvatar } from './PlayerAvatar';
+import { PlayerAvatarPicker } from './PlayerAvatarPicker';
 
 type Props = {
   visible: boolean;
   existingCount: number;
   onClose: () => void;
-  onCreate: (name: string) => Player | null;
+  onCreate: (name: string, avatar?: string | null) => Player | null;
 };
 
 export function CreatePlayerSheet({
@@ -33,11 +35,13 @@ export function CreatePlayerSheet({
 
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
       setName('');
+      setAvatar(null);
       setError(null);
     }
   }, [visible]);
@@ -51,7 +55,7 @@ export function CreatePlayerSheet({
   );
 
   const handleCreate = () => {
-    const player = onCreate(name);
+    const player = onCreate(name, avatar);
     if (player) {
       onClose();
       return;
@@ -84,37 +88,48 @@ export function CreatePlayerSheet({
             Se guardará en tu lista para futuras partidas.
           </Text>
 
-          <View style={styles.previewRow}>
-            <View style={[styles.avatar, { backgroundColor: previewColor }]}>
-              <Text
-                style={[
-                  styles.avatarText,
-                  { color: getPlayerAvatarTextColor(previewColor) },
-                ]}
-              >
-                {(name.trim().charAt(0) || '?').toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.nameField}>
-              <Text style={styles.label}>Nombre</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Introduce el nombre del jugador..."
-                placeholderTextColor={theme.textMuted}
-                value={name}
-                onChangeText={(text) => {
-                  setName(text);
-                  setError(null);
-                }}
-                onSubmitEditing={handleCreate}
-                returnKeyType="done"
-                maxLength={24}
-                autoFocus
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.sheetBody}
+          >
+            <View style={styles.previewRow}>
+              <PlayerAvatar
+                name={name}
+                color={previewColor}
+                avatar={avatar}
+                size={56}
+                radius={16}
               />
+              <View style={styles.nameField}>
+                <Text style={styles.label}>Nombre</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Introduce el nombre del jugador..."
+                  placeholderTextColor={theme.textMuted}
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    setError(null);
+                  }}
+                  onSubmitEditing={handleCreate}
+                  returnKeyType="done"
+                  maxLength={24}
+                  autoFocus
+                />
+              </View>
             </View>
-          </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Text style={styles.labelCentered}>Avatar</Text>
+            <PlayerAvatarPicker
+              value={avatar}
+              onChange={setAvatar}
+              previewName={name}
+              previewColor={previewColor}
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </ScrollView>
 
           <View style={styles.actions}>
             <Pressable
@@ -170,6 +185,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     gap: 14,
+    maxHeight: '88%',
+  },
+  sheetBody: {
+    gap: 14,
+    paddingBottom: 8,
   },
   handle: {
     alignSelf: 'center',
@@ -197,18 +217,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     gap: 14,
     marginTop: 4,
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-  },
   nameField: {
     flex: 1,
     gap: 6,
@@ -217,6 +225,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: theme.textMuted,
+  },
+  labelCentered: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: theme.surfaceLight,

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { PLAYER_COLORS } from '../constants';
+import { PLAYER_COLOR_OPTIONS, PLAYER_COLORS } from '../constants';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { getPlayerAvatarTextColor } from '../utils/players';
 
@@ -19,23 +19,30 @@ export function PlayerColorPicker({ value, onChange }: Props) {
 
   const normalizedValue = value.trim().toUpperCase();
 
-  const colors = useMemo(() => {
-    if (PLAYER_COLORS.includes(normalizedValue)) return PLAYER_COLORS;
-    return [normalizedValue, ...PLAYER_COLORS];
+  const options = useMemo(() => {
+    const known = PLAYER_COLOR_OPTIONS.map((option) => ({
+      name: option.name,
+      value: option.value,
+    }));
+    if (PLAYER_COLORS.includes(normalizedValue)) return known;
+    return [{ name: 'Actual', value: normalizedValue }, ...known];
   }, [normalizedValue]);
 
   return (
     <View style={styles.grid}>
-      {colors.map((color) => {
-        const selected = normalizedValue === color.trim().toUpperCase();
-        const light = isLightColor(color);
+      {options.map((option) => {
+        const selected = normalizedValue === option.value.trim().toUpperCase();
+        const light = isLightColor(option.value);
         return (
           <Pressable
-            key={color}
-            onPress={() => onChange(color)}
+            key={option.value}
+            accessibilityRole="button"
+            accessibilityLabel={option.name}
+            accessibilityState={{ selected }}
+            onPress={() => onChange(option.value)}
             style={({ pressed }) => [
               styles.swatch,
-              { backgroundColor: color },
+              { backgroundColor: option.value },
               light && styles.swatchLight,
               selected &&
                 (light ? styles.swatchSelectedLight : styles.swatchSelected),
@@ -43,11 +50,7 @@ export function PlayerColorPicker({ value, onChange }: Props) {
             ]}
           >
             {selected ? (
-              <Text
-                style={[styles.check, light && styles.checkDark]}
-              >
-                ✓
-              </Text>
+              <Text style={[styles.check, light && styles.checkDark]}>✓</Text>
             ) : null}
           </Pressable>
         );

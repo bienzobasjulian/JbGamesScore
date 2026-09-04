@@ -15,8 +15,10 @@ import { FinishMatchModal } from '../components/FinishMatchModal';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { MatchResultsPager } from '../components/MatchResultsPager';
 import { PlayerCard } from '../components/PlayerCard';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
+import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { GameState, ScoringMode } from '../types';
 import {
@@ -100,6 +102,9 @@ export function GameScreen({
   const showResults =
     viewingResults || (objectivesReached && !editingAfterFinish);
   const showingUnsavedResults = viewingResults && !isMatchFinished;
+  useAutoTour('match', {
+    enabled: !showResults && !isWinnerOnlyMatch,
+  });
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -248,16 +253,18 @@ export function GameScreen({
         </View>
 
         {!showResults ? (
-          <Pressable
-            onPress={() => setActionsMenuVisible(true)}
-            hitSlop={12}
-            style={({ pressed }) => [
-              styles.menuBtn,
-              pressed && styles.backBtnPressed,
-            ]}
-          >
-            <Text style={styles.menuIcon}>⋮</Text>
-          </Pressable>
+          <TourAnchor id="match.menu">
+            <Pressable
+              onPress={() => setActionsMenuVisible(true)}
+              hitSlop={12}
+              style={({ pressed }) => [
+                styles.menuBtn,
+                pressed && styles.backBtnPressed,
+              ]}
+            >
+              <Text style={styles.menuIcon}>⋮</Text>
+            </Pressable>
+          </TourAnchor>
         ) : (
           <View style={styles.menuPlaceholder} />
         )}
@@ -272,11 +279,12 @@ export function GameScreen({
                 .filter((entry) => entry.total > 0)
                 .map((entry) => (
                   <View key={entry.player.id} style={styles.winnerOnlyRow}>
-                    <View
-                      style={[
-                        styles.winnerOnlyDot,
-                        { backgroundColor: entry.player.color },
-                      ]}
+                    <PlayerAvatar
+                      name={entry.player.name}
+                      color={entry.player.color}
+                      avatar={entry.player.avatar}
+                      size={28}
+                      radius={8}
                     />
                     <Text style={styles.winnerOnlyName}>
                       {entry.player.name}
@@ -296,6 +304,7 @@ export function GameScreen({
             />
           )
         ) : (
+          <TourAnchor id="match.scores" style={styles.scroll}>
           <FlatList
             style={styles.scroll}
             data={state.players}
@@ -342,6 +351,7 @@ export function GameScreen({
               />
             )}
           />
+          </TourAnchor>
         )}
       </View>
 
@@ -386,15 +396,17 @@ export function GameScreen({
         ) : (
           <>
             <Text style={styles.roundsLabel}>Rondas</Text>
-            <RoundPagination
-              roundCount={state.rounds.length}
-              activeIndex={state.activeRoundIndex}
-              maxRounds={state.settings.maxRounds}
-              rounds={state.rounds}
-              roundBreakdowns={state.roundBreakdowns}
-              onSelectRound={onGoToRound}
-              onAddRound={onAddRound}
-            />
+            <TourAnchor id="match.rounds">
+              <RoundPagination
+                roundCount={state.rounds.length}
+                activeIndex={state.activeRoundIndex}
+                maxRounds={state.settings.maxRounds}
+                rounds={state.rounds}
+                roundBreakdowns={state.roundBreakdowns}
+                onSelectRound={onGoToRound}
+                onAddRound={onAddRound}
+              />
+            </TourAnchor>
           </>
         )}
       </View>

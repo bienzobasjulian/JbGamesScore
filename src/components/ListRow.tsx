@@ -1,10 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   title: string;
   subtitle?: string;
+  badge?: string;
   color?: string;
+  avatar?: string | null;
+  playerName?: string;
   onPress?: () => void;
   onLongPress?: () => void;
   onRemove?: () => void;
@@ -15,7 +19,10 @@ type Props = {
 export function ListRow({
   title,
   subtitle,
+  badge,
   color,
+  avatar,
+  playerName,
   onPress,
   onLongPress,
   onRemove,
@@ -33,12 +40,29 @@ export function ListRow({
         </View>
       ) : null}
       {color ? (
-        <View style={[styles.dot, { backgroundColor: color }]} />
+        playerName ? (
+          <PlayerAvatar
+            name={playerName}
+            color={color}
+            avatar={avatar}
+            size={36}
+            radius={10}
+          />
+        ) : (
+          <View style={[styles.dot, { backgroundColor: color }]} />
+        )
       ) : null}
       <View style={styles.texts}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          {badge ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+          ) : null}
+        </View>
         {subtitle ? (
           <Text style={styles.subtitle} numberOfLines={1}>
             {subtitle}
@@ -111,10 +135,27 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontSize: 16,
     fontWeight: '700',
     color: theme.text,
+    flexShrink: 1,
+  },
+  badge: {
+    backgroundColor: theme.accent + '22',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.accent,
   },
   subtitle: {
     fontSize: 13,

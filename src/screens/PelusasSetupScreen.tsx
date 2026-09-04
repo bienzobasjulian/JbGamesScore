@@ -7,7 +7,7 @@ import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PelusasSetupDraft } from '../types/playerSelection';
 import { AppScreen, Player, SavedPlayer } from '../types';
-import { ensureMatchPlayers } from '../utils/players';
+import { ensureMatchPlayers, formatSoloPlayerHint } from '../utils/players';
 
 type Props = {
   savedPlayers: SavedPlayer[];
@@ -23,7 +23,7 @@ type Props = {
     allowAnonymous: boolean;
     returnScreen: AppScreen;
   }) => void;
-  onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
+  selfPlayer?: Player | null;
 };
 
 export function PelusasSetupScreen({
@@ -33,7 +33,7 @@ export function PelusasSetupScreen({
   onBack,
   onStart,
   onOpenPlayerSelection,
-  onCreateNewPlayer,
+  selfPlayer = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -54,7 +54,7 @@ export function PelusasSetupScreen({
   };
 
   const handleStart = () => {
-    onStart(ensureMatchPlayers(players, onCreateNewPlayer));
+    onStart(ensureMatchPlayers(players, selfPlayer));
   };
 
   const rosterBlock = (
@@ -62,7 +62,7 @@ export function PelusasSetupScreen({
       intro="Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al 10 tiene cada jugador (y las de Revolution, si las activáis)."
       playerCount={players.length}
       onChoosePlayers={handleChoosePlayers}
-      soloHint="Sin jugadores seleccionados se usará un jugador «Yo» solo para este conteo."
+      soloHint={formatSoloPlayerHint(selfPlayer)}
     />
   );
 

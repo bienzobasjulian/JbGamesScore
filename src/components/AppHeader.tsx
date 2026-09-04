@@ -1,4 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { TourAnchor } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
@@ -7,6 +8,8 @@ type Props = {
   onMenuPress?: () => void;
   onBack?: () => void;
   showLogo?: boolean;
+  menuTourAnchorId?: string;
+  menuIcon?: 'menu' | 'more';
 };
 
 export function AppHeader({
@@ -15,6 +18,8 @@ export function AppHeader({
   onMenuPress,
   onBack,
   showLogo = false,
+  menuTourAnchorId,
+  menuIcon = 'menu',
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -45,14 +50,39 @@ export function AppHeader({
         ) : null}
       </View>
       {onMenuPress ? (
-        <Pressable onPress={onMenuPress} hitSlop={12} style={styles.iconBtn}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </Pressable>
+        <MenuButton
+          onPress={onMenuPress}
+          icon={menuIcon === 'more' ? '⋮' : '☰'}
+          tourAnchorId={menuTourAnchorId}
+          styles={styles}
+        />
       ) : (
         <View style={styles.iconPlaceholder} />
       )}
     </View>
   );
+}
+
+function MenuButton({
+  onPress,
+  icon,
+  tourAnchorId,
+  styles,
+}: {
+  onPress: () => void;
+  icon: string;
+  tourAnchorId?: string;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const button = (
+    <Pressable onPress={onPress} hitSlop={12} style={styles.iconBtn}>
+      <Text style={[styles.menuIcon, icon === '⋮' && styles.moreIcon]}>
+        {icon}
+      </Text>
+    </Pressable>
+  );
+  if (!tourAnchorId) return button;
+  return <TourAnchor id={tourAnchorId}>{button}</TourAnchor>;
 }
 
 const createStyles = (theme: AppTheme) => StyleSheet.create({
@@ -84,6 +114,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 20,
     color: theme.text,
     fontWeight: '700',
+  },
+  moreIcon: {
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 24,
   },
   backIcon: {
     fontSize: 22,

@@ -10,10 +10,11 @@ import {
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateWinnerMatchDraft } from '../types/playerSelection';
 import { AppScreen, Player, SavedPlayer } from '../types';
-import { ensureMatchPlayers, getPlayerAvatarTextColor } from '../utils/players';
+import { ensureMatchPlayers } from '../utils/players';
 
 type Props = {
   sessionName: string;
@@ -34,7 +35,7 @@ type Props = {
     allowAnonymous: boolean;
     returnScreen: AppScreen;
   }) => void;
-  onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
+  selfPlayer?: Player | null;
 };
 
 export function CreateWinnerMatchScreen({
@@ -45,7 +46,7 @@ export function CreateWinnerMatchScreen({
   onBack,
   onSave,
   onOpenPlayerSelection,
-  onCreateNewPlayer,
+  selfPlayer = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -97,7 +98,7 @@ export function CreateWinnerMatchScreen({
 
   const handleSave = () => {
     if (winnerIds.size < 1) return;
-    const roster = ensureMatchPlayers(players, onCreateNewPlayer);
+    const roster = ensureMatchPlayers(players, selfPlayer);
     onSave(roster, [...winnerIds], matchName.trim() || null);
   };
 
@@ -150,21 +151,13 @@ export function CreateWinnerMatchScreen({
               return (
                 <View key={player.id} style={styles.playerRow}>
                   <View style={styles.playerInfo}>
-                    <View
-                      style={[
-                        styles.avatar,
-                        { backgroundColor: player.color },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.avatarText,
-                          { color: getPlayerAvatarTextColor(player.color) },
-                        ]}
-                      >
-                        {player.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
+                    <PlayerAvatar
+                      name={player.name}
+                      color={player.color}
+                      avatar={player.avatar}
+                      size={36}
+                      radius={10}
+                    />
                     <Text style={styles.playerName} numberOfLines={1}>
                       {player.name}
                     </Text>

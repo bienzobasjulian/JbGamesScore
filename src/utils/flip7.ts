@@ -6,6 +6,7 @@ import {
   Match,
   Player,
 } from '../types';
+import type { HowToPlayItem } from '../types/howToPlay';
 import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
@@ -20,6 +21,49 @@ export function normalizeFlip7Session(session: Flip7Session): Flip7Session {
 
 export const FLIP7_MIN_PLAYERS = 3;
 export const FLIP7_WIN_AT = 200;
+
+export const FLIP7_HOW_TO_PLAY = [
+  `Gana el primero en llegar a ${FLIP7_WIN_AT} puntos. Cada ronda sumas tus cartas de número y los modificadores.`,
+  'En el mazo hay doce 12, once 11… hasta un 1 y un 0. Cuanto más alto el número, más copias hay.',
+  'Si reúnes 7 números distintos, la ronda termina en ese momento para todos y sumas 15 extra. Si sale un número que ya tienes, te pasas y no puntúas.',
+  'Se reparte una carta boca arriba a cada uno. Si sale una de acción, se resuelve antes de seguir.',
+  'En tu turno puedes coger o plantarte (con al menos una carta delante). Quien no se ha plantado ni se ha pasado es un jugador activo.',
+].join('\n\n');
+
+export const FLIP7_HOW_TO_PLAY_ITEMS: HowToPlayItem[] = [
+  {
+    type: 'heading',
+    title: 'Cartas de acción',
+    body: 'Se juegan sobre un jugador activo. Si eres el único activo, van sobre ti.',
+  },
+  {
+    type: 'term',
+    term: 'Congelar',
+    definition: 'Quien la recibe guarda sus puntos y queda fuera de la ronda.',
+  },
+  {
+    type: 'term',
+    term: 'Roba tres',
+    definition:
+      'Puedes usarla sobre ti o enviársela a otro jugador activo. Quien la recibe voltea tres cartas y para si hace Flip 7. Una Segunda oportunidad se guarda; otra Roba tres o Congelar se resuelve después. Tras jugarla, sigue el turno el jugador a la derecha de quien la lanzó.',
+  },
+  {
+    type: 'term',
+    term: 'Segunda oportunidad',
+    definition:
+      'Si sale un duplicado, se descartan las dos. Solo una por jugador; si sale otra, dásela a un activo o se descarta. Se pierde al final de la ronda.',
+  },
+  {
+    type: 'heading',
+    title: 'Modificadores',
+    body: 'No cuentan para el Flip 7. Puedes plantarte solo con uno. Los + se suman; el x2 duplica primero los números y luego se añaden los +.',
+  },
+  {
+    type: 'heading',
+    title: 'Fin de ronda',
+    body: `La ronda acaba cuando no queda nadie activo o alguien hace Flip 7. Las cartas se apartan (no al mazo). El mazo pasa a la izquierda; si se acaba, baraja los descartes, no las cartas que tiene cada uno delante. Si alguien llega a ${FLIP7_WIN_AT} o más, gana quien más puntos tenga. Si hay empate, se juega otra ronda.`,
+  },
+];
 
 export const FLIP7_NUMBERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 

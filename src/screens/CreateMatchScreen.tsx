@@ -13,6 +13,7 @@ import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateMatchDraft } from '../types/playerSelection';
 import {
@@ -30,7 +31,7 @@ import {
 } from '../utils/games';
 import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
 import { defaultSettings } from '../utils/game';
-import { ensureMatchPlayers } from '../utils/players';
+import { ensureMatchPlayers, formatSoloPlayerHint } from '../utils/players';
 import { applyTemplateDraft } from '../utils/template';
 
 function buildInitialFromTemplate(
@@ -97,7 +98,7 @@ type Props = {
     sessionId?: string | null,
   ) => void;
   onStartRegicide: (sessionId?: string | null) => void;
-  onCreateNewPlayer: (name: string, existing: Player[]) => Player | null;
+  selfPlayer?: Player | null;
 };
 
 export function CreateMatchScreen({
@@ -117,10 +118,12 @@ export function CreateMatchScreen({
   onStartFlip7,
   onStartAventurerosTren,
   onStartRegicide,
-  onCreateNewPlayer,
+  selfPlayer = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { completedTours } = useOnboarding();
+  useAutoTour('createMatch');
 
   const templateInitial = buildInitialFromTemplate(
     templates,
@@ -156,6 +159,9 @@ export function CreateMatchScreen({
   const isFlip7 = gameType === 'flip7';
   const isAventurerosTren = gameType === 'aventureros_tren';
   const isRegicide = gameType === 'regicide';
+  useAutoTour('aventurerosSubmode', {
+    enabled: isAventurerosTren && completedTours.includes('createMatch'),
+  });
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
 
@@ -164,8 +170,7 @@ export function CreateMatchScreen({
     : isPiliPili || isFlip7
       ? players.length >= playerLimits.min && players.length <= playerLimits.max
       : players.length <= playerLimits.max;
-  const soloHint =
-    'Si no eliges a nadie, se usará un jugador «Yo» solo para este registro.';
+  const soloHint = formatSoloPlayerHint(selfPlayer);
   const startLabel = isPelusas
     ? 'Contar puntos'
     : isRegicide
@@ -258,7 +263,7 @@ export function CreateMatchScreen({
       onStartRegicide(sessionId ?? null);
       return;
     }
-    const roster = ensureMatchPlayers(players, onCreateNewPlayer);
+    const roster = ensureMatchPlayers(players, selfPlayer);
     if (isPelusas) {
       onStartPelusas(roster, sessionId ?? null);
     } else if (isSkullKing) {
@@ -284,7 +289,9 @@ export function CreateMatchScreen({
       {sessionName ? (
         <Text style={styles.sessionHint}>Sesión: {sessionName}</Text>
       ) : null}
-      <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
+      <TourAnchor id="createMatch.game">
+        <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
+      </TourAnchor>
 
       {!isSpecialGame ? (
         <>
@@ -301,14 +308,18 @@ export function CreateMatchScreen({
             />
           </View>
 
-          <TemplatePicker
-            templates={templates}
-            savedPlayers={savedPlayers}
-            selectedId={loadedTemplateId}
-            onSelect={handleSelectTemplate}
-          />
+          <TourAnchor id="createMatch.templates">
+            <TemplatePicker
+              templates={templates}
+              savedPlayers={savedPlayers}
+              selectedId={loadedTemplateId}
+              onSelect={handleSelectTemplate}
+            />
+          </TourAnchor>
 
-          <GameSettingsPanel settings={settings} onChange={setSettings} />
+          <TourAnchor id="createMatch.settings">
+            <GameSettingsPanel settings={settings} onChange={setSettings} />
+          </TourAnchor>
         </>
       ) : isPelusas ? (
         <Text style={styles.specialHint}>
@@ -318,7 +329,9 @@ export function CreateMatchScreen({
       ) : isSkullKing ? (
         <Text style={styles.specialHint}>
           Partida a 10 rondas de bazas. Elige entre {playerLimits.min} y{' '}
-          {playerLimits.max} jugadores.
+          {playerLimits.max} jugadores. Ordena la lista: el primero es el
+          repartidor de la ronda 1 y el de su izquierda el jugador inicial de
+          esa ronda.
         </Text>
       ) : isPiliPili ? (
         <Text style={styles.specialHint}>
@@ -342,10 +355,12 @@ export function CreateMatchScreen({
         </View>
       ) : (
         <>
-          <AventurerosTrenSubmodePicker
-            selected={aventurerosSubmode}
-            onSelect={setAventurerosSubmode}
-          />
+          <TourAnchor id="aventurerosSubmode.picker">
+            <AventurerosTrenSubmodePicker
+              selected={aventurerosSubmode}
+              onSelect={setAventurerosSubmode}
+            />
+          </TourAnchor>
           <Text style={styles.specialHint}>
             Dos fases: construcción de vías y comprobación de destinos. De 1 a{' '}
             {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
@@ -354,14 +369,16 @@ export function CreateMatchScreen({
       )}
 
       {!isRegicide ? (
-        <MatchPlayerRoster
-          playerCount={players.length}
-          onChoosePlayers={handleChoosePlayers}
-          soloHint={soloHint}
-          maxPlayers={
-            Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
-          }
-        />
+        <TourAnchor id="createMatch.players">
+          <MatchPlayerRoster
+            playerCount={players.length}
+            onChoosePlayers={handleChoosePlayers}
+            soloHint={soloHint}
+            maxPlayers={
+              Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
+            }
+          />
+        </TourAnchor>
       ) : null}
     </View>
   );
@@ -375,11 +392,13 @@ export function CreateMatchScreen({
         />
         <View style={styles.regicideBody}>{header}</View>
         <View style={styles.footer}>
-          <Button
-            label={startLabel}
-            onPress={handleStart}
-            disabled={!canStart}
-          />
+          <TourAnchor id="createMatch.start">
+            <Button
+              label={startLabel}
+              onPress={handleStart}
+              disabled={!canStart}
+            />
+          </TourAnchor>
         </View>
       </View>
     );
@@ -420,11 +439,13 @@ export function CreateMatchScreen({
             ) : null}
           </>
         ) : null}
-        <Button
-          label={startLabel}
-          onPress={handleStart}
-          disabled={!canStart}
-        />
+        <TourAnchor id="createMatch.start">
+          <Button
+            label={startLabel}
+            onPress={handleStart}
+            disabled={!canStart}
+          />
+        </TourAnchor>
       </View>
     </View>
   );

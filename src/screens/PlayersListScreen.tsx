@@ -20,7 +20,7 @@ type Props = {
   players: SavedPlayer[];
   groups: PlayerGroup[];
   onBack: () => void;
-  onCreatePlayer: (name: string) => Player | null;
+  onCreatePlayer: (name: string, avatar?: string | null) => Player | null;
   onCreateGroup: (name: string) => string | null;
   onUpdateGroup: (
     groupId: string,
@@ -30,10 +30,12 @@ type Props = {
   onRemoveGroups: (ids: string[]) => void;
   onUpdatePlayer: (
     playerId: string,
-    patch: { name: string; color: string },
+    patch: { name: string; color: string; avatar?: string | null },
   ) => boolean;
   onRemovePlayer: (id: string) => void;
   onRemovePlayers: (ids: string[]) => void;
+  selfPlayerId?: string | null;
+  onSetSelfPlayerId: (playerId: string | null) => void;
 };
 
 function formatBulkDeleteMessage(
@@ -66,6 +68,8 @@ export function PlayersListScreen({
   onUpdatePlayer,
   onRemovePlayer,
   onRemovePlayers,
+  selfPlayerId = null,
+  onSetSelfPlayerId,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -231,7 +235,10 @@ export function PlayersListScreen({
               key={player.id}
               title={player.name}
               subtitle={formatPlayerLastUsed(player.lastUsedAt)}
+              badge={player.id === selfPlayerId ? 'Tú' : undefined}
               color={player.color}
+              avatar={player.avatar}
+              playerName={player.name}
               onPress={
                 selectionMode
                   ? () => togglePlayerSelected(player.id)
@@ -286,8 +293,19 @@ export function PlayersListScreen({
       <EditPlayerSheet
         visible={editingPlayer != null}
         player={editingPlayer}
+        isSelf={editingPlayer?.id === selfPlayerId}
         onClose={() => setEditingPlayerId(null)}
         onSave={onUpdatePlayer}
+        onSetSelf={(isSelf) => {
+          if (!editingPlayer) return;
+          if (isSelf) {
+            onSetSelfPlayerId(editingPlayer.id);
+            return;
+          }
+          if (editingPlayer.id === selfPlayerId) {
+            onSetSelfPlayerId(null);
+          }
+        }}
       />
     </View>
   );

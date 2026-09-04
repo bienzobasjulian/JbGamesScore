@@ -7,9 +7,21 @@ type Props = {
   session: PlaySession;
   matches: Match[];
   onPress?: () => void;
+  onLongPress?: () => void;
+  onRemove?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
 };
 
-export function SessionListRow({ session, matches, onPress }: Props) {
+export function SessionListRow({
+  session,
+  matches,
+  onPress,
+  onLongPress,
+  onRemove,
+  selectionMode = false,
+  selected = false,
+}: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -19,6 +31,11 @@ export function SessionListRow({ session, matches, onPress }: Props) {
 
   const content = (
     <>
+      {selectionMode ? (
+        <View style={[styles.selector, selected && styles.selectorActive]}>
+          {selected ? <View style={styles.selectorDot} /> : null}
+        </View>
+      ) : null}
       <View style={styles.texts}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>
@@ -44,17 +61,24 @@ export function SessionListRow({ session, matches, onPress }: Props) {
           {subtitle}
         </Text>
       </View>
-      {onPress ? <Text style={styles.chevron}>›</Text> : null}
+      {onRemove && !selectionMode ? (
+        <Pressable onPress={onRemove} hitSlop={12} style={styles.remove}>
+          <Text style={styles.removeText}>x</Text>
+        </Pressable>
+      ) : onPress && !selectionMode ? (
+        <Text style={styles.chevron}>›</Text>
+      ) : null}
     </>
   );
 
-  if (!onPress) {
+  if (!onPress && !onLongPress) {
     return <View style={styles.row}>{content}</View>;
   }
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
@@ -74,6 +98,25 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  selector: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surfaceLight,
+  },
+  selectorActive: {
+    borderColor: theme.accent,
+  },
+  selectorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.accent,
   },
   texts: {
     flex: 1,
@@ -120,5 +163,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 22,
     color: theme.textMuted,
     fontWeight: '300',
+  },
+  remove: {
+    padding: 4,
+  },
+  removeText: {
+    fontSize: 18,
+    color: theme.textMuted,
   },
 });

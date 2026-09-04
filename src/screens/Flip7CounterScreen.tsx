@@ -1,18 +1,31 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { FinishMatchModal } from '../components/FinishMatchModal';
 import { Flip7PlayerRoundPanel } from '../components/Flip7PlayerRoundPanel';
+import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
+import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { Flip7Modifier, Flip7Session } from '../types';
 import {
   emptyFlip7RoundEntry,
+  FLIP7_HOW_TO_PLAY,
+  FLIP7_HOW_TO_PLAY_ITEMS,
   FLIP7_WIN_AT,
   getFlip7GameOverWinners,
   getFlip7RoundEntryScore,
@@ -51,6 +64,8 @@ export function Flip7CounterScreen({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { startTour } = useOnboarding();
+  useAutoTour('flip7');
 
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
@@ -59,6 +74,7 @@ export function Flip7CounterScreen({
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
   const [rankingModalVisible, setRankingModalVisible] = useState(false);
   const [roundErrorsModalVisible, setRoundErrorsModalVisible] = useState(false);
+  const [howToVisible, setHowToVisible] = useState(false);
   const {
     exitModalVisible,
     setExitModalVisible,
@@ -125,6 +141,31 @@ export function Flip7CounterScreen({
     onAddRound();
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (howToVisible) {
+        setHowToVisible(false);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [howToVisible]);
+
+  if (howToVisible) {
+    return (
+      <View style={styles.container}>
+        <HowToPlayScreen
+          title="Cómo jugar"
+          body={FLIP7_HOW_TO_PLAY}
+          items={FLIP7_HOW_TO_PLAY_ITEMS}
+          onBack={() => setHowToVisible(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -136,13 +177,15 @@ export function Flip7CounterScreen({
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Flip 7</Text>
-        <Pressable
-          onPress={() => setActionsMenuVisible(true)}
-          hitSlop={12}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-        >
-          <Text style={styles.menuIcon}>⋮</Text>
-        </Pressable>
+        <TourAnchor id="flip7.menu">
+          <Pressable
+            onPress={() => setActionsMenuVisible(true)}
+            hitSlop={12}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </Pressable>
+        </TourAnchor>
       </View>
 
       <ScrollView
@@ -178,8 +221,12 @@ export function Flip7CounterScreen({
           {cumulativeRanking.map(({ player, total }, index) => (
             <View key={player.id} style={styles.rankingRow}>
               <Text style={styles.rankingPos}>{index + 1}.</Text>
-              <View
-                style={[styles.rankingDot, { backgroundColor: player.color }]}
+              <PlayerAvatar
+                name={player.name}
+                color={player.color}
+                avatar={player.avatar}
+                size={28}
+                radius={8}
               />
               <Text style={styles.rankingName} numberOfLines={1}>
                 {player.name}
@@ -206,32 +253,43 @@ export function Flip7CounterScreen({
           mazo. Puedes volver atrás para corregir errores.
         </Text>
 
-        {session.players.map((player) => (
-          <Flip7PlayerRoundPanel
-            key={player.id}
-            player={player}
-            entry={roundByPlayer[player.id] ?? emptyFlip7RoundEntry()}
-            expanded={expandedPlayers.has(player.id)}
-            onToggle={() => togglePlayer(player.id)}
-            onToggleNumber={(number) =>
-              onToggleNumber(roundIndex, player.id, number)
-            }
-            onToggleModifier={(modifier) =>
-              onToggleModifier(roundIndex, player.id, modifier)
-            }
-            onClear={() => onClearPlayer(roundIndex, player.id)}
-          />
-        ))}
+        {session.players.map((player, index) => {
+          const panel = (
+            <Flip7PlayerRoundPanel
+              player={player}
+              entry={roundByPlayer[player.id] ?? emptyFlip7RoundEntry()}
+              expanded={expandedPlayers.has(player.id)}
+              onToggle={() => togglePlayer(player.id)}
+              onToggleNumber={(number) =>
+                onToggleNumber(roundIndex, player.id, number)
+              }
+              onToggleModifier={(modifier) =>
+                onToggleModifier(roundIndex, player.id, modifier)
+              }
+              onClear={() => onClearPlayer(roundIndex, player.id)}
+            />
+          );
+          if (index === 0) {
+            return (
+              <TourAnchor id="flip7.players" key={player.id}>
+                {panel}
+              </TourAnchor>
+            );
+          }
+          return <View key={player.id}>{panel}</View>;
+        })}
       </ScrollView>
 
       <View style={styles.footer}>
-        <RoundPagination
-          roundCount={session.rounds.length}
-          activeIndex={roundIndex}
-          maxRounds={null}
-          onSelectRound={onGoToRound}
-          onAddRound={handleAddRound}
-        />
+        <TourAnchor id="flip7.rounds">
+          <RoundPagination
+            roundCount={session.rounds.length}
+            activeIndex={roundIndex}
+            maxRounds={null}
+            onSelectRound={onGoToRound}
+            onAddRound={handleAddRound}
+          />
+        </TourAnchor>
       </View>
 
       <ExitMatchModal
@@ -267,6 +325,8 @@ export function Flip7CounterScreen({
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}
+        onViewTutorial={() => startTour('flip7', { force: true })}
+        onHowToPlay={() => setHowToVisible(true)}
       />
 
       <CurrentRankingModal

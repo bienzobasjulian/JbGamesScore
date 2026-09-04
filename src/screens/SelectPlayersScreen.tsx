@@ -13,6 +13,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { CardCountStepper } from '../components/CardCountStepper';
 import { CreatePlayerSheet } from '../components/CreatePlayerSheet';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player, PlayerGroup, SavedPlayer } from '../types';
 import {
@@ -23,7 +24,7 @@ import {
   buildRosterFromSelection,
   parseRosterPlayers,
 } from '../utils/playerSelection';
-import { formatPlayerLastUsed, getPlayerAvatarTextColor } from '../utils/players';
+import { formatPlayerLastUsed, toMatchPlayer } from '../utils/players';
 
 const GROUP_COLOR = '#9B59B6';
 
@@ -35,7 +36,7 @@ type Props = {
   allowAnonymous: boolean;
   onBack: () => void;
   onConfirm: (players: Player[]) => void;
-  onCreatePlayer: (name: string) => Player | null;
+  onCreatePlayer: (name: string, avatar?: string | null) => Player | null;
 };
 
 function PlayerSelectRow({
@@ -45,7 +46,7 @@ function PlayerSelectRow({
   onToggle,
   subtitle,
 }: {
-  player: Pick<Player, 'id' | 'name' | 'color'>;
+  player: Pick<Player, 'id' | 'name' | 'color' | 'avatar'>;
   selected: boolean;
   disabled: boolean;
   onToggle: () => void;
@@ -64,16 +65,13 @@ function PlayerSelectRow({
         pressed && !disabled && styles.rowPressed,
       ]}
     >
-      <View style={[styles.avatar, { backgroundColor: player.color }]}>
-        <Text
-          style={[
-            styles.avatarText,
-            { color: getPlayerAvatarTextColor(player.color) },
-          ]}
-        >
-          {player.name.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      <PlayerAvatar
+        name={player.name}
+        color={player.color}
+        avatar={player.avatar}
+        size={40}
+        radius={12}
+      />
       <View style={styles.rowText}>
         <Text style={styles.rowName} numberOfLines={1}>
           {player.name}
@@ -207,8 +205,8 @@ export function SelectPlayersScreen({
     });
   };
 
-  const handleCreatePlayer = (name: string) => {
-    const player = onCreatePlayer(name);
+  const handleCreatePlayer = (name: string, avatar?: string | null) => {
+    const player = onCreatePlayer(name, avatar);
     if (!player) return null;
     if (canAddMore || selectedIds.has(player.id)) {
       setSelectedIds((prev) => new Set(prev).add(player.id));
@@ -219,11 +217,7 @@ export function SelectPlayersScreen({
   const handleConfirm = () => {
     const selectedSaved = sortedPlayers
       .filter((player) => selectedIds.has(player.id))
-      .map((player) => ({
-        id: player.id,
-        name: player.name,
-        color: player.color,
-      }));
+      .map((player) => toMatchPlayer(player));
     onConfirm(buildRosterFromSelection(selectedSaved, anonymousCount));
   };
 
@@ -537,18 +531,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   rowPressed: {
     opacity: 0.85,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#fff',
   },
   rowText: {
     flex: 1,

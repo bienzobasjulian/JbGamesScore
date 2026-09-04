@@ -4,13 +4,26 @@ import { AppData, Match, MatchTemplate, PlaySession, PlayerGroup, SavedPlayer } 
 import { createId, normalizeSettings } from './utils/game';
 import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
 import { formatDefaultSessionName } from './utils/session';
+import { pruneAutoSoloSavedPlayers } from './utils/players';
+import { normalizePlayerAvatar } from './utils/playerAvatars';
 import { normalizeMatchRounds } from './utils/rounds';
+
+function normalizeStoredPlayer<T extends { avatar?: string | null }>(
+  player: T,
+): T {
+  return {
+    ...player,
+    avatar: normalizePlayerAvatar(player.avatar),
+  };
+}
 
 function normalizeAppData(raw: Partial<AppData> | null): AppData {
   const base = initialAppData();
   if (!raw) return base;
-  return {
-    players: Array.isArray(raw.players) ? raw.players : [],
+  const data: AppData = {
+    players: Array.isArray(raw.players)
+      ? raw.players.map((player) => normalizeStoredPlayer(player))
+      : [],
     groups: Array.isArray(raw.groups)
       ? raw.groups
           .filter(
@@ -38,7 +51,9 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                 ? m.name.trim()
                 : null,
             settings: normalizeSettings(m.settings),
-            players: m.players ?? [],
+            players: (m.players ?? []).map((player) =>
+              normalizeStoredPlayer(player),
+            ),
             roundScoringMode: m.roundScoringMode ?? {},
             status: m.status === 'finished' ? 'finished' : 'in_progress',
             gameMode:
@@ -70,6 +85,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               m.regicideSession != null &&
               typeof m.regicideSession === 'object'
                 ? m.regicideSession
+                : undefined,
+            pelusasSession:
+              m.gameMode === 'pelusas' &&
+              m.pelusasSession != null &&
+              typeof m.pelusasSession === 'object'
+                ? m.pelusasSession
                 : undefined,
           } as Match),
         )
@@ -112,7 +133,18 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
           };
           })
       : [],
+    selfPlayerId:
+      typeof raw.selfPlayerId === 'string' && raw.selfPlayerId
+        ? raw.selfPlayerId
+        : null,
   };
+
+  const validSelfId =
+    data.selfPlayerId && data.players.some((p) => p.id === data.selfPlayerId)
+      ? data.selfPlayerId
+      : null;
+
+  return pruneAutoSoloSavedPlayers({ ...data, selfPlayerId: validSelfId });
 }
 
 async function migrateLegacyGame(): Promise<AppData | null> {
@@ -189,12 +221,14 @@ export async function saveAppData(data: AppData): Promise<void> {
 export function createSavedPlayer(
   name: string,
   existing: SavedPlayer[],
+  avatar?: string | null,
 ): SavedPlayer {
   const trimmed = name.trim();
   return {
     id: createId(),
     name: trimmed,
     color: pickPlayerColor(existing),
+    avatar: normalizePlayerAvatar(avatar),
     lastUsedAt: Date.now(),
   };
 }

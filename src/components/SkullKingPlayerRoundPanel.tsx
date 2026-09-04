@@ -6,13 +6,15 @@ import {
   getSkullKingRoundNumber,
 } from '../utils/skullKing';
 import { CardCountStepper } from './CardCountStepper';
-import { getPlayerAvatarTextColor } from '../utils/players';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   player: Player;
   roundIndex: number;
   entry: SkullKingRoundEntry;
   expanded: boolean;
+  isDealer?: boolean;
+  isRoundStarter?: boolean;
   onToggle: () => void;
   onChange: (patch: Partial<SkullKingRoundEntry>) => void;
 };
@@ -22,6 +24,8 @@ export function SkullKingPlayerRoundPanel({
   roundIndex,
   entry,
   expanded,
+  isDealer = false,
+  isRoundStarter = false,
   onToggle,
   onChange,
 }: Props) {
@@ -39,22 +43,35 @@ export function SkullKingPlayerRoundPanel({
         onPress={onToggle}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
       >
-        <View style={[styles.avatar, { backgroundColor: player.color }]}>
-          <Text
-            style={[
-              styles.avatarText,
-              { color: getPlayerAvatarTextColor(player.color) },
-            ]}
-          >
-            {player.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <PlayerAvatar
+          name={player.name}
+          color={player.color}
+          avatar={player.avatar}
+          size={44}
+          radius={12}
+        />
         <View style={styles.headerText}>
           <Text style={styles.name} numberOfLines={1}>
             {player.name}
           </Text>
+          {isDealer || isRoundStarter ? (
+            <View style={styles.roleRow}>
+              {isDealer ? (
+                <Text style={styles.roleTag}>Repartidor</Text>
+              ) : null}
+              {isRoundStarter ? (
+                <Text style={[styles.roleTag, styles.roleTagStarter]}>
+                  Jugador inicial
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           <Text style={styles.hint}>
-            {expanded ? 'Ocultar apuesta' : 'Registrar apuesta y bazas'}
+            {isRoundStarter
+              ? 'Abre la primera baza de la ronda'
+              : expanded
+                ? 'Ocultar apuesta'
+                : 'Registrar apuesta y bazas'}
           </Text>
         </View>
         <View style={styles.scoreBox}>
@@ -186,6 +203,24 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   hint: {
     fontSize: 12,
     color: theme.textMuted,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  roleTag: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.accent,
+    backgroundColor: theme.surfaceLight,
+    borderRadius: 8,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  roleTagStarter: {
+    color: theme.warning,
   },
   scoreBox: {
     alignItems: 'flex-end',

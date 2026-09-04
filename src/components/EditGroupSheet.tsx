@@ -15,7 +15,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PlayerGroup, SavedPlayer } from '../types';
 import { formatGroupMemberCount } from '../utils/groups';
-import { getPlayerAvatarTextColor } from '../utils/players';
+import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
   visible: boolean;
@@ -49,16 +49,13 @@ function MemberRow({
         pressed && styles.memberRowPressed,
       ]}
     >
-      <View style={[styles.avatar, { backgroundColor: player.color }]}>
-        <Text
-          style={[
-            styles.avatarText,
-            { color: getPlayerAvatarTextColor(player.color) },
-          ]}
-        >
-          {player.name.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      <PlayerAvatar
+        name={player.name}
+        color={player.color}
+        avatar={player.avatar}
+        size={36}
+        radius={10}
+      />
       <Text style={styles.memberName} numberOfLines={1}>
         {player.name}
       </Text>

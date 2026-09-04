@@ -9,6 +9,12 @@ import {
 } from 'react-native-safe-area-context';
 import { HamburgerMenu } from './src/components/HamburgerMenu';
 import { useApp } from './src/hooks/useApp';
+import {
+  OnboardingProvider,
+  SpotlightTour,
+  WelcomeCarousel,
+  useOnboarding,
+} from './src/onboarding';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { ThemeProvider, useTheme, useThemeContext, useThemedStyles, type AppTheme } from './src/theme';
 import { CreateMatchScreen } from './src/screens/CreateMatchScreen';
@@ -52,7 +58,9 @@ export default function App() {
     <GestureHandlerRootView style={styles.gestureRoot}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ThemeProvider>
-          <AppShell />
+          <OnboardingProvider>
+            <AppShell />
+          </OnboardingProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -61,6 +69,7 @@ export default function App() {
 
 function AppShell() {
   const app = useApp();
+  const onboarding = useOnboarding();
   const { colorScheme } = useThemeContext();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -166,7 +175,11 @@ function AppShell() {
             return true;
 
           case 'pelusasSetup':
-            app.exitPelusas();
+            if (app.pelusasSession) {
+              app.goPelusasCount();
+            } else {
+              app.exitPelusas();
+            }
             return true;
 
           case 'pelusasCount':
@@ -194,7 +207,7 @@ function AppShell() {
     isHome,
   ]);
 
-  if (!app.loaded) {
+  if (!app.loaded || !onboarding.isReady) {
     return (
       <View
         style={[
@@ -220,11 +233,14 @@ function AppShell() {
             recentSessions={app.recentSessions}
             allMatches={app.data.matches}
             recentPlayers={app.recentPlayers}
+            selfPlayerId={app.selfPlayerId}
             onMenuPress={app.openMenu}
             onCreateMatch={app.goCreateMatch}
             onCreateSession={app.goCreateSession}
             onOpenMatch={app.openMatch}
             onOpenSession={app.goSessionDetail}
+            onViewAllSessions={app.goSessionsList}
+            onViewAllMatches={app.goMatchesList}
             onViewAllPlayers={app.goPlayersList}
           />
         );
@@ -267,7 +283,7 @@ function AppShell() {
             onStartRegicide={(sessionId) => {
               app.startRegicideSession(sessionId);
             }}
-            onCreateNewPlayer={app.createPlayerForMatch}
+            selfPlayer={app.selfPlayer}
           />
         );
       }
@@ -312,7 +328,7 @@ function AppShell() {
             onStartRegicide={(sessionId) => {
               app.startRegicideSession(sessionId);
             }}
-            onCreateNewPlayer={app.createPlayerForMatch}
+            selfPlayer={app.selfPlayer}
           />
         );
       }
@@ -346,7 +362,7 @@ function AppShell() {
               );
               app.goSessionDetail(session.id);
             }}
-            onCreateNewPlayer={app.createPlayerForMatch}
+            selfPlayer={app.selfPlayer}
           />
         );
       }
@@ -376,6 +392,8 @@ function AppShell() {
             onBack={app.goHome}
             onCreateSession={() => app.goCreateSession('sessionsList')}
             onOpenSession={app.goSessionDetail}
+            onDeleteSession={app.deleteSession}
+            onDeleteSessions={app.deleteSessions}
           />
         );
 
@@ -491,11 +509,28 @@ function AppShell() {
             }
             onRemovePlayer={app.removeSavedPlayer}
             onRemovePlayers={app.removeSavedPlayers}
+            selfPlayerId={app.selfPlayerId}
+            onSetSelfPlayerId={app.setSelfPlayerId}
           />
         );
 
       case 'settings':
-        return <SettingsScreen onBack={app.goHome} />;
+        return (
+          <SettingsScreen
+            onBack={app.goHome}
+            onReplayHomeTour={() => {
+              app.goHome();
+              setTimeout(() => onboarding.startTour('home', { force: true }), 350);
+            }}
+            onReplayCreateMatchTour={() => {
+              app.goCreateMatch();
+              setTimeout(
+                () => onboarding.startTour('createMatch', { force: true }),
+                350,
+              );
+            }}
+          />
+        );
 
       case 'game': {
         const match = app.getMatch(app.screen.matchId);
@@ -580,7 +615,7 @@ function AppShell() {
               app.updateMatchConfiguration(match.id, players, settings, name)
             }
             onOpenPlayerSelection={app.openSelectPlayers}
-            onCreateNewPlayer={app.createPlayerForMatch}
+            selfPlayer={app.selfPlayer}
           />
         );
       }
@@ -599,14 +634,16 @@ function AppShell() {
             savedPlayers={app.data.players}
             initialPlayers={app.pelusasSession?.players}
             restoredDraft={restoredDraft}
-            onBack={app.exitPelusas}
+            onBack={
+              app.pelusasSession ? app.goPelusasCount : app.exitPelusas
+            }
             onOpenPlayerSelection={app.openSelectPlayers}
             onStart={(players) =>
               app.pelusasSession
                 ? app.updatePelusasPlayers(players)
                 : app.startPelusasSession(players)
             }
-            onCreateNewPlayer={app.createPlayerForMatch}
+            selfPlayer={app.selfPlayer}
           />
         );
       }
@@ -622,6 +659,7 @@ function AppShell() {
             onSetRevolutionMode={app.setPelusasRevolutionMode}
             onSetCardCount={app.setPelusasCardCount}
             onResetCounts={app.resetPelusasCounts}
+            onEditMatch={() => app.goPelusasSetup(true)}
           />
         );
       }
@@ -738,9 +776,15 @@ function AppShell() {
               onPress: app.goTemplatesList,
             },
             { label: 'Ajustes', onPress: app.goSettings },
+            {
+              label: 'Ver tutorial',
+              onPress: () => onboarding.startTour('home', { force: true }),
+            },
           ]}
         />
       )}
+      <WelcomeCarousel />
+      <SpotlightTour />
     </View>
   );
 }

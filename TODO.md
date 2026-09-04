@@ -1,6 +1,6 @@
 # TODO — Jb Games Score
 
-> Última actualización: 2026-09-02 (análisis SYNC-01, THEME-01)
+> Última actualización: 2026-09-03 (ONB-01 en desarrollo)
 
 ## Cómo usar este fichero
 
@@ -27,7 +27,7 @@ Ideas o necesidades que aún no están desglosadas ni priorizadas.
 ### [SYNC-02] Partida en tiempo real por Wi‑Fi local (host + clientes)
 
 - **Notas:** Un móvil actúa como host (fuente de verdad); los demás se conectan por IP/QR en la misma red. Requiere nueva APK con módulos nativos (WebSocket, permisos de red local). Android ↔ Android como primer objetivo.
-- **Complejidad:** —
+- **Complejidad:** —no
 - **Prioridad:** —
 
 ### [SYNC-03] Varios móviles anotando a la vez
@@ -36,11 +36,6 @@ Ideas o necesidades que aún no están desglosadas ni priorizadas.
 - **Complejidad:** —
 - **Prioridad:** —
 
-### [UX-01] Plantillas para juegos dedicados
-
-- **Notas:** Hoy las plantillas parecen orientadas a partidas estándar. Valorar si Flip 7, Pelusas, Skull King, etc. pueden guardarse/reutilizarse como plantilla (jugadores + tipo de juego).
-- **Complejidad:** —
-- **Prioridad:** —
 
 ### [UX-02] Editar partida en curso (juegos dedicados)
 
@@ -54,17 +49,8 @@ Ideas o necesidades que aún no están desglosadas ni priorizadas.
 - **Complejidad:** —
 - **Prioridad:** —
 
-### [PLAT-01] Soporte iOS y publicación en App Store
 
-- **Notas:** El flujo actual está muy orientado a APK Android (`build:apk`). Valorar build iOS, permisos y diferencias de UX.
-- **Complejidad:** —
-- **Prioridad:** —
 
-### [QA-01] Tests automatizados de lógica de puntuación
-
-- **Notas:** Funciones puras en `src/utils/` (`flip7.ts`, `piliPili.ts`, `skullKing.ts`, etc.) son buenos candidatos para tests unitarios.
-- **Complejidad:** —
-- **Prioridad:** —
 
 ---
 
@@ -130,6 +116,12 @@ Tareas ya entendidas; listas para desarrollar cuando se indique.
 ## En proceso
 
 Trabajo activo ahora mismo.
+
+### [ONB-01] Onboarding y tutoriales contextuales
+
+- **Notas:** Overlay propio (sin librería extra), compatible con Expo 54 y el tema. Hecho: carrusel de bienvenida, spotlight, persistencia por tour, replay desde Ajustes y menú. Tours activos: `home`, `createMatch`, `session`, `match`, `rounds`, `pelusas`, `skullKing`. Pendiente: tutoriales de botones por juego (Flip 7, Pili Pili, Aventureros, Regicide). Y pulir el «Cómo jugar» de Skull King con las reglas oficiales.
+- **Complejidad:** **L**
+- **Prioridad:** —
 
 ### [F7-01] Contador Flip 7
 
