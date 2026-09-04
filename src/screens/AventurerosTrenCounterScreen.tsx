@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BackHandler, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Platform, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { AventurerosTrenPlayerPanel } from '../components/AventurerosTrenPlayerPanel';
 import { Button } from '../components/Button';
@@ -10,7 +10,7 @@ import { FinishMatchModal } from '../components/FinishMatchModal';
 import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { PlayerAvatar } from '../components/PlayerAvatar';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
@@ -25,6 +25,7 @@ import {
   compareAventurerosTrenCriteria,
   getAventurerosTrenHowToPlay,
   getSubmodeLabel,
+  getTakenDestinationTickets,
   sortPlayersByAventurerosTrenTotal,
 } from '../utils/aventurerosTren';
 
@@ -41,7 +42,14 @@ type Props = {
     patch: Partial<AventurerosTrenRouteEntry>,
   ) => void;
   onRemoveRoute: (playerId: string, routeId: string) => void;
-  onAddDestination: (playerId: string) => void;
+  onAddDestination: (
+    playerId: string,
+    ticket: {
+      origin: string;
+      destination: string;
+      points: number;
+    },
+  ) => void;
   onUpdateDestination: (
     playerId: string,
     destId: string,
@@ -109,6 +117,10 @@ export function AventurerosTrenCounterScreen({
       return { ...row, rank };
     });
   }, [session]);
+  const takenTickets = useMemo(
+    () => getTakenDestinationTickets(session),
+    [session],
+  );
   const howToPlay = useMemo(
     () => getAventurerosTrenHowToPlay(session.submode),
     [session.submode],
@@ -152,8 +164,8 @@ export function AventurerosTrenCounterScreen({
       ? 'Longitudes de vía: 1, 2, 3, 4, 6 y 8. Origen y destino opcionales.'
       : 'Longitudes de vía: 1, 2, 3, 4, 5 y 6. Origen y destino opcionales.'
     : session.submode === 'europa'
-      ? 'Destinos, ruta más larga (+10) y estaciones sin usar (+4 c/u).'
-      : 'Destinos y bonificación de ruta más larga (+10). Desempate por billetes completados.';
+      ? 'Elige destinos de la lista. Ruta más larga (+10) y estaciones sin usar (+4 c/u).'
+      : 'Elige destinos de la lista y la ruta más larga (+10). Desempate por billetes completados.';
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -189,7 +201,7 @@ export function AventurerosTrenCounterScreen({
         menuIcon="more"
       />
 
-      <ScrollView
+      <TourScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -252,6 +264,7 @@ export function AventurerosTrenCounterScreen({
               phase={phase}
               routes={session.construccion[player.id] ?? []}
               destinations={session.destinos[player.id] ?? []}
+              takenTickets={takenTickets}
               scoring={
                 session.scoring[player.id] ??
                 createDefaultPlayerScoring(session.submode)
@@ -263,7 +276,9 @@ export function AventurerosTrenCounterScreen({
                 onUpdateRoute(player.id, routeId, patch)
               }
               onRemoveRoute={(routeId) => onRemoveRoute(player.id, routeId)}
-              onAddDestination={() => onAddDestination(player.id)}
+              onAddDestination={(ticket) =>
+                onAddDestination(player.id, ticket)
+              }
               onUpdateDestination={(destId, patch) =>
                 onUpdateDestination(player.id, destId, patch)
               }
@@ -284,7 +299,7 @@ export function AventurerosTrenCounterScreen({
           }
           return <View key={player.id}>{panel}</View>;
         })}
-      </ScrollView>
+      </TourScrollView>
 
       <View style={styles.footer}>
         <TourAnchor id="aventureros.phase">
@@ -339,7 +354,11 @@ export function AventurerosTrenCounterScreen({
       <MatchActionsMenu
         visible={actionsMenuVisible}
         onClose={() => setActionsMenuVisible(false)}
-        onViewRanking={() => setRankingModalVisible(true)}
+        onViewRanking={
+          session.players.length > 1
+            ? () => setRankingModalVisible(true)
+            : undefined
+        }
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}

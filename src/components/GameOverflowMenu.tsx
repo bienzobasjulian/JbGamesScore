@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 export type GameOverflowMenuItem = {
@@ -16,17 +17,19 @@ type Props = {
 export function GameOverflowMenu({ visible, onClose, items }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const bottomInset = useSheetBottomInset();
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: 16 + bottomInset }]}>
           <View style={styles.handle} />
           {items.map((item) => (
             <Pressable
@@ -77,7 +80,6 @@ const createStyles = (theme: AppTheme) =>
       borderTopRightRadius: 24,
       paddingHorizontal: 20,
       paddingTop: 12,
-      paddingBottom: 28,
       borderWidth: 1,
       borderBottomWidth: 0,
       borderColor: theme.border,

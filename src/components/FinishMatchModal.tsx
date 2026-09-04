@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 
 type Step = 'choose' | 'confirmDelete';
 
@@ -29,6 +30,7 @@ export function FinishMatchModal({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const bottomInset = useSheetBottomInset();
 
   const [step, setStep] = useState<Step>('choose');
 
@@ -61,11 +63,12 @@ export function FinishMatchModal({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={handleClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: 16 + bottomInset }]}>
           {step === 'choose' ? (
             <>
               <View style={styles.handle} />
@@ -201,7 +204,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
     borderWidth: 1,
     borderBottomWidth: 0,
     borderColor: theme.border,

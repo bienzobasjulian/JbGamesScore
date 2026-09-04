@@ -3,7 +3,6 @@ import {
   BackHandler,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,7 +18,7 @@ import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { CardCountStepper } from '../components/CardCountStepper';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import {
@@ -214,7 +213,7 @@ export function PiliPiliCounterScreen({
         </TourAnchor>
       </View>
 
-      <ScrollView
+      <TourScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -310,7 +309,7 @@ export function PiliPiliCounterScreen({
           }
           return <View key={player.id}>{panel}</View>;
         })}
-      </ScrollView>
+      </TourScrollView>
 
       <View style={styles.footer}>
         <TourAnchor id="piliPili.rounds">
@@ -359,7 +358,11 @@ export function PiliPiliCounterScreen({
       <MatchActionsMenu
         visible={actionsMenuVisible}
         onClose={() => setActionsMenuVisible(false)}
-        onViewRanking={() => setRankingModalVisible(true)}
+        onViewRanking={
+          session.players.length > 1
+            ? () => setRankingModalVisible(true)
+            : undefined
+        }
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}

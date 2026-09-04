@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Image,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -42,17 +45,34 @@ export function WelcomeCarousel() {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
+  const [pageWidth, setPageWidth] = useState(0);
 
   if (!showWelcome) return null;
 
-  const slide = SLIDES[index];
   const isFirst = index === 0;
   const isLast = index === SLIDES.length - 1;
 
   const finish = () => {
     setIndex(0);
     dismissWelcome({ startHomeTour: !welcomeSeen });
+  };
+
+  const goTo = (next: number) => {
+    const clamped = Math.min(SLIDES.length - 1, Math.max(0, next));
+    setIndex(clamped);
+    if (pageWidth > 0) {
+      scrollRef.current?.scrollTo({ x: clamped * pageWidth, animated: true });
+    }
+  };
+
+  const syncIndexFromScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    if (pageWidth <= 0) return;
+    const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+    setIndex(Math.min(SLIDES.length - 1, Math.max(0, next)));
   };
 
   return (
@@ -90,20 +110,69 @@ export function WelcomeCarousel() {
           </Text>
         </View>
 
-        <View style={styles.slide}>
-          {slide.showLogo ? (
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logo}
-              accessibilityLabel="Jb Games Score"
-            />
-          ) : (
-            <View style={styles.iconBadge}>
-              <Text style={styles.iconText}>{index}</Text>
-            </View>
-          )}
-          <Text style={styles.title}>{slide.title}</Text>
-          <Text style={styles.body}>{slide.body}</Text>
+        <View
+          style={styles.pager}
+          onLayout={(event) => {
+            const width = event.nativeEvent.layout.width;
+            if (width > 0 && width !== pageWidth) {
+              setPageWidth(width);
+              if (index > 0) {
+                requestAnimationFrame(() => {
+                  scrollRef.current?.scrollTo({
+                    x: index * width,
+                    animated: false,
+                  });
+                });
+              }
+            }
+          }}
+        >
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            decelerationRate="fast"
+            snapToInterval={pageWidth || undefined}
+            snapToAlignment="start"
+            disableIntervalMomentum
+            onMomentumScrollEnd={syncIndexFromScroll}
+            onScrollEndDrag={syncIndexFromScroll}
+          >
+            {SLIDES.map((item) => (
+              <View
+                key={item.title}
+                style={[
+                  styles.slide,
+                  pageWidth > 0 && { width: pageWidth },
+                  item.showLogo && styles.slideCentered,
+                ]}
+              >
+                {item.showLogo ? (
+                  <Image
+                    source={require('../../assets/logo.png')}
+                    style={styles.logo}
+                    accessibilityLabel="Jb Games Score"
+                  />
+                ) : null}
+                <Text
+                  style={[
+                    styles.title,
+                    item.showLogo && styles.titleCentered,
+                  ]}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.body, item.showLogo && styles.bodyCentered]}
+                >
+                  {item.body}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         <View style={styles.dots}>
@@ -122,7 +191,7 @@ export function WelcomeCarousel() {
         <View style={styles.actions}>
           {!isFirst ? (
             <Pressable
-              onPress={() => setIndex((i) => i - 1)}
+              onPress={() => goTo(index - 1)}
               style={({ pressed }) => [
                 styles.secondary,
                 pressed && styles.pressed,
@@ -139,7 +208,7 @@ export function WelcomeCarousel() {
                 finish();
                 return;
               }
-              setIndex((i) => i + 1);
+              goTo(index + 1);
             }}
             style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
           >
@@ -174,42 +243,40 @@ const createStyles = (theme: AppTheme) =>
       fontWeight: '700',
       color: theme.textMuted,
     },
+    pager: {
+      flex: 1,
+    },
     slide: {
       flex: 1,
       justifyContent: 'center',
       gap: 16,
+      paddingRight: 8,
+    },
+    slideCentered: {
+      alignItems: 'center',
+      paddingRight: 0,
     },
     logo: {
-      width: 88,
-      height: 88,
-      borderRadius: 20,
-      marginBottom: 8,
-    },
-    iconBadge: {
-      width: 56,
-      height: 56,
-      borderRadius: 16,
-      backgroundColor: theme.surface,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 4,
-    },
-    iconText: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: theme.accent,
+      width: 156,
+      height: 156,
+      borderRadius: 36,
+      marginBottom: 12,
     },
     title: {
       fontSize: 30,
       fontWeight: '800',
       color: theme.text,
     },
+    titleCentered: {
+      textAlign: 'center',
+    },
     body: {
       fontSize: 17,
       lineHeight: 26,
       color: theme.textMuted,
+    },
+    bodyCentered: {
+      textAlign: 'center',
     },
     dots: {
       flexDirection: 'row',

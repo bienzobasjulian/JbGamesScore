@@ -3,7 +3,6 @@ import {
   BackHandler,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,7 +17,7 @@ import { PlayerAvatar } from '../components/PlayerAvatar';
 import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { Flip7Modifier, Flip7Session } from '../types';
@@ -188,7 +187,7 @@ export function Flip7CounterScreen({
         </TourAnchor>
       </View>
 
-      <ScrollView
+      <TourScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -278,7 +277,7 @@ export function Flip7CounterScreen({
           }
           return <View key={player.id}>{panel}</View>;
         })}
-      </ScrollView>
+      </TourScrollView>
 
       <View style={styles.footer}>
         <TourAnchor id="flip7.rounds">
@@ -321,7 +320,11 @@ export function Flip7CounterScreen({
       <MatchActionsMenu
         visible={actionsMenuVisible}
         onClose={() => setActionsMenuVisible(false)}
-        onViewRanking={() => setRankingModalVisible(true)}
+        onViewRanking={
+          session.players.length > 1
+            ? () => setRankingModalVisible(true)
+            : undefined
+        }
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}

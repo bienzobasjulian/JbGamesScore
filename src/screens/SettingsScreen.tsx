@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
-import { useOnboarding } from '../onboarding';
 import {
   useThemeContext,
   useThemedStyles,
@@ -11,8 +9,6 @@ import {
 
 type Props = {
   onBack: () => void;
-  onReplayHomeTour: () => void;
-  onReplayCreateMatchTour: () => void;
 };
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
@@ -34,15 +30,9 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
     },
   ];
 
-export function SettingsScreen({
-  onBack,
-  onReplayHomeTour,
-  onReplayCreateMatchTour,
-}: Props) {
+export function SettingsScreen({ onBack }: Props) {
   const { preference, setPreference } = useThemeContext();
   const styles = useThemedStyles(createStyles);
-  const { openWelcome, resetTour, resetAll } = useOnboarding();
-  const [helpNotice, setHelpNotice] = useState<string | null>(null);
 
   return (
     <ScrollView
@@ -50,9 +40,8 @@ export function SettingsScreen({
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <AppHeader title="Ajustes" onBack={onBack} />
+      <AppHeader title="Apariencia" onBack={onBack} />
 
-      <Text style={styles.sectionLabel}>Apariencia</Text>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Tema</Text>
         <Text style={styles.cardHint}>
@@ -96,91 +85,7 @@ export function SettingsScreen({
           );
         })}
       </View>
-
-      <Text style={[styles.sectionLabel, styles.sectionSpaced]}>
-        Ayuda y tutoriales
-      </Text>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Guías de la app</Text>
-        <Text style={styles.cardHint}>
-          Vuelve a ver la bienvenida o los tutoriales que resaltan cada apartado.
-        </Text>
-        <HelpRow
-          label="Ver bienvenida"
-          hint="Carrusel con las funcionalidades principales"
-          onPress={openWelcome}
-          styles={styles}
-        />
-        <HelpRow
-          label="Tutorial de inicio"
-          hint="Los botones de la pantalla principal y el menú"
-          onPress={onReplayHomeTour}
-          styles={styles}
-        />
-        <HelpRow
-          label="Tutorial al crear partida"
-          hint="Juego, plantillas, configuración y jugadores"
-          onPress={onReplayCreateMatchTour}
-          styles={styles}
-        />
-        <HelpRow
-          label="Repetir tutoriales de partida"
-          hint="Rondas y menú ⋮ la próxima vez que abras una"
-          onPress={() => {
-            resetTour('match');
-            resetTour('rounds');
-            setHelpNotice(
-              'Se mostrarán al abrir la próxima partida en curso.',
-            );
-          }}
-          styles={styles}
-        />
-        <HelpRow
-          label="Restablecer todos"
-          hint="Los tutoriales contextuales volverán a salir al entrar en cada pantalla"
-          onPress={() => {
-            resetAll();
-            setHelpNotice(
-              'Listo. Al entrar en inicio, crear partida, una sesión o una partida, verás las guías otra vez.',
-            );
-          }}
-          styles={styles}
-          last
-        />
-        {helpNotice ? <Text style={styles.helpNotice}>{helpNotice}</Text> : null}
-      </View>
     </ScrollView>
-  );
-}
-
-function HelpRow({
-  label,
-  hint,
-  onPress,
-  styles,
-  last,
-}: {
-  label: string;
-  hint: string;
-  onPress: () => void;
-  styles: ReturnType<typeof createStyles>;
-  last?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.option,
-        last && styles.helpLast,
-        pressed && styles.optionPressed,
-      ]}
-    >
-      <View style={styles.optionTextWrap}>
-        <Text style={styles.optionLabel}>{label}</Text>
-        <Text style={styles.optionHint}>{hint}</Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
   );
 }
 
@@ -192,14 +97,6 @@ const createStyles = (theme: AppTheme) =>
     content: {
       padding: 20,
       paddingBottom: 40,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 10,
     },
     card: {
       backgroundColor: theme.surface,
@@ -276,24 +173,5 @@ const createStyles = (theme: AppTheme) =>
       height: 12,
       borderRadius: 6,
       backgroundColor: theme.accent,
-    },
-    sectionSpaced: {
-      marginTop: 28,
-    },
-    helpLast: {
-      marginBottom: 8,
-    },
-    chevron: {
-      fontSize: 22,
-      fontWeight: '600',
-      color: theme.textMuted,
-      lineHeight: 24,
-    },
-    helpNotice: {
-      fontSize: 13,
-      lineHeight: 18,
-      color: theme.success,
-      paddingHorizontal: 16,
-      paddingBottom: 14,
     },
   });

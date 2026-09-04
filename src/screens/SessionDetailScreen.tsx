@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { MatchListRow } from '../components/MatchListRow';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionWinRanking } from '../components/SessionWinRanking';
-import { TourAnchor, useAutoTour } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession } from '../types';
 import {
@@ -56,7 +56,7 @@ export function SessionDetailScreen({
         onBack={onBack}
       />
 
-      <ScrollView
+      <TourScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -125,7 +125,7 @@ export function SessionDetailScreen({
           variant="danger"
           style={styles.deleteBtn}
         />
-      </ScrollView>
+      </TourScrollView>
 
       <ConfirmModal
         visible={confirmDelete}

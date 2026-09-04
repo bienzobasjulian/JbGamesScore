@@ -516,20 +516,7 @@ function AppShell() {
 
       case 'settings':
         return (
-          <SettingsScreen
-            onBack={app.goHome}
-            onReplayHomeTour={() => {
-              app.goHome();
-              setTimeout(() => onboarding.startTour('home', { force: true }), 350);
-            }}
-            onReplayCreateMatchTour={() => {
-              app.goCreateMatch();
-              setTimeout(
-                () => onboarding.startTour('createMatch', { force: true }),
-                350,
-              );
-            }}
-          />
+          <SettingsScreen onBack={app.goHome} />
         );
 
       case 'game': {
@@ -775,7 +762,7 @@ function AppShell() {
               label: 'Plantillas de partida',
               onPress: app.goTemplatesList,
             },
-            { label: 'Ajustes', onPress: app.goSettings },
+            { label: 'Apariencia', onPress: app.goSettings },
             {
               label: 'Ver tutorial',
               onPress: () => onboarding.startTour('home', { force: true }),

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
@@ -22,7 +22,7 @@ export function CreateGroupSheet({ visible, onClose, onCreate }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const insets = useSafeAreaInsets();
+  const bottomInset = useSheetBottomInset();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +47,7 @@ export function CreateGroupSheet({ visible, onClose, onCreate }: Props) {
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -57,7 +58,7 @@ export function CreateGroupSheet({ visible, onClose, onCreate }: Props) {
         <View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) },
+            { paddingBottom: 16 + bottomInset },
           ]}
         >
           <View style={styles.handle} />

@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { ConfirmModal } from './ConfirmModal';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { PlayerGroup, SavedPlayer } from '../types';
@@ -82,7 +82,7 @@ export function EditGroupSheet({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const insets = useSafeAreaInsets();
+  const bottomInset = useSheetBottomInset();
   const [name, setName] = useState('');
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
   const [deleteVisible, setDeleteVisible] = useState(false);
@@ -137,6 +137,7 @@ export function EditGroupSheet({
         visible={visible}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={onClose}
       >
         <KeyboardAvoidingView
@@ -147,7 +148,7 @@ export function EditGroupSheet({
           <View
             style={[
               styles.sheet,
-              { paddingBottom: Math.max(insets.bottom, 16) },
+              { paddingBottom: 16 + bottomInset },
             ]}
           >
             <View style={styles.handle} />

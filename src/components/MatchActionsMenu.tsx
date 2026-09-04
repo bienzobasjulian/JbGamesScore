@@ -1,10 +1,11 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onViewRanking: () => void;
+  onViewRanking?: () => void;
   onEditMatch: () => void;
   onFinishMatch: () => void;
   canEditMatch?: boolean;
@@ -24,34 +25,38 @@ export function MatchActionsMenu({
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const bottomInset = useSheetBottomInset();
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: 16 + bottomInset }]}>
           <View style={styles.handle} />
 
-          <Pressable
-            onPress={() => {
-              onClose();
-              onViewRanking();
-            }}
-            style={({ pressed }) => [
-              styles.option,
-              pressed && styles.optionPressed,
-            ]}
-          >
-            <Text style={styles.optionTitle}>Ver clasificación actual</Text>
-            <Text style={styles.optionHint}>
-              Ranking y puntos acumulados hasta ahora
-            </Text>
-          </Pressable>
+          {onViewRanking ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onViewRanking();
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text style={styles.optionTitle}>Ver clasificación actual</Text>
+              <Text style={styles.optionHint}>
+                Ranking y puntos acumulados hasta ahora
+              </Text>
+            </Pressable>
+          ) : null}
 
           {canEditMatch ? (
             <Pressable
@@ -156,7 +161,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
     borderWidth: 1,
     borderBottomWidth: 0,
     borderColor: theme.border,

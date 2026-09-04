@@ -3,7 +3,6 @@ import {
   BackHandler,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,7 +15,7 @@ import { MatchActionsMenu } from '../components/MatchActionsMenu';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { SkullKingPlayerRoundPanel } from '../components/SkullKingPlayerRoundPanel';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { SkullKingRoundEntry, SkullKingSession } from '../types';
@@ -166,7 +165,7 @@ export function SkullKingCounterScreen({
         </TourAnchor>
       </View>
 
-      <ScrollView
+      <TourScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -220,7 +219,7 @@ export function SkullKingCounterScreen({
           }
           return <View key={player.id}>{panel}</View>;
         })}
-      </ScrollView>
+      </TourScrollView>
 
       <View style={styles.footer}>
         <TourAnchor id="skullKing.rounds">
@@ -263,7 +262,11 @@ export function SkullKingCounterScreen({
       <MatchActionsMenu
         visible={actionsMenuVisible}
         onClose={() => setActionsMenuVisible(false)}
-        onViewRanking={() => setRankingModalVisible(true)}
+        onViewRanking={
+          session.players.length > 1
+            ? () => setRankingModalVisible(true)
+            : undefined
+        }
         onEditMatch={() => {}}
         onFinishMatch={() => setFinishModalVisible(true)}
         canEditMatch={false}

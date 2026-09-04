@@ -1,5 +1,6 @@
 import { ReactElement, useMemo, useState } from 'react';
-import { ScrollView, StyleProp, ViewStyle } from 'react-native';
+import { StyleProp, ViewStyle } from 'react-native';
+import { TourScrollView } from '../onboarding/TourScroll';
 import { Player } from '../types';
 import { PlayerColorOption } from './PlayerColorPicker';
 import { TurnOrderPlayerCard } from './TurnOrderPlayerCard';
@@ -47,7 +48,7 @@ export function ReorderablePlayersList({
   const canRenderItems = useMemo(() => players.length > 0, [players.length]);
 
   return (
-    <ScrollView
+    <TourScrollView
       style={{ flex: 1 }}
       contentContainerStyle={contentContainerStyle}
       keyboardShouldPersistTaps="handled"
@@ -114,6 +115,6 @@ export function ReorderablePlayersList({
           })
         : null}
       {listFooterComponent}
-    </ScrollView>
+    </TourScrollView>
   );
 }

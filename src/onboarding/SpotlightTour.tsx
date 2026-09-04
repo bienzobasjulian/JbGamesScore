@@ -1,22 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
-  Dimensions,
-  Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import {
+  GestureHandlerRootView,
+  Pressable,
+} from 'react-native-gesture-handler';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import {
+  TOUR_HIGHLIGHT_PAD,
+  measureInWindow,
+  toLocalRect,
+} from './tourLayout';
 import type { LayoutRect } from './types';
 import { useOnboarding } from './useOnboarding';
 
-const HIGHLIGHT_PAD = 6;
-const TOOLTIP_GAP = 12;
-const TOOLTIP_ESTIMATE = 220;
+const TOOLTIP_INSET = 20;
+const TOOLTIP_GAP = 14;
+const ARROW_W = 22;
+const ARROW_H = 12;
+const ARROW_CORNER_PAD = 18;
 
 export function SpotlightTour() {
   const theme = useTheme();
@@ -33,15 +42,10 @@ export function SpotlightTour() {
     focusAnchor,
   } = useOnboarding();
 
+  const overlayRef = useRef<View>(null);
   const [rect, setRect] = useState<LayoutRect | null>(null);
-  const [windowSize, setWindowSize] = useState(() => Dimensions.get('window'));
-
-  useEffect(() => {
-    const sub = Dimensions.addEventListener('change', ({ window }) => {
-      setWindowSize(window);
-    });
-    return () => sub.remove();
-  }, []);
+  const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
+  const [tooltipHeight, setTooltipHeight] = useState(200);
 
   useEffect(() => {
     if (!activeStep) {
@@ -61,22 +65,25 @@ export function SpotlightTour() {
         setRect(null);
         return;
       }
-      void getAnchorRect(activeStep.anchorId).then((next) => {
+      void Promise.all([
+        getAnchorRect(activeStep.anchorId),
+        measureInWindow(overlayRef.current),
+      ]).then(([next, origin]) => {
         if (cancelled) return;
-        if (next) {
+        if (next && origin) {
+          setRect(toLocalRect(next, origin));
+        } else if (next) {
           setRect(next);
-          return;
         }
-        if (attempts < 12) {
+        if (attempts < 16) {
           attempts += 1;
-          setTimeout(tryMeasure, 70);
-          return;
+          setTimeout(tryMeasure, 80);
         }
-        setRect(null);
       });
     };
 
-    const timer = setTimeout(tryMeasure, 120);
+    setRect(null);
+    const timer = setTimeout(tryMeasure, 420);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -95,26 +102,48 @@ export function SpotlightTour() {
   const highlight = useMemo(() => {
     if (!rect) return null;
     return {
-      x: Math.max(8, rect.x - HIGHLIGHT_PAD),
-      y: Math.max(8, rect.y - HIGHLIGHT_PAD),
-      width: rect.width + HIGHLIGHT_PAD * 2,
-      height: rect.height + HIGHLIGHT_PAD * 2,
+      x: Math.max(8, rect.x - TOUR_HIGHLIGHT_PAD),
+      y: Math.max(8, rect.y - TOUR_HIGHLIGHT_PAD),
+      width: rect.width + TOUR_HIGHLIGHT_PAD * 2,
+      height: rect.height + TOUR_HIGHLIGHT_PAD * 2,
     };
   }, [rect]);
 
+  const bottomSafe = Math.max(
+    insets.bottom,
+    Platform.OS === 'android' ? 20 : 8,
+  );
+  const topSafe = Math.max(insets.top, 8);
+
   const tooltipTop = useMemo(() => {
-    const maxTop =
-      windowSize.height - insets.bottom - TOOLTIP_ESTIMATE - 16;
-    if (!highlight) {
-      return Math.max(insets.top + 24, windowSize.height * 0.32);
+    const minTop = topSafe + 8;
+    const maxTop = Math.max(
+      minTop,
+      overlaySize.height - bottomSafe - tooltipHeight - 8,
+    );
+    if (!highlight || overlaySize.height <= 0) {
+      return Math.max(minTop, overlaySize.height * 0.28);
     }
     const below = highlight.y + highlight.height + TOOLTIP_GAP;
-    const above = highlight.y - TOOLTIP_ESTIMATE - TOOLTIP_GAP;
-    const spaceBelow = windowSize.height - insets.bottom - below;
-    if (spaceBelow >= TOOLTIP_ESTIMATE) return below;
-    if (above >= insets.top + 8) return Math.max(insets.top + 8, above);
-    return Math.min(Math.max(insets.top + 16, below), maxTop);
-  }, [highlight, insets.bottom, insets.top, windowSize.height]);
+    const above = highlight.y - tooltipHeight - TOOLTIP_GAP;
+    if (below <= maxTop) return below;
+    if (above >= minTop) return above;
+    return below - maxTop <= minTop - above ? maxTop : minTop;
+  }, [bottomSafe, highlight, overlaySize.height, tooltipHeight, topSafe]);
+
+  const arrowPointsUp =
+    !highlight || tooltipTop >= highlight.y + highlight.height * 0.5;
+
+  const arrowLeft = useMemo(() => {
+    const tooltipWidth = Math.max(0, overlaySize.width - TOOLTIP_INSET * 2);
+    const min = ARROW_CORNER_PAD;
+    const max = Math.max(min, tooltipWidth - ARROW_CORNER_PAD - ARROW_W);
+    if (!highlight || tooltipWidth <= 0) {
+      return tooltipWidth / 2 - ARROW_W / 2;
+    }
+    const center = highlight.x + highlight.width / 2 - TOOLTIP_INSET;
+    return Math.max(min, Math.min(max, center - ARROW_W / 2));
+  }, [highlight, overlaySize.width]);
 
   if (!activeStep) return null;
 
@@ -122,14 +151,17 @@ export function SpotlightTour() {
   const isFirst = stepIndex === 0;
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={skipTour}
-    >
-      <View style={styles.root} pointerEvents="box-none">
+    <GestureHandlerRootView style={styles.overlay} pointerEvents="auto">
+      <View
+        ref={overlayRef}
+        collapsable={false}
+        style={styles.root}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setOverlaySize({ width, height });
+        }}
+        onStartShouldSetResponder={() => true}
+      >
         {highlight ? (
           <>
             <View
@@ -190,66 +222,122 @@ export function SpotlightTour() {
         )}
 
         <View
-          style={[
-            styles.tooltip,
-            {
-              top: tooltipTop,
-              marginLeft: 20 + insets.left,
-              marginRight: 20 + insets.right,
-            },
-          ]}
+          style={[styles.tooltipWrap, { top: tooltipTop }]}
+          onLayout={(event) => {
+            setTooltipHeight(event.nativeEvent.layout.height);
+          }}
         >
-          <Text style={styles.stepLabel}>
-            {stepIndex + 1} / {stepCount}
-          </Text>
-          <Text style={styles.title}>{activeStep.title}</Text>
-          <Text style={styles.body}>{activeStep.body}</Text>
-          <View style={styles.actions}>
-            <Pressable
-              onPress={skipTour}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.textBtn,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.skipLabel}>Saltar</Text>
-            </Pressable>
-            <View style={styles.nav}>
-              {!isFirst ? (
-                <Pressable
-                  onPress={prevStep}
-                  style={({ pressed }) => [
-                    styles.secondaryBtn,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.secondaryLabel}>Atrás</Text>
-                </Pressable>
-              ) : null}
+          {highlight ? (
+            <TourBubbleArrow
+              direction={arrowPointsUp ? 'up' : 'down'}
+              left={arrowLeft}
+              fill={theme.surface}
+              stroke={theme.border}
+            />
+          ) : null}
+          <View style={styles.tooltip}>
+            <Text style={styles.stepLabel}>
+              {stepIndex + 1} / {stepCount}
+            </Text>
+            <Text style={styles.title}>{activeStep.title}</Text>
+            <Text style={styles.body}>{activeStep.body}</Text>
+            <View style={styles.actions}>
               <Pressable
-                onPress={nextStep}
+                onPress={skipTour}
+                hitSlop={8}
                 style={({ pressed }) => [
-                  styles.primaryBtn,
+                  styles.textBtn,
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={styles.primaryLabel}>
-                  {isLast ? 'Entendido' : 'Siguiente'}
-                </Text>
+                <Text style={styles.skipLabel}>Saltar</Text>
               </Pressable>
+              <View style={styles.nav}>
+                {!isFirst ? (
+                  <Pressable
+                    onPress={prevStep}
+                    style={({ pressed }) => [
+                      styles.secondaryBtn,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.secondaryLabel}>Atrás</Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={nextStep}
+                  style={({ pressed }) => [
+                    styles.primaryBtn,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.primaryLabel}>
+                    {isLast ? 'Entendido' : 'Siguiente'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
       </View>
-    </Modal>
+    </GestureHandlerRootView>
+  );
+}
+
+function TourBubbleArrow({
+  direction,
+  left,
+  fill,
+  stroke,
+}: {
+  direction: 'up' | 'down';
+  left: number;
+  fill: string;
+  stroke: string;
+}) {
+  const pointingUp = direction === 'up';
+  const tipY = pointingUp ? 1 : ARROW_H - 1;
+  const baseY = pointingUp ? ARROW_H : 0;
+  const d = `M1 ${baseY} L${ARROW_W / 2} ${tipY} L${ARROW_W - 1} ${baseY}`;
+
+  return (
+    <Svg
+      pointerEvents="none"
+      width={ARROW_W}
+      height={ARROW_H}
+      style={[
+        {
+          position: 'absolute',
+          left,
+          zIndex: 3,
+        },
+        pointingUp ? { top: -ARROW_H + 2 } : { bottom: -ARROW_H + 2 },
+      ]}
+    >
+      <Path d={`${d} Z`} fill={fill} />
+      <Path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 10000,
+      elevation: 10000,
+      backgroundColor: 'transparent',
+    },
     root: {
       flex: 1,
+      backgroundColor: 'transparent',
     },
     dim: {
       position: 'absolute',
@@ -261,16 +349,21 @@ const createStyles = (theme: AppTheme) =>
       borderWidth: 2,
       backgroundColor: 'transparent',
     },
-    tooltip: {
+    tooltipWrap: {
       position: 'absolute',
-      left: 0,
-      right: 0,
+      left: TOOLTIP_INSET,
+      right: TOOLTIP_INSET,
+      zIndex: 2,
+      overflow: 'visible',
+    },
+    tooltip: {
       backgroundColor: theme.surface,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 16,
       gap: 8,
+      zIndex: 1,
     },
     stepLabel: {
       fontSize: 12,

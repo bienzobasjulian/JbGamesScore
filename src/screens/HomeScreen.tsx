@@ -1,12 +1,11 @@
-import { useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { ListRow } from '../components/ListRow';
 import { MatchListRow } from '../components/MatchListRow';
 import { SectionBlock } from '../components/SectionBlock';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionListRow } from '../components/SessionListRow';
-import { useAutoTour } from '../onboarding';
+import { TourScrollView, useAutoTour } from '../onboarding';
 import { useThemedStyles, type AppTheme } from '../theme';
 import { Match, PlaySession, SavedPlayer } from '../types';
 import { formatPlayerLastUsed } from '../utils/players';
@@ -45,12 +44,7 @@ export function HomeScreen({
   onViewAllPlayers,
 }: Props) {
   const styles = useThemedStyles(createStyles);
-  const scrollRef = useRef<ScrollView>(null);
   useAutoTour('home');
-
-  const scrollToPlayers = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: false });
-  }, []);
 
   const hasAnyMatch =
     inProgressMatches.length > 0 || recentFinishedMatches.length > 0;
@@ -65,8 +59,7 @@ export function HomeScreen({
         menuTourAnchorId="home.menu"
       />
 
-      <ScrollView
-        ref={scrollRef}
+      <TourScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -150,7 +143,6 @@ export function HomeScreen({
           onAction={onViewAllPlayers}
           style={styles.sectionSpaced}
           tourAnchorId="home.players"
-          tourOnFocus={scrollToPlayers}
         >
           {recentPlayers.length === 0 ? (
             <Text style={styles.empty}>
@@ -176,7 +168,7 @@ export function HomeScreen({
             </>
           )}
         </SectionBlock>
-      </ScrollView>
+      </TourScrollView>
     </View>
   );
 }

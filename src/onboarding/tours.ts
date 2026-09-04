@@ -25,7 +25,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
       {
         id: 'home.menu',
         title: 'Menú',
-        body: 'Atajos a listas, plantillas y ajustes.',
+        body: 'Atajos a listas, plantillas y apariencia.',
         anchorId: 'home.menu',
       },
     ],
@@ -230,7 +230,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
       {
         id: 'aventureros.destinations',
         title: 'Destinos',
-        body: 'Añade todas las cartas de destino, completadas o no. Los nombres son opcionales. Indica los puntos de la carta y si está completada: se suman o se restan.',
+        body: 'Añade las cartas de destino desde la lista (búscalas por ciudad). Marca si cada una está completada: se suman o se restan los puntos.',
         anchorId: 'aventureros.players',
       },
       {

@@ -187,7 +187,7 @@ export function CreateMatchScreen({
 
   const canStart = isRegicide
     ? true
-    : isPiliPili || isFlip7
+    : isPiliPili || isFlip7 || isSkullKing
       ? players.length >= playerLimits.min && players.length <= playerLimits.max
       : players.length <= playerLimits.max;
   const soloHint = formatSoloPlayerHint(selfPlayer);

@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from './Button';
-import { AventurerosTrenDestinationRow } from './AventurerosTrenDestinationRow';
-import { AventurerosTrenEndgameFields } from './AventurerosTrenEndgameFields';
-import { AventurerosTrenRouteRow } from './AventurerosTrenRouteRow';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import {
+  getTicketKey,
+  type AventurerosTrenTicket,
+} from '../constants/aventurerosTrenTickets';
+import { useThemedStyles, type AppTheme } from '../theme';
 import {
   AventurerosTrenDestinationEntry,
   AventurerosTrenPhase,
@@ -16,9 +17,15 @@ import {
   EUROPA_MAX_STATIONS,
   EUROPA_STATION_BONUS_PER_UNUSED,
   LONGEST_ROUTE_BONUS_POINTS,
+  TakenDestinationTicket,
   getDestinationEntryPoints,
   getRouteEntryPoints,
 } from '../utils/aventurerosTren';
+import { AventurerosTrenDestinationRow } from './AventurerosTrenDestinationRow';
+import { AventurerosTrenEndgameFields } from './AventurerosTrenEndgameFields';
+import { AventurerosTrenRouteRow } from './AventurerosTrenRouteRow';
+import { AventurerosTrenTicketPickerSheet } from './AventurerosTrenTicketPickerSheet';
+import { Button } from './Button';
 import { PlayerAvatar } from './PlayerAvatar';
 
 type Props = {
@@ -27,6 +34,7 @@ type Props = {
   phase: AventurerosTrenPhase;
   routes: AventurerosTrenRouteEntry[];
   destinations: AventurerosTrenDestinationEntry[];
+  takenTickets: ReadonlyMap<string, TakenDestinationTicket>;
   scoring: AventurerosTrenPlayerScoring;
   expanded: boolean;
   onToggle: () => void;
@@ -36,7 +44,7 @@ type Props = {
     patch: Partial<AventurerosTrenRouteEntry>,
   ) => void;
   onRemoveRoute: (routeId: string) => void;
-  onAddDestination: () => void;
+  onAddDestination: (ticket: AventurerosTrenTicket) => void;
   onUpdateDestination: (
     destId: string,
     patch: Partial<AventurerosTrenDestinationEntry>,
@@ -51,6 +59,7 @@ export function AventurerosTrenPlayerPanel({
   phase,
   routes,
   destinations,
+  takenTickets,
   scoring,
   expanded,
   onToggle,
@@ -62,8 +71,17 @@ export function AventurerosTrenPlayerPanel({
   onRemoveDestination,
   onUpdateScoring,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const [pickerVisible, setPickerVisible] = useState(false);
+
+  const closePicker = () => setPickerVisible(false);
+
+  const handleSelectTicket = (ticket: AventurerosTrenTicket) => {
+    const key = getTicketKey(ticket);
+    if (takenTickets.has(key)) return;
+    onAddDestination(ticket);
+    closePicker();
+  };
 
   const constrTotal = routes.reduce(
     (sum, entry) => sum + getRouteEntryPoints(entry, submode),
@@ -156,13 +174,14 @@ export function AventurerosTrenPlayerPanel({
             <>
               {destinations.length === 0 ? (
                 <Text style={styles.empty}>
-                  Añade las cartas de destino de este jugador.
+                  Busca las cartas de destino en la lista.
                 </Text>
               ) : (
                 destinations.map((dest) => (
                   <AventurerosTrenDestinationRow
                     key={dest.id}
                     entry={dest}
+                    submode={submode}
                     color={player.color}
                     onChange={(patch) => onUpdateDestination(dest.id, patch)}
                     onRemove={() => onRemoveDestination(dest.id)}
@@ -171,7 +190,7 @@ export function AventurerosTrenPlayerPanel({
               )}
               <Button
                 label="Añadir destino"
-                onPress={onAddDestination}
+                onPress={() => setPickerVisible(true)}
                 variant="secondary"
               />
               <AventurerosTrenEndgameFields
@@ -179,6 +198,14 @@ export function AventurerosTrenPlayerPanel({
                 scoring={scoring}
                 color={player.color}
                 onChange={onUpdateScoring}
+              />
+              <AventurerosTrenTicketPickerSheet
+                visible={pickerVisible}
+                submode={submode}
+                currentPlayerId={player.id}
+                takenBy={takenTickets}
+                onClose={closePicker}
+                onSelect={handleSelectTicket}
               />
             </>
           )}
@@ -254,6 +281,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   body: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 16,
     gap: 12,
     borderTopWidth: 1,

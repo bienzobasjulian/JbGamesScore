@@ -10,6 +10,7 @@ import {
   Player,
 } from '../types';
 import type { HowToPlayItem } from '../types/howToPlay';
+import { getTicketKey } from '../constants/aventurerosTrenTickets';
 import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
@@ -171,13 +172,18 @@ export function createAventurerosTrenRouteEntry(
   };
 }
 
-export function createAventurerosTrenDestinationEntry(): AventurerosTrenDestinationEntry {
+export function createAventurerosTrenDestinationEntry(ticket: {
+  origin: string;
+  destination: string;
+  points: number;
+}): AventurerosTrenDestinationEntry {
   return {
     id: createId(),
-    origin: '',
-    destination: '',
-    points: 0,
+    origin: ticket.origin,
+    destination: ticket.destination,
+    points: ticket.points,
     completed: true,
+    fromList: true,
   };
 }
 
@@ -252,6 +258,36 @@ export function getDestinationEntryPoints(
 ): number {
   const pts = Math.max(0, Math.floor(entry.points));
   return entry.completed ? pts : -pts;
+}
+
+export type TakenDestinationTicket = {
+  playerId: string;
+  playerName: string;
+};
+
+/** Billetes ya asignados (ciudades rellenadas). Cada carta del mazo es única. */
+export function getTakenDestinationTickets(
+  session: AventurerosTrenSession,
+): Map<string, TakenDestinationTicket> {
+  const taken = new Map<string, TakenDestinationTicket>();
+  for (const player of session.players) {
+    for (const dest of session.destinos[player.id] ?? []) {
+      if (!dest.origin.trim() || !dest.destination.trim()) continue;
+      const key = getTicketKey(dest);
+      if (!taken.has(key)) {
+        taken.set(key, { playerId: player.id, playerName: player.name });
+      }
+    }
+  }
+  return taken;
+}
+
+export function isDestinationTicketTaken(
+  session: AventurerosTrenSession,
+  ticket: { origin: string; destination: string },
+): boolean {
+  if (!ticket.origin.trim() || !ticket.destination.trim()) return false;
+  return getTakenDestinationTickets(session).has(getTicketKey(ticket));
 }
 
 export function countCompletedTickets(

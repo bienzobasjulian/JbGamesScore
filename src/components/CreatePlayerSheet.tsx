@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { pickPlayerColor } from '../utils/match';
@@ -33,7 +33,7 @@ export function CreatePlayerSheet({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const insets = useSafeAreaInsets();
+  const bottomInset = useSheetBottomInset();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +68,7 @@ export function CreatePlayerSheet({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -78,7 +79,7 @@ export function CreatePlayerSheet({
         <View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) },
+            { paddingBottom: 16 + bottomInset },
           ]}
         >
           <View style={styles.handle} />

@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { PlayerColorPicker } from './PlayerColorPicker';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayerAvatarPicker } from './PlayerAvatarPicker';
@@ -41,7 +41,7 @@ export function EditPlayerSheet({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const insets = useSafeAreaInsets();
+  const bottomInset = useSheetBottomInset();
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -75,6 +75,7 @@ export function EditPlayerSheet({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -85,7 +86,7 @@ export function EditPlayerSheet({
         <View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) },
+            { paddingBottom: 16 + bottomInset },
           ]}
         >
           <View style={styles.handle} />

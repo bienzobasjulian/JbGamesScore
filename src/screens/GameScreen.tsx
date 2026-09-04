@@ -416,7 +416,11 @@ export function GameScreen({
           <MatchActionsMenu
             visible={actionsMenuVisible}
             onClose={() => setActionsMenuVisible(false)}
-            onViewRanking={() => setRankingModalVisible(true)}
+            onViewRanking={
+              state.players.length > 1
+                ? () => setRankingModalVisible(true)
+                : undefined
+            }
             onEditMatch={() => onEditMatch?.()}
             onFinishMatch={() => setFinishModalVisible(true)}
             canEditMatch={canEditMatch}

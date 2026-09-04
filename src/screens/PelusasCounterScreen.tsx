@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BackHandler,
   Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -17,7 +16,7 @@ import { GameOverflowMenu } from '../components/GameOverflowMenu';
 import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { PelusasPlayerPanel } from '../components/PelusasPlayerPanel';
 import { PlayerAvatar } from '../components/PlayerAvatar';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { PelusasSession } from '../types';
@@ -135,7 +134,7 @@ export function PelusasCounterScreen({
         menuIcon="more"
       />
 
-      <ScrollView
+      <TourScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -160,7 +159,7 @@ export function PelusasCounterScreen({
         </View>
         </TourAnchor>
 
-        {leader ? (
+        {leader && session.players.length > 1 ? (
           <View style={styles.rankingPanel}>
             <Text style={styles.rankingTitle}>Clasificación</Text>
             {ranking.map(({ player, score }, index) => (
@@ -226,7 +225,7 @@ export function PelusasCounterScreen({
           variant="ghost"
           style={styles.resetBtn}
         />
-      </ScrollView>
+      </TourScrollView>
 
       <View style={styles.footer}>
         <FinishMatchButton onPress={() => setFinishModalVisible(true)} />

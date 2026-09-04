@@ -124,6 +124,7 @@ import {
   createDefaultPlayerScoring,
   createFinishedAventurerosTrenMatch,
   createInProgressAventurerosTrenMatch,
+  isDestinationTicketTaken,
   AVENTUREROS_TREN_MAX_PLAYERS,
   AVENTUREROS_TREN_MIN_PLAYERS,
 } from '../utils/aventurerosTren';
@@ -1207,13 +1208,21 @@ export function useApp() {
     [],
   );
 
-  const addAventurerosTrenDestination = useCallback((playerId: string) => {
+  const addAventurerosTrenDestination = useCallback((
+    playerId: string,
+    ticket: {
+      origin: string;
+      destination: string;
+      points: number;
+    },
+  ) => {
     setAventurerosTrenSession((prev) => {
       if (!prev) return null;
+      if (isDestinationTicketTaken(prev, ticket)) return prev;
       const destinos = { ...prev.destinos };
       destinos[playerId] = [
         ...(destinos[playerId] ?? []),
-        createAventurerosTrenDestinationEntry(),
+        createAventurerosTrenDestinationEntry(ticket),
       ];
       return { ...prev, destinos };
     });

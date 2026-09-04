@@ -225,6 +225,8 @@ export type AventurerosTrenDestinationEntry = {
   points: number;
   completed: boolean;
   collapsed?: boolean;
+  /** Elegido de la lista oficial. `false` = entrada libre. */
+  fromList?: boolean;
 };
 
 export type AventurerosTrenSession = {
