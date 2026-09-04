@@ -1,56 +1,96 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PLAYER_COLOR_OPTIONS, PLAYER_COLORS } from '../constants';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { getPlayerAvatarTextColor } from '../utils/players';
+
+export type PlayerColorOption = {
+  name: string;
+  value: string;
+};
 
 type Props = {
   value: string;
   onChange: (color: string) => void;
+  options?: readonly PlayerColorOption[];
+  takenValues?: string[];
+  compact?: boolean;
 };
 
 function isLightColor(hex: string): boolean {
   return getPlayerAvatarTextColor(hex) === '#000000';
 }
 
-export function PlayerColorPicker({ value, onChange }: Props) {
-  const theme = useTheme();
+function normalizeHex(hex: string): string {
+  return hex.trim().toUpperCase();
+}
+
+export function PlayerColorPicker({
+  value,
+  onChange,
+  options,
+  takenValues = [],
+  compact = false,
+}: Props) {
   const styles = useThemedStyles(createStyles);
 
-  const normalizedValue = value.trim().toUpperCase();
+  const normalizedValue = normalizeHex(value);
+  const taken = useMemo(
+    () => new Set(takenValues.map(normalizeHex)),
+    [takenValues],
+  );
 
-  const options = useMemo(() => {
-    const known = PLAYER_COLOR_OPTIONS.map((option) => ({
+  const colorOptions = useMemo(() => {
+    const known = (options ?? PLAYER_COLOR_OPTIONS).map((option) => ({
       name: option.name,
       value: option.value,
     }));
-    if (PLAYER_COLORS.includes(normalizedValue)) return known;
+    const knownValues = known.map((option) => normalizeHex(option.value));
+    if (knownValues.includes(normalizedValue)) return known;
+    if (PLAYER_COLORS.includes(normalizedValue)) {
+      const extra = PLAYER_COLOR_OPTIONS.find(
+        (option) => normalizeHex(option.value) === normalizedValue,
+      );
+      return extra ? [extra, ...known] : known;
+    }
     return [{ name: 'Actual', value: normalizedValue }, ...known];
-  }, [normalizedValue]);
+  }, [normalizedValue, options]);
 
   return (
-    <View style={styles.grid}>
-      {options.map((option) => {
-        const selected = normalizedValue === option.value.trim().toUpperCase();
+    <View style={[styles.grid, compact && styles.gridCompact]}>
+      {colorOptions.map((option) => {
+        const selected = normalizedValue === normalizeHex(option.value);
+        const unavailable = taken.has(normalizeHex(option.value)) && !selected;
         const light = isLightColor(option.value);
         return (
           <Pressable
             key={option.value}
             accessibilityRole="button"
             accessibilityLabel={option.name}
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, disabled: unavailable }}
+            disabled={unavailable}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [
               styles.swatch,
+              compact && styles.swatchCompact,
               { backgroundColor: option.value },
               light && styles.swatchLight,
               selected &&
                 (light ? styles.swatchSelectedLight : styles.swatchSelected),
-              pressed && styles.swatchPressed,
+              unavailable && styles.swatchTaken,
+              pressed && !unavailable && styles.swatchPressed,
             ]}
           >
             {selected ? (
-              <Text style={[styles.check, light && styles.checkDark]}>✓</Text>
+              <Text
+                style={[
+                  styles.check,
+                  compact && styles.checkCompact,
+                  light && styles.checkDark,
+                ]}
+              >
+                ✓
+              </Text>
             ) : null}
           </Pressable>
         );
@@ -66,6 +106,10 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     gap: 12,
     justifyContent: 'center',
   },
+  gridCompact: {
+    gap: 8,
+    justifyContent: 'flex-start',
+  },
   swatch: {
     width: 44,
     height: 44,
@@ -74,6 +118,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
+  },
+  swatchCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
   },
   swatchLight: {
     borderColor: theme.border,
@@ -84,6 +133,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   swatchSelectedLight: {
     borderColor: theme.text,
   },
+  swatchTaken: {
+    opacity: 0.28,
+  },
   swatchPressed: {
     opacity: 0.85,
   },
@@ -91,6 +143,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#fff',
+  },
+  checkCompact: {
+    fontSize: 12,
   },
   checkDark: {
     color: theme.text,

@@ -1,11 +1,19 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
 import { PlayerAvatar } from './PlayerAvatar';
+import {
+  PlayerColorPicker,
+  type PlayerColorOption,
+} from './PlayerColorPicker';
 
 type Props = {
   player: Player;
   isActive?: boolean;
+  tokenColors?: readonly PlayerColorOption[];
+  takenColors?: string[];
+  onChangeColor?: (color: string) => void;
   onDrag: () => void;
   onRemove: () => void;
 };
@@ -13,11 +21,15 @@ type Props = {
 export function TurnOrderPlayerCard({
   player,
   isActive = false,
+  tokenColors,
+  takenColors,
+  onChangeColor,
   onDrag,
   onRemove,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const [editingColor, setEditingColor] = useState(false);
+  const canPickTokenColor = Boolean(tokenColors && onChangeColor);
 
   return (
     <View style={[styles.card, isActive && styles.cardActive]}>
@@ -37,6 +49,24 @@ export function TurnOrderPlayerCard({
         </View>
 
         <View style={styles.actions}>
+          {canPickTokenColor ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                editingColor ? 'Cerrar color de ficha' : 'Editar color de ficha'
+              }
+              onPress={() => setEditingColor((open) => !open)}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                editingColor && styles.iconBtnActive,
+                pressed && styles.iconBtnPressed,
+              ]}
+            >
+              <Text style={styles.iconText}>✎</Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             onLongPress={onDrag}
             delayLongPress={120}
@@ -54,6 +84,19 @@ export function TurnOrderPlayerCard({
           </Pressable>
         </View>
       </View>
+
+      {canPickTokenColor && editingColor ? (
+        <PlayerColorPicker
+          value={player.color}
+          onChange={(color) => {
+            onChangeColor?.(color);
+            setEditingColor(false);
+          }}
+          options={tokenColors}
+          takenValues={takenColors}
+          compact
+        />
+      ) : null}
     </View>
   );
 }
@@ -65,6 +108,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: theme.border,
+    gap: 12,
   },
   cardActive: {
     borderColor: theme.accent,
@@ -113,6 +157,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   iconBtnPressed: {
     opacity: 0.8,
+  },
+  iconBtnActive: {
+    borderColor: theme.accent,
   },
   iconText: {
     fontSize: 16,

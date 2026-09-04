@@ -16,6 +16,15 @@ import { emptyRoundBreakdown } from './rounds';
 export const AVENTUREROS_TREN_MIN_PLAYERS = 1;
 export const AVENTUREROS_TREN_MAX_PLAYERS = 5;
 
+/** Colores de las locomotoras de plástico (hasta 5 jugadores). */
+export const AVENTUREROS_TOKEN_COLOR_OPTIONS = [
+  { name: 'Negro', value: '#000000' },
+  { name: 'Rojo', value: '#FF0000' },
+  { name: 'Amarillo', value: '#FFFF00' },
+  { name: 'Verde', value: '#008000' },
+  { name: 'Azul', value: '#0000FF' },
+] as const;
+
 export const LONGEST_ROUTE_BONUS_POINTS = 10;
 export const EUROPA_STATION_BONUS_PER_UNUSED = 4;
 export const EUROPA_MAX_STATIONS = 3;

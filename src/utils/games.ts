@@ -1,4 +1,6 @@
+import { PLAYER_COLOR_OPTIONS } from '../constants';
 import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
+import { AVENTUREROS_TOKEN_COLOR_OPTIONS } from './aventurerosTren';
 
 export type CreateMatchGameType =
   | 'standard'
@@ -87,3 +89,35 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
       'Asistente cooperativo: vida y ataque de J, Q y K (horizontal)',
   },
 ];
+
+export type MatchTokenColorOption = {
+  name: string;
+  value: string;
+};
+
+/** Paleta de fichas de esta partida, o null si el juego no usa color de ficha. */
+export function getMatchTokenColorOptions(
+  gameType: CreateMatchGameType,
+): readonly MatchTokenColorOption[] | null {
+  switch (gameType) {
+    case 'aventureros_tren':
+      return AVENTUREROS_TOKEN_COLOR_OPTIONS;
+    case 'standard':
+      return PLAYER_COLOR_OPTIONS;
+    default:
+      return null;
+  }
+}
+
+export function getMatchTokenColorHint(
+  gameType: CreateMatchGameType,
+): string | null {
+  switch (gameType) {
+    case 'aventureros_tren':
+      return 'Elige el color de la locomotora de cada jugador. Solo vale para esta partida; no cambia su color guardado.';
+    case 'standard':
+      return 'Si el juego tiene fichas de colores, elige uno en cada jugador. Solo vale para esta partida.';
+    default:
+      return null;
+  }
+}

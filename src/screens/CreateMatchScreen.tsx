@@ -27,12 +27,27 @@ import {
 import {
   CreateMatchGameType,
   getCreateMatchPlayerLimits,
+  getMatchTokenColorHint,
+  getMatchTokenColorOptions,
   isDedicatedCreateMatchGame,
 } from '../utils/games';
 import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
 import { defaultSettings } from '../utils/game';
-import { ensureMatchPlayers, formatSoloPlayerHint } from '../utils/players';
+import {
+  assignUniquePlayerColors,
+  ensureMatchPlayers,
+  formatSoloPlayerHint,
+} from '../utils/players';
 import { applyTemplateDraft } from '../utils/template';
+
+function applyRosterColors(
+  gameType: CreateMatchGameType,
+  roster: Player[],
+): Player[] {
+  const options = getMatchTokenColorOptions(gameType);
+  if (gameType !== 'aventureros_tren' || !options) return roster;
+  return assignUniquePlayerColors(roster, options);
+}
 
 function buildInitialFromTemplate(
   templates: MatchTemplate[],
@@ -140,7 +155,10 @@ export function CreateMatchScreen({
     restoredDraft?.matchName ?? templateInitial.matchName,
   );
   const [players, setPlayers] = useState<Player[]>(
-    restoredDraft?.players ?? templateInitial.players,
+    applyRosterColors(
+      restoredDraft?.gameType ?? initialGameType,
+      restoredDraft?.players ?? templateInitial.players,
+    ),
   );
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
     restoredDraft?.loadedTemplateId ?? templateInitial.loadedTemplateId,
@@ -164,6 +182,8 @@ export function CreateMatchScreen({
   });
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
+  const tokenColors = getMatchTokenColorOptions(gameType);
+  const tokenColorHint = getMatchTokenColorHint(gameType);
 
   const canStart = isRegicide
     ? true
@@ -233,6 +253,7 @@ export function CreateMatchScreen({
   const handleSelectGame = (next: CreateMatchGameType) => {
     setGameType(next);
     setRandomStarterName(null);
+    setPlayers((prev) => applyRosterColors(next, prev));
     if (isDedicatedCreateMatchGame(next)) {
       setLoadedTemplateId(null);
       setSettings(defaultSettings());
@@ -263,7 +284,10 @@ export function CreateMatchScreen({
       onStartRegicide(sessionId ?? null);
       return;
     }
-    const roster = ensureMatchPlayers(players, selfPlayer);
+    const roster = applyRosterColors(
+      gameType,
+      ensureMatchPlayers(players, selfPlayer),
+    );
     if (isPelusas) {
       onStartPelusas(roster, sessionId ?? null);
     } else if (isSkullKing) {
@@ -378,6 +402,9 @@ export function CreateMatchScreen({
               Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
             }
           />
+          {tokenColorHint ? (
+            <Text style={styles.specialHint}>{tokenColorHint}</Text>
+          ) : null}
         </TourAnchor>
       ) : null}
     </View>
@@ -422,6 +449,17 @@ export function CreateMatchScreen({
         }
         onChange={setPlayers}
         onRemove={handleRemove}
+        tokenColors={tokenColors ?? undefined}
+        onChangeColor={
+          tokenColors
+            ? (playerId, color) =>
+                setPlayers((prev) =>
+                  prev.map((player) =>
+                    player.id === playerId ? { ...player, color } : player,
+                  ),
+                )
+            : undefined
+        }
       />
 
       <View style={styles.footer}>

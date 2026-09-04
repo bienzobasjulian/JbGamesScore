@@ -169,22 +169,7 @@ function upsertSavedPlayer(
 ): SavedPlayer[] {
   const existing = players.find((p) => p.id === player.id);
   if (existing) {
-    return touchPlayer(
-      players.map((p) =>
-        p.id === player.id
-          ? {
-              ...p,
-              name: player.name,
-              color: player.color,
-              avatar:
-                player.avatar === undefined
-                  ? p.avatar ?? null
-                  : player.avatar,
-            }
-          : p,
-      ),
-      player.id,
-    );
+    return touchPlayer(players, player.id);
   }
   return [
     ...players,

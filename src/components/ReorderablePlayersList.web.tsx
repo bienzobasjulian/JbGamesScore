@@ -1,6 +1,7 @@
 import { ReactElement, useMemo, useState } from 'react';
 import { ScrollView, StyleProp, ViewStyle } from 'react-native';
 import { Player } from '../types';
+import { PlayerColorOption } from './PlayerColorPicker';
 import { TurnOrderPlayerCard } from './TurnOrderPlayerCard';
 
 type Props = {
@@ -11,6 +12,8 @@ type Props = {
   listFooterComponent?: ReactElement | null;
   onChange: (players: Player[]) => void;
   onRemove: (playerId: string) => void;
+  tokenColors?: readonly PlayerColorOption[];
+  onChangeColor?: (playerId: string, color: string) => void;
 };
 
 function movePlayerById(players: Player[], fromId: string, toId: string): Player[] {
@@ -35,6 +38,8 @@ export function ReorderablePlayersList({
   listFooterComponent,
   onChange,
   onRemove,
+  tokenColors,
+  onChangeColor,
 }: Props) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -92,6 +97,15 @@ export function ReorderablePlayersList({
                 <TurnOrderPlayerCard
                   player={player}
                   isActive={isDragged}
+                  tokenColors={tokenColors}
+                  takenColors={players
+                    .filter((other) => other.id !== player.id)
+                    .map((other) => other.color)}
+                  onChangeColor={
+                    onChangeColor
+                      ? (color) => onChangeColor(player.id, color)
+                      : undefined
+                  }
                   onDrag={() => {}}
                   onRemove={() => onRemove(player.id)}
                 />

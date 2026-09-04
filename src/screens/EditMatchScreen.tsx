@@ -8,6 +8,7 @@ import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { EditMatchDraft } from '../types/playerSelection';
 import { AppScreen, GameSettings, Match, Player, SavedPlayer } from '../types';
+import { getMatchTokenColorHint, getMatchTokenColorOptions } from '../utils/games';
 import { ensureMatchPlayers } from '../utils/players';
 
 type Props = {
@@ -52,6 +53,8 @@ export function EditMatchScreen({
   const [players, setPlayers] = useState<Player[]>(
     restoredDraft?.players ?? match.players,
   );
+  const tokenColors = getMatchTokenColorOptions('standard');
+  const tokenColorHint = getMatchTokenColorHint('standard');
 
   const handleChoosePlayers = () => {
     onOpenPlayerSelection({
@@ -95,6 +98,9 @@ export function EditMatchScreen({
         playerCount={players.length}
         onChoosePlayers={handleChoosePlayers}
       />
+      {tokenColorHint ? (
+        <Text style={styles.hint}>{tokenColorHint}</Text>
+      ) : null}
     </View>
   );
 
@@ -114,6 +120,17 @@ export function EditMatchScreen({
         onChange={setPlayers}
         onRemove={(playerId) =>
           setPlayers((prev) => prev.filter((player) => player.id !== playerId))
+        }
+        tokenColors={tokenColors ?? undefined}
+        onChangeColor={
+          tokenColors
+            ? (playerId, color) =>
+                setPlayers((prev) =>
+                  prev.map((player) =>
+                    player.id === playerId ? { ...player, color } : player,
+                  ),
+                )
+            : undefined
         }
       />
 

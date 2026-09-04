@@ -5,6 +5,7 @@ import DraggableFlatList, {
   ScaleDecorator,
 } from 'react-native-draggable-flatlist';
 import { Player } from '../types';
+import { PlayerColorOption } from './PlayerColorPicker';
 import { TurnOrderPlayerCard } from './TurnOrderPlayerCard';
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   listFooterComponent?: ReactElement | null;
   onChange: (players: Player[]) => void;
   onRemove: (playerId: string) => void;
+  tokenColors?: readonly PlayerColorOption[];
+  onChangeColor?: (playerId: string, color: string) => void;
 };
 
 export function ReorderablePlayersList({
@@ -25,6 +28,8 @@ export function ReorderablePlayersList({
   listFooterComponent,
   onChange,
   onRemove,
+  tokenColors,
+  onChangeColor,
 }: Props) {
   return (
     <View style={styles.list}>
@@ -45,6 +50,15 @@ export function ReorderablePlayersList({
             <TurnOrderPlayerCard
               player={item}
               isActive={isActive}
+              tokenColors={tokenColors}
+              takenColors={players
+                .filter((player) => player.id !== item.id)
+                .map((player) => player.color)}
+              onChangeColor={
+                onChangeColor
+                  ? (color) => onChangeColor(item.id, color)
+                  : undefined
+              }
               onDrag={drag}
               onRemove={() => onRemove(item.id)}
             />
