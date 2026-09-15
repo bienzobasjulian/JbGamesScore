@@ -1,4 +1,5 @@
 import { PLAYER_COLOR_OPTIONS } from '../constants';
+import type { PreferredCreateMatchGame } from '../types';
 import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
 import { AVENTUREROS_TOKEN_COLOR_OPTIONS } from './aventurerosTren';
 
@@ -49,12 +50,14 @@ export type CreateMatchGameOption = {
   description: string;
 };
 
+export const CREATE_MATCH_STANDARD_OPTION: CreateMatchGameOption = {
+  id: 'standard',
+  name: 'Ninguno',
+  description: 'Partida libre con plantilla, ajustes y jugadores',
+};
+
 export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
-  {
-    id: 'standard',
-    name: 'Ninguno',
-    description: 'Partida libre con plantilla, ajustes y jugadores',
-  },
+  CREATE_MATCH_STANDARD_OPTION,
   {
     id: 'pelusas',
     name: 'Pelusas',
@@ -89,6 +92,54 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
       'Asistente cooperativo: vida y ataque de J, Q y K (horizontal)',
   },
 ];
+
+export const DEDICATED_CREATE_MATCH_GAMES: CreateMatchGameOption[] =
+  CREATE_MATCH_GAMES.filter((game) => game.id !== 'standard');
+
+const DEDICATED_CREATE_MATCH_GAME_IDS = new Set(
+  DEDICATED_CREATE_MATCH_GAMES.map((game) => game.id),
+);
+
+export function normalizePreferredCreateMatchGames(
+  value: unknown,
+): PreferredCreateMatchGame[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<PreferredCreateMatchGame>();
+  for (const item of value) {
+    if (
+      typeof item === 'string' &&
+      DEDICATED_CREATE_MATCH_GAME_IDS.has(item as CreateMatchGameType)
+    ) {
+      seen.add(item as PreferredCreateMatchGame);
+    }
+  }
+  return DEDICATED_CREATE_MATCH_GAMES.map((game) => game.id).filter(
+    (id): id is PreferredCreateMatchGame =>
+      seen.has(id as PreferredCreateMatchGame),
+  );
+}
+
+export function getVisibleCreateMatchGames(
+  preferred: readonly PreferredCreateMatchGame[],
+): CreateMatchGameOption[] {
+  const allowed = new Set(preferred);
+  return DEDICATED_CREATE_MATCH_GAMES.filter((game) =>
+    allowed.has(game.id as PreferredCreateMatchGame),
+  );
+}
+
+export function resolveCreateMatchGameType(
+  gameType: CreateMatchGameType,
+  preferred: readonly PreferredCreateMatchGame[],
+): CreateMatchGameType {
+  if (
+    gameType !== 'standard' &&
+    preferred.includes(gameType as PreferredCreateMatchGame)
+  ) {
+    return gameType;
+  }
+  return 'standard';
+}
 
 export type MatchTokenColorOption = {
   name: string;

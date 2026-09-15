@@ -11,12 +11,15 @@ import {
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
   CREATE_MATCH_GAMES,
+  CREATE_MATCH_STANDARD_OPTION,
+  CreateMatchGameOption,
   CreateMatchGameType,
 } from '../utils/games';
 
 type Props = {
   selected: CreateMatchGameType;
   onSelect: (gameType: CreateMatchGameType) => void;
+  games: CreateMatchGameOption[];
 };
 
 type TriggerLayout = {
@@ -67,7 +70,7 @@ function getDropdownLayout(trigger: TriggerLayout) {
   };
 }
 
-export function GameTypePicker({ selected, onSelect }: Props) {
+export function GameTypePicker({ selected, onSelect, games }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -76,7 +79,10 @@ export function GameTypePicker({ selected, onSelect }: Props) {
     null,
   );
   const triggerRef = useRef<View>(null);
-  const current = CREATE_MATCH_GAMES.find((g) => g.id === selected)!;
+  const options = [CREATE_MATCH_STANDARD_OPTION, ...games];
+  const current =
+    CREATE_MATCH_GAMES.find((g) => g.id === selected) ??
+    CREATE_MATCH_STANDARD_OPTION;
 
   const close = () => {
     setOpen(false);
@@ -134,9 +140,9 @@ export function GameTypePicker({ selected, onSelect }: Props) {
                     bounces={false}
                     showsVerticalScrollIndicator
                   >
-                    {CREATE_MATCH_GAMES.map((game, index) => {
+                    {options.map((game, index) => {
                       const isSelected = selected === game.id;
-                      const isLast = index === CREATE_MATCH_GAMES.length - 1;
+                      const isLast = index === options.length - 1;
                       return (
                         <Pressable
                           key={game.id}

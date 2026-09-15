@@ -258,6 +258,9 @@ function AppShell() {
             }
             templates={app.data.templates}
             savedPlayers={app.data.players}
+            preferredCreateMatchGames={
+              app.data.preferredCreateMatchGames ?? []
+            }
             initialTemplateId={initialTemplateId}
             restoredDraft={restoredDraft}
             onBack={app.goHome}
@@ -302,6 +305,9 @@ function AppShell() {
             }
             templates={app.data.templates}
             savedPlayers={app.data.players}
+            preferredCreateMatchGames={
+              app.data.preferredCreateMatchGames ?? []
+            }
             sessionId={session.id}
             sessionName={session.name}
             restoredDraft={restoredDraft}
@@ -516,7 +522,13 @@ function AppShell() {
 
       case 'settings':
         return (
-          <SettingsScreen onBack={app.goHome} />
+          <SettingsScreen
+            onBack={app.goHome}
+            preferredCreateMatchGames={
+              app.data.preferredCreateMatchGames ?? []
+            }
+            onChangePreferredCreateMatchGames={app.setPreferredCreateMatchGames}
+          />
         );
 
       case 'game': {
@@ -762,7 +774,7 @@ function AppShell() {
               label: 'Plantillas de partida',
               onPress: app.goTemplatesList,
             },
-            { label: 'Apariencia', onPress: app.goSettings },
+            { label: 'Ajustes', onPress: app.goSettings },
             {
               label: 'Ver tutorial',
               onPress: () => onboarding.startTour('home', { force: true }),

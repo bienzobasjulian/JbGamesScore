@@ -23,6 +23,7 @@ import type {
 
 type StartTourOptions = {
   force?: boolean;
+  skipStepIds?: string[];
 };
 
 type OnboardingContextValue = {
@@ -62,6 +63,7 @@ export function OnboardingProvider({ children }: Props) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [activeTourId, setActiveTourId] = useState<TourId | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [skipStepIds, setSkipStepIds] = useState<string[]>([]);
   const anchorsRef = useRef(new Map<string, AnchorHandle>());
   const persistRef = useRef(state);
 
@@ -106,6 +108,7 @@ export function OnboardingProvider({ children }: Props) {
       }
       setActiveTourId(null);
       setStepIndex(0);
+      setSkipStepIds([]);
     },
     [activeTourId, markTourCompleted],
   );
@@ -114,9 +117,13 @@ export function OnboardingProvider({ children }: Props) {
     (id: TourId, options?: StartTourOptions) => {
       const tour = TOURS[id];
       if (!tour?.steps.length) return;
+      const skip = new Set(options?.skipStepIds ?? []);
+      const steps = tour.steps.filter((step) => !skip.has(step.id));
+      if (!steps.length) return;
       const alreadyDone = persistRef.current.completedTours.includes(id);
       if (alreadyDone && !options?.force) return;
       setShowWelcome(false);
+      setSkipStepIds(options?.skipStepIds ?? []);
       setActiveTourId(id);
       setStepIndex(0);
     },
@@ -126,6 +133,7 @@ export function OnboardingProvider({ children }: Props) {
   const openWelcome = useCallback(() => {
     setActiveTourId(null);
     setStepIndex(0);
+    setSkipStepIds([]);
     setShowWelcome(true);
   }, []);
 
@@ -148,13 +156,14 @@ export function OnboardingProvider({ children }: Props) {
 
   const nextStep = useCallback(() => {
     if (!activeTourId) return;
-    const steps = TOURS[activeTourId].steps;
+    const skip = new Set(skipStepIds);
+    const steps = TOURS[activeTourId].steps.filter((step) => !skip.has(step.id));
     if (stepIndex >= steps.length - 1) {
       closeActiveTour(true);
       return;
     }
     setStepIndex((index) => index + 1);
-  }, [activeTourId, closeActiveTour, stepIndex]);
+  }, [activeTourId, closeActiveTour, skipStepIds, stepIndex]);
 
   const prevStep = useCallback(() => {
     setStepIndex((index) => Math.max(0, index - 1));
@@ -182,6 +191,7 @@ export function OnboardingProvider({ children }: Props) {
     });
     setActiveTourId(null);
     setStepIndex(0);
+    setSkipStepIds([]);
   }, [persist]);
 
   const registerAnchor = useCallback((id: string, handle: AnchorHandle) => {
@@ -203,8 +213,11 @@ export function OnboardingProvider({ children }: Props) {
   }, []);
 
   const activeTour = activeTourId ? TOURS[activeTourId] : null;
-  const activeStep = activeTour?.steps[stepIndex] ?? null;
-  const stepCount = activeTour?.steps.length ?? 0;
+  const activeSteps = activeTour
+    ? activeTour.steps.filter((step) => !skipStepIds.includes(step.id))
+    : [];
+  const activeStep = activeSteps[stepIndex] ?? null;
+  const stepCount = activeSteps.length;
 
   const value = useMemo<OnboardingContextValue>(
     () => ({

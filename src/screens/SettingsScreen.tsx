@@ -6,9 +6,15 @@ import {
   type AppTheme,
   type ThemePreference,
 } from '../theme';
+import { PreferredCreateMatchGame } from '../types';
+import { DEDICATED_CREATE_MATCH_GAMES } from '../utils/games';
 
 type Props = {
   onBack: () => void;
+  preferredCreateMatchGames: PreferredCreateMatchGame[];
+  onChangePreferredCreateMatchGames: (
+    games: PreferredCreateMatchGame[],
+  ) => void;
 };
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
@@ -30,9 +36,23 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
     },
   ];
 
-export function SettingsScreen({ onBack }: Props) {
+export function SettingsScreen({
+  onBack,
+  preferredCreateMatchGames,
+  onChangePreferredCreateMatchGames,
+}: Props) {
   const { preference, setPreference } = useThemeContext();
   const styles = useThemedStyles(createStyles);
+
+  const toggleGame = (id: PreferredCreateMatchGame) => {
+    if (preferredCreateMatchGames.includes(id)) {
+      onChangePreferredCreateMatchGames(
+        preferredCreateMatchGames.filter((game) => game !== id),
+      );
+      return;
+    }
+    onChangePreferredCreateMatchGames([...preferredCreateMatchGames, id]);
+  };
 
   return (
     <ScrollView
@@ -40,7 +60,7 @@ export function SettingsScreen({ onBack }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <AppHeader title="Apariencia" onBack={onBack} />
+      <AppHeader title="Ajustes" onBack={onBack} />
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Tema</Text>
@@ -85,6 +105,55 @@ export function SettingsScreen({ onBack }: Props) {
           );
         })}
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Juegos</Text>
+        <Text style={styles.cardHint}>
+          Tienen la puntuación ya configurada en la app. Marca los que quieres
+          ver al crear una partida. Si no marcas ninguno, ese apartado no
+          aparecerá.
+        </Text>
+        {DEDICATED_CREATE_MATCH_GAMES.map((game, index) => {
+          const selected = preferredCreateMatchGames.includes(
+            game.id as PreferredCreateMatchGame,
+          );
+          return (
+            <Pressable
+              key={game.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={game.name}
+              onPress={() => toggleGame(game.id as PreferredCreateMatchGame)}
+              style={({ pressed }) => [
+                styles.option,
+                index === 0 && styles.optionFirst,
+                selected && styles.optionSelected,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <View style={styles.optionTextWrap}>
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    selected && styles.optionLabelSelected,
+                  ]}
+                >
+                  {game.name}
+                </Text>
+                <Text style={styles.optionHint}>{game.description}</Text>
+              </View>
+              <View
+                style={[
+                  styles.checkbox,
+                  selected && styles.checkboxSelected,
+                ]}
+              >
+                <Text style={styles.checkboxMark}>{selected ? '✓' : ''}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
     </ScrollView>
   );
 }
@@ -105,6 +174,7 @@ const createStyles = (theme: AppTheme) =>
       borderColor: theme.border,
       overflow: 'hidden',
       paddingBottom: 4,
+      marginBottom: 16,
     },
     cardTitle: {
       fontSize: 17,
@@ -173,5 +243,24 @@ const createStyles = (theme: AppTheme) =>
       height: 12,
       borderRadius: 6,
       backgroundColor: theme.accent,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.surface,
+    },
+    checkboxSelected: {
+      borderColor: theme.accent,
+      backgroundColor: theme.accent,
+    },
+    checkboxMark: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: theme.onAccent,
     },
   });

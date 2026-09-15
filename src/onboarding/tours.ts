@@ -25,7 +25,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
       {
         id: 'home.menu',
         title: 'Menú',
-        body: 'Atajos a listas, plantillas y apariencia.',
+        body: 'Atajos a listas, plantillas y ajustes.',
         anchorId: 'home.menu',
       },
     ],
@@ -36,7 +36,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
       {
         id: 'createMatch.game',
         title: 'Juego',
-        body: 'Opcional. Solo si quieres un juego integrado. Si no, déjalo y configura la partida tú.',
+        body: 'Opcional. Solo aparecen los juegos que hayas activado en Ajustes. Si no, configura la partida tú.',
         anchorId: 'createMatch.game',
       },
       {

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants';
 import { AppData, Match, MatchTemplate, PlaySession, PlayerGroup, SavedPlayer } from './types';
 import { createId, normalizeSettings } from './utils/game';
+import { normalizePreferredCreateMatchGames } from './utils/games';
 import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
 import { formatDefaultSessionName } from './utils/session';
 import { pruneAutoSoloSavedPlayers } from './utils/players';
@@ -137,6 +138,9 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
       typeof raw.selfPlayerId === 'string' && raw.selfPlayerId
         ? raw.selfPlayerId
         : null,
+    preferredCreateMatchGames: normalizePreferredCreateMatchGames(
+      raw.preferredCreateMatchGames,
+    ),
   };
 
   const validSelfId =
@@ -191,6 +195,7 @@ async function migrateLegacyGame(): Promise<AppData | null> {
       matches: [normalizeMatchRounds(legacyMatch)],
       templates: [],
       sessions: [],
+      preferredCreateMatchGames: [],
     };
   } catch {
     return null;

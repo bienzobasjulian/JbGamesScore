@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -22,6 +22,7 @@ import {
   GameSettings,
   MatchTemplate,
   Player,
+  PreferredCreateMatchGame,
   SavedPlayer,
 } from '../types';
 import {
@@ -29,7 +30,9 @@ import {
   getCreateMatchPlayerLimits,
   getMatchTokenColorHint,
   getMatchTokenColorOptions,
+  getVisibleCreateMatchGames,
   isDedicatedCreateMatchGame,
+  resolveCreateMatchGameType,
 } from '../utils/games';
 import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
 import { defaultSettings } from '../utils/game';
@@ -39,6 +42,8 @@ import {
   formatSoloPlayerHint,
 } from '../utils/players';
 import { applyTemplateDraft } from '../utils/template';
+
+const SKIP_CREATE_MATCH_GAME_TOUR = ['createMatch.game'];
 
 function applyRosterColors(
   gameType: CreateMatchGameType,
@@ -83,6 +88,7 @@ function buildInitialFromTemplate(
 type Props = {
   templates: MatchTemplate[];
   savedPlayers: SavedPlayer[];
+  preferredCreateMatchGames?: PreferredCreateMatchGame[];
   initialTemplateId?: string;
   initialGameType?: CreateMatchGameType;
   sessionId?: string;
@@ -119,6 +125,7 @@ type Props = {
 export function CreateMatchScreen({
   templates,
   savedPlayers,
+  preferredCreateMatchGames = [],
   initialTemplateId,
   initialGameType = 'standard',
   sessionId,
@@ -138,15 +145,26 @@ export function CreateMatchScreen({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const { completedTours } = useOnboarding();
-  useAutoTour('createMatch');
 
   const templateInitial = buildInitialFromTemplate(
     templates,
     savedPlayers,
     initialTemplateId,
   );
-  const [gameType, setGameType] = useState<CreateMatchGameType>(
-    restoredDraft?.gameType ?? initialGameType,
+  const visibleGames = useMemo(
+    () => getVisibleCreateMatchGames(preferredCreateMatchGames),
+    [preferredCreateMatchGames],
+  );
+  const showGamePicker = visibleGames.length > 0;
+  useAutoTour('createMatch', {
+    skipStepIds: showGamePicker ? undefined : SKIP_CREATE_MATCH_GAME_TOUR,
+  });
+
+  const [gameType, setGameType] = useState<CreateMatchGameType>(() =>
+    resolveCreateMatchGameType(
+      restoredDraft?.gameType ?? initialGameType,
+      preferredCreateMatchGames,
+    ),
   );
   const [settings, setSettings] = useState<GameSettings>(
     restoredDraft?.settings ?? templateInitial.settings,
@@ -156,7 +174,10 @@ export function CreateMatchScreen({
   );
   const [players, setPlayers] = useState<Player[]>(
     applyRosterColors(
-      restoredDraft?.gameType ?? initialGameType,
+      resolveCreateMatchGameType(
+        restoredDraft?.gameType ?? initialGameType,
+        preferredCreateMatchGames,
+      ),
       restoredDraft?.players ?? templateInitial.players,
     ),
   );
@@ -251,15 +272,29 @@ export function CreateMatchScreen({
   };
 
   const handleSelectGame = (next: CreateMatchGameType) => {
-    setGameType(next);
+    const resolved = resolveCreateMatchGameType(
+      next,
+      preferredCreateMatchGames,
+    );
+    setGameType(resolved);
     setRandomStarterName(null);
-    setPlayers((prev) => applyRosterColors(next, prev));
-    if (isDedicatedCreateMatchGame(next)) {
+    setPlayers((prev) => applyRosterColors(resolved, prev));
+    if (isDedicatedCreateMatchGame(resolved)) {
       setLoadedTemplateId(null);
       setSettings(defaultSettings());
       setMatchName('');
     }
   };
+
+  useEffect(() => {
+    const resolved = resolveCreateMatchGameType(
+      gameType,
+      preferredCreateMatchGames,
+    );
+    if (resolved !== gameType) {
+      handleSelectGame(resolved);
+    }
+  }, [gameType, preferredCreateMatchGames]);
 
   const handleSelectTemplate = (template: MatchTemplate | null) => {
     if (!template) {
@@ -313,9 +348,15 @@ export function CreateMatchScreen({
       {sessionName ? (
         <Text style={styles.sessionHint}>Sesión: {sessionName}</Text>
       ) : null}
-      <TourAnchor id="createMatch.game">
-        <GameTypePicker selected={gameType} onSelect={handleSelectGame} />
-      </TourAnchor>
+      {showGamePicker ? (
+        <TourAnchor id="createMatch.game">
+          <GameTypePicker
+            selected={gameType}
+            onSelect={handleSelectGame}
+            games={visibleGames}
+          />
+        </TourAnchor>
+      ) : null}
 
       {!isSpecialGame ? (
         <>

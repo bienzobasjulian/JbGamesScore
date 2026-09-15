@@ -430,5 +430,6 @@ export function initialAppData(): AppData {
     templates: [],
     sessions: [],
     selfPlayerId: null,
+    preferredCreateMatchGames: [],
   };
 }

@@ -19,6 +19,7 @@ import {
   PelusasSession,
   PlaySession,
   Player,
+  PreferredCreateMatchGame,
   SkullKingRoundEntry,
   SkullKingSession,
   PiliPiliRoundConfig,
@@ -133,6 +134,7 @@ import {
   createRegicideSession,
   RegicideSession,
 } from '../utils/regicide';
+import { normalizePreferredCreateMatchGames } from '../utils/games';
 
 function patchActiveRound(
   match: Match,
@@ -231,6 +233,7 @@ export function useApp() {
     templates: [],
     sessions: [],
     selfPlayerId: null,
+    preferredCreateMatchGames: [],
   });
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
@@ -1717,6 +1720,16 @@ export function useApp() {
     }));
   }, []);
 
+  const setPreferredCreateMatchGames = useCallback(
+    (games: PreferredCreateMatchGame[]) => {
+      setData((prev) => ({
+        ...prev,
+        preferredCreateMatchGames: normalizePreferredCreateMatchGames(games),
+      }));
+    },
+    [],
+  );
+
   const setSelfPlayerId = useCallback((playerId: string | null) => {
     setData((prev) => {
       if (playerId && !prev.players.some((player) => player.id === playerId)) {
@@ -2593,6 +2606,7 @@ export function useApp() {
     deletePlayerGroup,
     deletePlayerGroups,
     updateSavedPlayer,
+    setPreferredCreateMatchGames,
     setSelfPlayerId,
     createAndStartMatch,
     createAndSaveWinnerMatch,

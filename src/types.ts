@@ -42,6 +42,9 @@ export type MatchGameMode =
   | 'aventureros_tren'
   | 'regicide';
 
+/** Juegos dedicados que el usuario puede mostrar al crear una partida. */
+export type PreferredCreateMatchGame = Exclude<MatchGameMode, 'standard'>;
+
 export type PlaySessionStatus = 'active' | 'closed';
 
 export type PlaySession = {
@@ -246,6 +249,8 @@ export type AppData = {
   sessions: PlaySession[];
   /** Jugador guardado que representa al usuario de este dispositivo. */
   selfPlayerId?: string | null;
+  /** Juegos dedicados visibles en Nueva partida. Vacío = no mostrar el apartado. */
+  preferredCreateMatchGames: PreferredCreateMatchGame[];
 };
 
 export type AppScreen =
