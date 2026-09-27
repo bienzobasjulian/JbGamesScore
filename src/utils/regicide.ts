@@ -480,8 +480,12 @@ export function previewRegicideAttack(
     totalValue,
     damage,
     attackReduction,
-    heartsActive: cards.some((card) => card.suit === 'hearts'),
-    diamondsActive: cards.some((card) => card.suit === 'diamonds'),
+    heartsActive:
+      cards.some((card) => card.suit === 'hearts') &&
+      !isImmuneToSuit(boss, 'hearts'),
+    diamondsActive:
+      cards.some((card) => card.suit === 'diamonds') &&
+      !isImmuneToSuit(boss, 'diamonds'),
     clubsActive,
     spadesActive,
   };
@@ -493,7 +497,7 @@ export function formatRegicideAttackPreview(
   const parts: string[] = [];
 
   if (preview.heartsActive) {
-    parts.push(`Cura ${preview.totalValue}`);
+    parts.push(`Curar ${preview.totalValue}`);
   }
   if (preview.diamondsActive) {
     parts.push(`Robar ${preview.totalValue}`);
