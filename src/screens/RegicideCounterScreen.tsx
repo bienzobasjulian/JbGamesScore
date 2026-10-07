@@ -10,7 +10,9 @@ import {
   View,
 } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useKeepAwake } from 'expo-keep-awake';
 import { Button } from '../components/Button';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
 import { GameOverflowMenu } from '../components/GameOverflowMenu';
 import { HowToPlayScreen } from '../components/HowToPlayScreen';
@@ -23,6 +25,7 @@ import {
   clearRegicideActiveBoss,
   confirmRegicideAttack,
   confirmRegicideJoker,
+  createRegicideSession,
   formatRegicideAttackPreview,
   formatRegicideBossLabel,
   formatRegicideCardLabel,
@@ -49,6 +52,7 @@ type Props = {
   session: RegicideSession;
   onUpdateSession: (session: RegicideSession) => void;
   onSaveAndExit: () => void;
+  onDefeatAndExit: () => void;
   onDeleteAndExit: () => void;
 };
 
@@ -141,8 +145,10 @@ export function RegicideCounterScreen({
   session,
   onUpdateSession,
   onSaveAndExit,
+  onDefeatAndExit,
   onDeleteAndExit,
 }: Props) {
+  useKeepAwake();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const suitColors = useMemo(() => getSuitColors(theme), [theme]);
@@ -159,6 +165,8 @@ export function RegicideCounterScreen({
     useState<SuitEffectToast | null>(null);
   const [exitModalVisible, setExitModalVisible] = useState(false);
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
+  const [restartModalVisible, setRestartModalVisible] = useState(false);
+  const [surrenderModalVisible, setSurrenderModalVisible] = useState(false);
   const [howToVisible, setHowToVisible] = useState(false);
   const [pendingSession, setPendingSession] = useState<RegicideSession | null>(
     null,
@@ -167,6 +175,8 @@ export function RegicideCounterScreen({
     useState<DefeatTransitionPhase>('none');
   const bossOpacity = useRef(new Animated.Value(1)).current;
   const statsPhaseStartedAtRef = useRef<number | null>(null);
+  const pendingStatAnimationRef = useRef<StatAnimation | null>(null);
+  const deferredSessionRef = useRef<RegicideSession | null>(null);
 
   const isCombatLocked =
     defeatTransitionPhase !== 'none' || suitEffectToast != null;
@@ -217,8 +227,16 @@ export function RegicideCounterScreen({
           setExitModalVisible(false);
           return true;
         }
+        if (restartModalVisible) {
+          setRestartModalVisible(false);
+          return true;
+        }
+        if (surrenderModalVisible) {
+          setSurrenderModalVisible(false);
+          return true;
+        }
         if (suitEffectToast) {
-          setSuitEffectToast(null);
+          handleDismissSuitEffectToast();
           return true;
         }
         handleRequestExit();
@@ -227,7 +245,7 @@ export function RegicideCounterScreen({
     );
 
     return () => subscription.remove();
-  }, [exitModalVisible, howToVisible, suitEffectToast]);
+  }, [exitModalVisible, howToVisible, restartModalVisible, surrenderModalVisible, suitEffectToast]);
 
   useEffect(() => {
     ScreenOrientation.lockAsync(
@@ -279,6 +297,27 @@ export function RegicideCounterScreen({
     setSelectedSuit(null);
     setPendingJoker(false);
     setMode('combat');
+  };
+
+  const resetCombatUi = () => {
+    setDraftCards([]);
+    setSelectedSuit(null);
+    setPendingJoker(false);
+    setStatAnimation(null);
+    setSuitEffectToast(null);
+    setPendingSession(null);
+    setDefeatTransitionPhase('none');
+    pendingStatAnimationRef.current = null;
+    deferredSessionRef.current = null;
+    statsPhaseStartedAtRef.current = null;
+    bossOpacity.setValue(1);
+    setMode('select_boss');
+  };
+
+  const handleRestartMatch = () => {
+    onUpdateSession(createRegicideSession());
+    resetCombatUi();
+    setRestartModalVisible(false);
   };
 
   useEffect(() => {
@@ -395,24 +434,25 @@ export function RegicideCounterScreen({
 
     const nextSession = confirmRegicideAttack(session, draftCards);
 
-    if (attackPreview.damage > 0 || attackPreview.attackReduction > 0) {
-      setStatAnimation({
-        hp: {
-          from: hpFrom,
-          to: projectedBoss.currentHp,
-          delta: Math.min(attackPreview.damage, hpFrom),
-        },
-        ...(attackPreview.attackReduction > 0
-          ? {
-              atk: {
-                from: atkFrom,
-                to: projectedBoss.currentAttack,
-                delta: Math.min(attackPreview.attackReduction, atkFrom),
-              },
-            }
-          : {}),
-      });
-    }
+    const nextStatAnimation: StatAnimation | null =
+      attackPreview.damage > 0 || attackPreview.attackReduction > 0
+        ? {
+            hp: {
+              from: hpFrom,
+              to: projectedBoss.currentHp,
+              delta: Math.min(attackPreview.damage, hpFrom),
+            },
+            ...(attackPreview.attackReduction > 0
+              ? {
+                  atk: {
+                    from: atkFrom,
+                    to: projectedBoss.currentAttack,
+                    delta: Math.min(attackPreview.attackReduction, atkFrom),
+                  },
+                }
+              : {}),
+          }
+        : null;
 
     const toast: SuitEffectToast = {
       ...(attackPreview.heartsActive
@@ -428,28 +468,59 @@ export function RegicideCounterScreen({
       toast.defeat = exactKill ? 'tavern' : 'discard';
     }
 
-    if (
-      toast.curar != null ||
-      toast.robar != null ||
-      toast.defeat != null
-    ) {
-      setSuitEffectToast(toast);
-    }
+    const hasToast =
+      toast.curar != null || toast.robar != null || toast.defeat != null;
+    const deferStatsForSuit =
+      toast.curar != null || toast.robar != null;
 
     if (projectedBoss.defeated) {
-      statsPhaseStartedAtRef.current = Date.now();
       setPendingSession(nextSession);
       setDefeatTransitionPhase('stats');
+      if (deferStatsForSuit) {
+        pendingStatAnimationRef.current = nextStatAnimation;
+      } else {
+        if (nextStatAnimation) setStatAnimation(nextStatAnimation);
+        statsPhaseStartedAtRef.current = Date.now();
+      }
+      if (hasToast) setSuitEffectToast(toast);
       resetDraft();
       return;
     }
 
+    if (deferStatsForSuit) {
+      pendingStatAnimationRef.current = nextStatAnimation;
+      deferredSessionRef.current = nextSession;
+      setSuitEffectToast(toast);
+      resetDraft();
+      return;
+    }
+
+    if (nextStatAnimation) setStatAnimation(nextStatAnimation);
+    if (hasToast) setSuitEffectToast(toast);
     onUpdateSession(nextSession);
     resetDraft();
   };
 
   const handleDismissSuitEffectToast = () => {
     setSuitEffectToast(null);
+
+    const deferredAnim = pendingStatAnimationRef.current;
+    pendingStatAnimationRef.current = null;
+    if (deferredAnim) {
+      setStatAnimation(deferredAnim);
+    }
+    if (
+      defeatTransitionPhase === 'stats' &&
+      statsPhaseStartedAtRef.current == null
+    ) {
+      statsPhaseStartedAtRef.current = Date.now();
+    }
+
+    const deferredSession = deferredSessionRef.current;
+    if (deferredSession) {
+      deferredSessionRef.current = null;
+      onUpdateSession(deferredSession);
+    }
   };
 
   const handleUndo = () => {
@@ -481,6 +552,8 @@ export function RegicideCounterScreen({
     />
   );
 
+  const defeatedCount = session.defeatedRoyals.length;
+
   const overflowMenu = (
     <GameOverflowMenu
       visible={actionsMenuVisible}
@@ -496,8 +569,48 @@ export function RegicideCounterScreen({
           hint: 'Resumen de las reglas de Regicide',
           onPress: handleOpenHowTo,
         },
+        {
+          title: 'Reiniciar partida',
+          hint: 'Vuelve a empezar desde la primera jota',
+          onPress: () => setRestartModalVisible(true),
+        },
+        ...(session.victory
+          ? []
+          : [
+              {
+                title: 'Rendirse',
+                hint: 'Cierra la partida como derrota',
+                onPress: () => setSurrenderModalVisible(true),
+              },
+            ]),
       ]}
     />
+  );
+
+  const confirmModals = (
+    <>
+      <ConfirmModal
+        visible={restartModalVisible}
+        title="Reiniciar partida"
+        message="Se borrará el progreso actual y empezaréis de nuevo desde las jotas. Esta acción no se puede deshacer."
+        confirmLabel="Reiniciar"
+        danger
+        onConfirm={handleRestartMatch}
+        onCancel={() => setRestartModalVisible(false)}
+      />
+      <ConfirmModal
+        visible={surrenderModalVisible}
+        title="¿Rendirse?"
+        message={`Se marcará la partida como derrota y se guardará el progreso (${defeatedCount}/12 enemigos).`}
+        confirmLabel="Rendirse"
+        danger
+        onConfirm={() => {
+          setSurrenderModalVisible(false);
+          onDefeatAndExit();
+        }}
+        onCancel={() => setSurrenderModalVisible(false)}
+      />
+    </>
   );
 
   const menuButton = (
@@ -537,6 +650,7 @@ export function RegicideCounterScreen({
         </View>
         {exitModal}
         {overflowMenu}
+        {confirmModals}
       </>
     );
   }
@@ -565,6 +679,7 @@ export function RegicideCounterScreen({
         </View>
         {exitModal}
         {overflowMenu}
+        {confirmModals}
       </>
     );
   }
@@ -663,6 +778,7 @@ export function RegicideCounterScreen({
         </View>
         </View>
         {exitModal}
+        {confirmModals}
       </>
     );
   }
@@ -797,6 +913,7 @@ export function RegicideCounterScreen({
       </View>
       {exitModal}
       {overflowMenu}
+      {confirmModals}
     </>
   );
 }
@@ -855,12 +972,22 @@ function SuitEffectToastOverlay({
     ]).start();
   }, [opacity, toast, translateY]);
 
-  const suitLines: { text: string; color: string }[] = [];
+  const suitBlocks: { title: string; subtitle: string; color: string }[] = [];
   if (toast.curar != null) {
-    suitLines.push({ text: `Curar ${toast.curar}`, color: '#E85D4C' });
+    suitBlocks.push({
+      title: `Curar ${toast.curar}`,
+      subtitle:
+        'Baraja el descarte y pon las cartas en la parte baja de la Taberna.',
+      color: '#E85D4C',
+    });
   }
   if (toast.robar != null) {
-    suitLines.push({ text: `Robar ${toast.robar}`, color: '#E85D4C' });
+    suitBlocks.push({
+      title: `Robar ${toast.robar}`,
+      subtitle:
+        'Cada jugador roba de la Taberna en orden (empezando por quien tenía el turno) hasta completar su mano.',
+      color: '#E85D4C',
+    });
   }
 
   const defeatSubtitle =
@@ -886,23 +1013,21 @@ function SuitEffectToastOverlay({
           },
         ]}
       >
-        {suitLines.map((line) => (
-          <Text
-            key={line.text}
-            style={[styles.suitEffectText, { color: line.color }]}
-          >
-            {line.text}
-          </Text>
+        {suitBlocks.map((block) => (
+          <View key={block.title} style={styles.suitEffectBlock}>
+            <Text style={[styles.suitEffectText, { color: block.color }]}>
+              {block.title}
+            </Text>
+            <Text style={styles.suitEffectSubtitle}>{block.subtitle}</Text>
+          </View>
         ))}
         {defeatSubtitle ? (
-          <>
-            <Text
-              style={[styles.suitEffectText, { color: theme.success }]}
-            >
+          <View style={styles.suitEffectBlock}>
+            <Text style={[styles.suitEffectText, { color: theme.success }]}>
               Enemigo derrotado
             </Text>
             <Text style={styles.suitEffectSubtitle}>{defeatSubtitle}</Text>
-          </>
+          </View>
         ) : null}
         <Text style={styles.suitEffectHint}>Toca para continuar</Text>
       </Animated.View>
@@ -1131,9 +1256,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   suitEffectToast: {
     alignItems: 'center',
-    gap: 6,
+    gap: 14,
     paddingHorizontal: 28,
     paddingVertical: 12,
+    maxWidth: 520,
+  },
+  suitEffectBlock: {
+    alignItems: 'center',
+    gap: 4,
   },
   suitEffectText: {
     fontSize: 32,
@@ -1143,14 +1273,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   suitEffectSubtitle: {
     color: theme.text,
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginTop: 2,
   },
   suitEffectHint: {
-    marginTop: 8,
+    marginTop: 4,
     color: theme.textMuted,
     fontSize: 13,
     fontWeight: '600',

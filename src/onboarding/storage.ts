@@ -14,7 +14,6 @@ const TOUR_IDS: TourId[] = [
   'skullKing',
   'piliPili',
   'flip7',
-  'aventurerosSubmode',
   'aventurerosConstruccion',
   'aventurerosDestinos',
   'regicideSelect',

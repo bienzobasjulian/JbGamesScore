@@ -1,8 +1,4 @@
-import {
-  AventurerosTrenSubmode,
-  GameSettings,
-  Player,
-} from '../types';
+import { GameSettings, Player } from '../types';
 import { CreateMatchGameType } from '../utils/games';
 
 export type CreateMatchDraft = {
@@ -11,7 +7,6 @@ export type CreateMatchDraft = {
   matchName: string;
   players: Player[];
   loadedTemplateId: string | null;
-  aventurerosSubmode: AventurerosTrenSubmode;
   randomStarterName: string | null;
 };
 

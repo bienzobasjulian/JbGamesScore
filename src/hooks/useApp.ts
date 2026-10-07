@@ -27,6 +27,8 @@ import {
   PiliPiliSession,
   Flip7Modifier,
   Flip7Session,
+  SushiGoRoundEntry,
+  SushiGoSession,
   RoundBreakdown,
   RoundScores,
   SavedPlayer,
@@ -81,7 +83,6 @@ import {
   createInProgressPelusasMatch,
   createPelusasCountsByPlayer,
   emptyPelusasCounts,
-  getPelusasCardValues,
   pelusasCardKey,
 } from '../utils/pelusas';
 import {
@@ -118,6 +119,17 @@ import {
   toggleFlip7PlayerModifier,
   toggleFlip7PlayerNumber,
 } from '../utils/flip7';
+import {
+  clampSushiGoRoundEntry,
+  createFinishedSushiGoMatch,
+  createInProgressSushiGoMatch,
+  createSushiGoSession,
+  emptySushiGoRoundEntry,
+  normalizeSushiGoSession,
+  SUSHI_GO_MAX_PLAYERS,
+  SUSHI_GO_MIN_PLAYERS,
+  sushiGoHandSize,
+} from '../utils/sushiGo';
 import {
   createAventurerosTrenDestinationEntry,
   createAventurerosTrenRouteEntry,
@@ -250,6 +262,9 @@ export function useApp() {
     useState<AventurerosTrenSession | null>(null);
   const [regicideSession, setRegicideSession] =
     useState<RegicideSession | null>(null);
+  const [sushiGoSession, setSushiGoSession] = useState<SushiGoSession | null>(
+    null,
+  );
   const dedicatedMatchSessionIdRef = useRef<string | null>(null);
   const dedicatedMatchIdRef = useRef<string | null>(null);
   const regicideMatchIdRef = useRef<string | null>(null);
@@ -376,6 +391,25 @@ export function useApp() {
     );
   }, [aventurerosTrenSession]);
 
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !sushiGoSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'sushi_go'
+          ? {
+              ...match,
+              sushiGoSession,
+              players: sushiGoSession.players,
+              activeRoundIndex: sushiGoSession.activeRoundIndex,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [sushiGoSession]);
+
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -415,7 +449,11 @@ export function useApp() {
   }, []);
 
   const startPelusasSession = useCallback(
-    (players: Player[], sessionId?: string | null) => {
+    (
+      players: Player[],
+      sessionId?: string | null,
+      revolutionMode = false,
+    ) => {
       if (players.length < 1) return;
       if (sessionId !== undefined) {
         dedicatedMatchSessionIdRef.current = sessionId;
@@ -423,8 +461,8 @@ export function useApp() {
       const playSessionId = dedicatedMatchSessionIdRef.current;
       const session: PelusasSession = {
         players,
-        revolutionMode: false,
-        countsByPlayer: createPelusasCountsByPlayer(players, false),
+        revolutionMode,
+        countsByPlayer: createPelusasCountsByPlayer(players, revolutionMode),
       };
       const match = createInProgressPelusasMatch(session, playSessionId);
       dedicatedMatchIdRef.current = match.id;
@@ -470,25 +508,6 @@ export function useApp() {
       return { players, revolutionMode, countsByPlayer };
     });
     setScreen({ type: 'pelusasCount' });
-  }, []);
-
-  const setPelusasRevolutionMode = useCallback((enabled: boolean) => {
-    setPelusasSession((prev) => {
-      if (!prev) return null;
-      const countsByPlayer: PelusasSession['countsByPlayer'] = {};
-      for (const player of prev.players) {
-        const existing = prev.countsByPlayer[player.id] ?? {};
-        const next: Record<string, number> = { ...existing };
-        for (const value of getPelusasCardValues(enabled)) {
-          const key = pelusasCardKey(value);
-          if (next[key] == null) {
-            next[key] = 0;
-          }
-        }
-        countsByPlayer[player.id] = next;
-      }
-      return { ...prev, revolutionMode: enabled, countsByPlayer };
-    });
   }, []);
 
   const setPelusasCardCount = useCallback(
@@ -717,6 +736,136 @@ export function useApp() {
             sessionId: match.sessionId ?? playSessionId ?? null,
             createdAt: match.createdAt,
             skullKingSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
+      return null;
+    });
+  }, []);
+
+  const startSushiGoSession = useCallback(
+    (players: Player[], sessionId?: string | null) => {
+      if (
+        players.length < SUSHI_GO_MIN_PLAYERS ||
+        players.length > SUSHI_GO_MAX_PLAYERS
+      ) {
+        return;
+      }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createSushiGoSession(players);
+      const match = createInProgressSushiGoMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setSushiGoSession(session);
+      setScreen({ type: 'sushiGoCount' });
+    },
+    [],
+  );
+
+  const saveSushiGoAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setSushiGoSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteSushiGoAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setSushiGoSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const goSushiGoRound = useCallback((roundIndex: number) => {
+    setSushiGoSession((prev) => {
+      if (!prev) return null;
+      if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+      return { ...prev, activeRoundIndex: roundIndex };
+    });
+  }, []);
+
+  const updateSushiGoRoundEntry = useCallback(
+    (
+      roundIndex: number,
+      playerId: string,
+      patch: Partial<SushiGoRoundEntry>,
+    ) => {
+      setSushiGoSession((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        const round = { ...rounds[roundIndex] };
+        round[playerId] = clampSushiGoRoundEntry(
+          {
+            ...(round[playerId] ?? emptySushiGoRoundEntry()),
+            ...patch,
+          },
+          sushiGoHandSize(prev.players.length),
+        );
+        rounds[roundIndex] = round;
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const setSushiGoAlternatePass = useCallback(
+    (alternatePassDirection: boolean) => {
+      setSushiGoSession((prev) =>
+        prev ? { ...prev, alternatePassDirection } : null,
+      );
+    },
+    [],
+  );
+
+  const finishSushiGoSession = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setSushiGoSession((prev) => {
+      if (!prev) return null;
+      const finished = createFinishedSushiGoMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
           }));
         }
         return appendMatch(base, {
@@ -1349,6 +1498,29 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
+  const defeatRegicideAndExit = useCallback(() => {
+    const matchId = regicideMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    if (matchId) {
+      setData((prev) =>
+        updateMatchInData(prev, matchId, (match) => ({
+          ...match,
+          status: 'finished',
+          updatedAt: Date.now(),
+        })),
+      );
+    }
+    regicideMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setRegicideSession(null);
+    if (playSessionId) {
+      setScreen({ type: 'sessionDetail', sessionId: playSessionId });
+    } else {
+      setScreen({ type: 'home' });
+    }
+    setMenuOpen(false);
+  }, []);
+
   const deleteRegicideAndExit = useCallback(() => {
     const matchId = regicideMatchIdRef.current;
     const playSessionId = dedicatedMatchSessionIdRef.current;
@@ -1618,6 +1790,12 @@ export function useApp() {
         ) {
           setAventurerosTrenSession(match.aventurerosTrenSession);
           setScreen({ type: 'aventurerosTrenCount' });
+          setMenuOpen(false);
+          return;
+        }
+        if (match.gameMode === 'sushi_go' && match.sushiGoSession) {
+          setSushiGoSession(normalizeSushiGoSession(match.sushiGoSession));
+          setScreen({ type: 'sushiGoCount' });
           setMenuOpen(false);
           return;
         }
@@ -2442,6 +2620,25 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'sushi_go') {
+        const session = createSushiGoSession(source.players);
+        const match = createInProgressSushiGoMatch(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setSushiGoSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
+        setScreen({ type: 'sushiGoCount' });
+        return;
+      }
+
       const newMatch = createMatch(source.players, source.settings, source.name);
       setData((prev) => ({
         ...prev,
@@ -2517,7 +2714,6 @@ export function useApp() {
     exitPelusas,
     startPelusasSession,
     updatePelusasPlayers,
-    setPelusasRevolutionMode,
     setPelusasCardCount,
     resetPelusasCounts,
     finishPelusasSession,
@@ -2569,8 +2765,17 @@ export function useApp() {
     regicideSession,
     startRegicideSession,
     saveRegicideAndExit,
+    defeatRegicideAndExit,
     deleteRegicideAndExit,
     updateRegicideSession,
+    sushiGoSession,
+    startSushiGoSession,
+    saveSushiGoAndExit,
+    deleteSushiGoAndExit,
+    goSushiGoRound,
+    updateSushiGoRoundEntry,
+    setSushiGoAlternatePass,
+    finishSushiGoSession,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

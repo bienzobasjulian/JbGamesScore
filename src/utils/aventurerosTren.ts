@@ -44,25 +44,6 @@ const ROUTE_CONFIG: Record<
   },
 };
 
-export const AVENTUREROS_TREN_SUBMODES: {
-  id: AventurerosTrenSubmode;
-  name: string;
-  description: string;
-}[] = [
-  {
-    id: 'base',
-    name: 'Aventureros al tren',
-    description:
-      'Vías 1–6. Bonificación +10 por ruta más larga. Desempate: billetes, luego ruta.',
-  },
-  {
-    id: 'europa',
-    name: 'Aventureros al tren Europa',
-    description:
-      'Vías 1–4, 6 y 8. Estaciones sin usar (+4 c/u). Desempate: billetes, estaciones, ruta.',
-  },
-];
-
 export function getRouteLengthOptions(
   submode: AventurerosTrenSubmode,
 ): readonly number[] {

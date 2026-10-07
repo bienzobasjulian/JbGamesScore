@@ -349,10 +349,18 @@ export function createRegicideSession(): RegicideSession {
   return createTierSession([], 'J');
 }
 
-export function formatRegicideMatchProgress(session: RegicideSession): string {
-  if (session.victory) return 'Finalizada';
-  const defeated = session.defeatedRoyals.length;
-  return `${defeated}/12 derrotados`;
+export function formatRegicideMatchProgress(session: RegicideSession): string | null {
+  if (session.victory) return null;
+  return `${session.defeatedRoyals.length}/12 derrotados`;
+}
+
+export function getRegicideResultLabel(
+  session: RegicideSession | undefined,
+  status: 'in_progress' | 'finished',
+): 'Victoria' | 'Derrota' | null {
+  if (status !== 'finished') return null;
+  if (session?.victory) return 'Victoria';
+  return 'Derrota';
 }
 
 export function createRegicideMatch(

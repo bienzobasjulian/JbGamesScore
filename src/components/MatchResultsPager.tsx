@@ -30,6 +30,7 @@ type Props = {
   players: Player[];
   rounds: RoundScores[];
   floorTotalAtZero?: boolean;
+  roundLabels?: string[];
 };
 
 export function MatchResultsPager({
@@ -37,6 +38,7 @@ export function MatchResultsPager({
   players,
   rounds,
   floorTotalAtZero = false,
+  roundLabels,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -99,6 +101,7 @@ export function MatchResultsPager({
                 players={players}
                 rounds={rounds}
                 floorTotalAtZero={floorTotalAtZero}
+                roundLabels={roundLabels}
                 onHorizontalScrollStart={() => setPagerScrollEnabled(false)}
                 onHorizontalScrollEnd={() => setPagerScrollEnabled(true)}
               />

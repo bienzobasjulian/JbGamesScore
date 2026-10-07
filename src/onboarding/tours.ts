@@ -120,12 +120,6 @@ export const TOURS: Record<TourId, TourDefinition> = {
     id: 'pelusas',
     steps: [
       {
-        id: 'pelusas.revolution',
-        title: 'Modo Revolution',
-        body: 'Actívalo si jugáis con la versión Pelusas Revolution para contar sus cartas (20 y −7).',
-        anchorId: 'pelusas.revolution',
-      },
-      {
         id: 'pelusas.players',
         title: 'Cartas por jugador',
         body: 'Toca un jugador e indica cuántas cartas de cada valor tiene.',
@@ -193,17 +187,6 @@ export const TOURS: Record<TourId, TourDefinition> = {
         title: 'Rondas',
         body: 'El + confirma la ronda y abre la siguiente. Si alguien llega a 200, puedes finalizar. Puedes volver a una anterior para editarla.',
         anchorId: 'flip7.rounds',
-      },
-    ],
-  },
-  aventurerosSubmode: {
-    id: 'aventurerosSubmode',
-    steps: [
-      {
-        id: 'aventurerosSubmode.picker',
-        title: 'Submodo',
-        body: 'Elige según la versión que tengáis. Cambia las longitudes de vía y alguna puntuación extra.',
-        anchorId: 'aventurerosSubmode.picker',
       },
     ],
   },
@@ -287,7 +270,6 @@ export const TOUR_LABELS: Record<TourId, string> = {
   skullKing: 'Tutorial de Skull King',
   piliPili: 'Tutorial de Pili pili',
   flip7: 'Tutorial de Flip 7',
-  aventurerosSubmode: 'Tutorial de submodo',
   aventurerosConstruccion: 'Tutorial de construcción',
   aventurerosDestinos: 'Tutorial de destinos',
   regicideSelect: 'Tutorial de enemigo',

@@ -34,6 +34,7 @@ import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SessionsListScreen } from './src/screens/SessionsListScreen';
 import { SelectPlayersScreen } from './src/screens/SelectPlayersScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
+import { SushiGoCounterScreen } from './src/screens/SushiGoCounterScreen';
 import { PiliPiliCounterScreen } from './src/screens/PiliPiliCounterScreen';
 import { Flip7CounterScreen } from './src/screens/Flip7CounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
@@ -45,6 +46,7 @@ import {
   PelusasSetupDraft,
 } from './src/types/playerSelection';
 import { checkGameOver } from './src/utils/game';
+import { SUSHI_GO_RESULT_ROUND_LABELS } from './src/utils/sushiGo';
 import {
   formatMatchTitle,
   getAllMatchesSorted,
@@ -187,6 +189,7 @@ function AppShell() {
           case 'piliPiliCount':
           case 'flip7Count':
           case 'aventurerosTrenCount':
+          case 'sushiGoCount':
             return false;
 
           case 'regicideCount':
@@ -268,8 +271,8 @@ function AppShell() {
             onStartStandard={(players, settings, name, sessionId) => {
               app.createAndStartMatch(players, settings, name, sessionId);
             }}
-            onStartPelusas={(players, sessionId) => {
-              app.startPelusasSession(players, sessionId);
+            onStartPelusas={(players, sessionId, revolutionMode) => {
+              app.startPelusasSession(players, sessionId, revolutionMode);
             }}
             onStartSkullKing={(players, sessionId) => {
               app.startSkullKingSession(players, sessionId);
@@ -285,6 +288,9 @@ function AppShell() {
             }}
             onStartRegicide={(sessionId) => {
               app.startRegicideSession(sessionId);
+            }}
+            onStartSushiGo={(players, sessionId) => {
+              app.startSushiGoSession(players, sessionId);
             }}
             selfPlayer={app.selfPlayer}
           />
@@ -316,8 +322,8 @@ function AppShell() {
             onStartStandard={(players, settings, name, sessionId) => {
               app.createAndStartMatch(players, settings, name, sessionId);
             }}
-            onStartPelusas={(players, sessionId) => {
-              app.startPelusasSession(players, sessionId);
+            onStartPelusas={(players, sessionId, revolutionMode) => {
+              app.startPelusasSession(players, sessionId, revolutionMode);
             }}
             onStartSkullKing={(players, sessionId) => {
               app.startSkullKingSession(players, sessionId);
@@ -333,6 +339,9 @@ function AppShell() {
             }}
             onStartRegicide={(sessionId) => {
               app.startRegicideSession(sessionId);
+            }}
+            onStartSushiGo={(players, sessionId) => {
+              app.startSushiGoSession(players, sessionId);
             }}
             selfPlayer={app.selfPlayer}
           />
@@ -555,7 +564,13 @@ function AppShell() {
               match.gameMode === 'skull_king' ||
               match.gameMode === 'pili_pili' ||
               match.gameMode === 'flip7' ||
-              match.gameMode === 'aventureros_tren'
+              match.gameMode === 'aventureros_tren' ||
+              match.gameMode === 'sushi_go'
+            }
+            roundLabels={
+              match.gameMode === 'sushi_go'
+                ? SUSHI_GO_RESULT_ROUND_LABELS
+                : undefined
             }
             floorRoundTotalsAtZero={match.gameMode === 'pili_pili'}
             onAddBreakdownItem={(playerId, value) =>
@@ -655,7 +670,6 @@ function AppShell() {
             onSaveAndExit={app.savePelusasAndExit}
             onDeleteAndExit={app.deletePelusasAndExit}
             onFinishMatch={app.finishPelusasSession}
-            onSetRevolutionMode={app.setPelusasRevolutionMode}
             onSetCardCount={app.setPelusasCardCount}
             onResetCounts={app.resetPelusasCounts}
             onEditMatch={() => app.goPelusasSetup(true)}
@@ -736,8 +750,24 @@ function AppShell() {
           <RegicideCounterScreen
             session={app.regicideSession}
             onSaveAndExit={app.saveRegicideAndExit}
+            onDefeatAndExit={app.defeatRegicideAndExit}
             onDeleteAndExit={app.deleteRegicideAndExit}
             onUpdateSession={app.updateRegicideSession}
+          />
+        );
+      }
+
+      case 'sushiGoCount': {
+        if (!app.sushiGoSession) return null;
+        return (
+          <SushiGoCounterScreen
+            session={app.sushiGoSession}
+            onSaveAndExit={app.saveSushiGoAndExit}
+            onDeleteAndExit={app.deleteSushiGoAndExit}
+            onFinishMatch={app.finishSushiGoSession}
+            onGoToRound={app.goSushiGoRound}
+            onUpdateRoundEntry={app.updateSushiGoRoundEntry}
+            onSetAlternatePass={app.setSushiGoAlternatePass}
           />
         );
       }

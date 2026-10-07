@@ -59,7 +59,7 @@ export function PelusasSetupScreen({
 
   const rosterBlock = (
     <MatchPlayerRoster
-      intro="Añade quién juega esta mano. Después indicaréis cuántas cartas del 1 al 10 tiene cada jugador (y las de Revolution, si las activáis)."
+      intro="Añade quién juega esta mano. Después indicaréis cuántas cartas tiene cada jugador."
       playerCount={players.length}
       onChoosePlayers={handleChoosePlayers}
       soloHint={formatSoloPlayerHint(selfPlayer)}

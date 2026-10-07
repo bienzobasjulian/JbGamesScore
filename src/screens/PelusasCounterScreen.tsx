@@ -3,7 +3,6 @@ import {
   BackHandler,
   Platform,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
@@ -17,12 +16,13 @@ import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { PelusasPlayerPanel } from '../components/PelusasPlayerPanel';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { TourAnchor, TourScrollView, useAutoTour, useOnboarding } from '../onboarding';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
 import { PelusasSession } from '../types';
 import {
   emptyPelusasCounts,
-  PELUSAS_HOW_TO_PLAY,
+  getPelusasGameName,
+  getPelusasHowToPlay,
   sortPlayersByPelusasScore,
 } from '../utils/pelusas';
 
@@ -31,7 +31,6 @@ type Props = {
   onSaveAndExit: () => void;
   onDeleteAndExit: () => void;
   onFinishMatch: () => void;
-  onSetRevolutionMode: (enabled: boolean) => void;
   onSetCardCount: (
     playerId: string,
     cardValue: number,
@@ -46,12 +45,10 @@ export function PelusasCounterScreen({
   onSaveAndExit,
   onDeleteAndExit,
   onFinishMatch,
-  onSetRevolutionMode,
   onSetCardCount,
   onResetCounts,
   onEditMatch,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const { startTour } = useOnboarding();
   useAutoTour('pelusas');
@@ -79,6 +76,7 @@ export function PelusasCounterScreen({
   );
 
   const leader = ranking[0];
+  const gameName = getPelusasGameName(session.revolutionMode);
 
   const togglePlayer = (playerId: string) => {
     setExpandedPlayers((prev) => {
@@ -118,7 +116,7 @@ export function PelusasCounterScreen({
       <View style={styles.container}>
         <HowToPlayScreen
           title="Cómo jugar"
-          body={PELUSAS_HOW_TO_PLAY}
+          body={getPelusasHowToPlay(session.revolutionMode)}
           onBack={() => setHowToVisible(false)}
         />
       </View>
@@ -128,7 +126,7 @@ export function PelusasCounterScreen({
   return (
     <View style={styles.container}>
       <AppHeader
-        title="Pelusas"
+        title={gameName}
         onBack={requestExit}
         onMenuPress={() => setActionsMenuVisible(true)}
         menuIcon="more"
@@ -140,25 +138,6 @@ export function PelusasCounterScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <TourAnchor id="pelusas.revolution">
-        <View style={styles.revolutionPanel}>
-          <View style={styles.revolutionInfo}>
-            <Text style={styles.revolutionTitle}>Modo Revolution</Text>
-            <Text style={styles.revolutionHint}>
-              Añade cartas de 20 y de −7 al conteo
-            </Text>
-          </View>
-          <Switch
-            value={session.revolutionMode}
-            onValueChange={onSetRevolutionMode}
-            trackColor={{ false: theme.border, true: theme.accentDark }}
-            thumbColor={
-              session.revolutionMode ? theme.accent : theme.textMuted
-            }
-          />
-        </View>
-        </TourAnchor>
-
         {leader && session.players.length > 1 ? (
           <View style={styles.rankingPanel}>
             <Text style={styles.rankingTitle}>Clasificación</Text>
@@ -233,7 +212,7 @@ export function PelusasCounterScreen({
 
       <ExitMatchModal
         visible={exitModalVisible}
-        matchTitle="Pelusas"
+        matchTitle={gameName}
         onClose={() => setExitModalVisible(false)}
         onSaveAndExit={() => {
           setExitModalVisible(false);
@@ -247,7 +226,7 @@ export function PelusasCounterScreen({
 
       <FinishMatchModal
         visible={finishModalVisible}
-        matchTitle="Pelusas"
+        matchTitle={gameName}
         onClose={() => setFinishModalVisible(false)}
         onViewResults={handleSaveFinished}
         onSaveFinished={handleSaveFinished}
@@ -273,7 +252,7 @@ export function PelusasCounterScreen({
           },
           {
             title: 'Cómo jugar',
-            hint: 'Resumen de las reglas de Pelusas',
+            hint: `Resumen de las reglas de ${gameName}`,
             onPress: () => setHowToVisible(true),
           },
         ]}
@@ -294,31 +273,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   scrollContent: {
     gap: 14,
     paddingBottom: 12,
-  },
-  revolutionPanel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    backgroundColor: theme.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  revolutionInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  revolutionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.text,
-  },
-  revolutionHint: {
-    fontSize: 13,
-    color: theme.textMuted,
-    lineHeight: 18,
   },
   rankingPanel: {
     backgroundColor: theme.surface,

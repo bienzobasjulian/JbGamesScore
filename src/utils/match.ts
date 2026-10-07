@@ -28,9 +28,15 @@ import {
 } from './rounds';
 import {
   comparePelusasRanking,
+  getPelusasGameName,
   getPelusasMatchRanking as sortPelusasMatch,
   getPelusasMatchWinners,
 } from './pelusas';
+import {
+  getSushiGoStandings,
+  normalizeSushiGoSession,
+  rankSushiGoStandings,
+} from './sushiGo';
 
 export type RankedPlayer = {
   player: Player;
@@ -98,6 +104,41 @@ function getFlip7MatchWinners(match: Match): Player[] {
     .map((entry) => entry.player);
 }
 
+function getSushiGoMatchRanking(match: Match): RankedPlayer[] {
+  if (match.sushiGoSession) {
+    const session = normalizeSushiGoSession(match.sushiGoSession);
+    return rankSushiGoStandings(getSushiGoStandings(session)).map(
+      ({ standing, rank }) => ({
+        player: standing.player,
+        total: standing.total,
+        rank,
+      }),
+    );
+  }
+
+  const state = matchToGameState(match);
+  const sorted = sortPlayersByScore(match.players, state);
+  let rank = 0;
+  let prevScore: number | null = null;
+  return sorted.map((player, index) => {
+    const total = getPlayerTotal(player.id, state);
+    if (prevScore === null || total !== prevScore) {
+      rank = index + 1;
+      prevScore = total;
+    }
+    return { player, total, rank };
+  });
+}
+
+function getSushiGoMatchWinners(match: Match): Player[] {
+  const ranked = getSushiGoMatchRanking(match);
+  if (ranked.length === 0) return [];
+  const topRank = ranked[0].rank;
+  return ranked
+    .filter((entry) => entry.rank === topRank)
+    .map((entry) => entry.player);
+}
+
 function getPelusasMatchRanking(match: Match): RankedPlayer[] {
   const sorted = sortPelusasMatch(match);
   const session = match.pelusasSession;
@@ -130,10 +171,17 @@ export function matchToGameState(match: Match): GameState {
 }
 
 export function formatMatchTitle(match: Match): string {
+  if (match.gameMode === 'pelusas') {
+    const variant = getPelusasGameName(Boolean(match.pelusasRevolution));
+    const custom = match.name?.trim();
+    if (!custom || custom === 'Pelusas' || custom === 'Pelusas Revolution') {
+      return variant;
+    }
+    return custom;
+  }
   const custom = match.name?.trim();
   if (custom) return custom;
   if (match.winnerOnly) return 'Partida con ganador';
-  if (match.gameMode === 'pelusas') return 'Pelusas';
   if (match.gameMode === 'skull_king') return 'Skull King';
   if (match.gameMode === 'pili_pili') return 'Pili pili';
   if (match.gameMode === 'flip7') return 'Flip 7';
@@ -143,6 +191,7 @@ export function formatMatchTitle(match: Match): string {
   if (match.gameMode === 'regicide') {
     return match.name?.trim() || 'Regicide';
   }
+  if (match.gameMode === 'sushi_go') return 'Sushi Go';
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
   if (names.length === 1) return names[0];
@@ -202,6 +251,9 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
   if (match.gameMode === 'pelusas') {
     return getPelusasMatchRanking(match);
   }
+  if (match.gameMode === 'sushi_go') {
+    return getSushiGoMatchRanking(match);
+  }
   return getMatchRankingFromState(matchToGameState(match));
 }
 
@@ -225,6 +277,10 @@ export function getMatchWinners(match: Match): Player[] {
 
   if (match.gameMode === 'pelusas') {
     return getPelusasMatchWinners(match);
+  }
+
+  if (match.gameMode === 'sushi_go') {
+    return getSushiGoMatchWinners(match);
   }
 
   const state = matchToGameState(match);
@@ -267,9 +323,7 @@ export function formatMatchListMeta(match: Match): string {
     parts.push(formatPlayerCount(match.players.length));
   }
   if (match.gameMode === 'pelusas') {
-    parts.push(
-      match.pelusasRevolution ? 'Pelusas · Revolution' : 'Pelusas',
-    );
+    parts.push(getPelusasGameName(Boolean(match.pelusasRevolution)));
   }
   if (match.gameMode === 'skull_king') {
     parts.push('Skull King · 10 rondas');
@@ -283,10 +337,14 @@ export function formatMatchListMeta(match: Match): string {
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));
   }
+  if (match.gameMode === 'sushi_go') {
+    parts.push('Sushi Go · 3 rondas');
+  }
   if (match.gameMode === 'regicide') {
     parts.push('Regicide');
     if (match.regicideSession) {
-      parts.push(formatRegicideMatchProgress(match.regicideSession));
+      const progress = formatRegicideMatchProgress(match.regicideSession);
+      if (progress) parts.push(progress);
     }
   }
   if (match.winnerOnly) {
@@ -303,10 +361,10 @@ export function formatMatchListMeta(match: Match): string {
 export function formatMatchListSubtitle(match: Match): string {
   const meta = formatMatchListMeta(match);
   if (match.status === 'finished') {
-    const winner = formatWinnerLabel(match);
-    if (match.gameMode === 'regicide' && match.regicideSession?.victory) {
+    if (match.gameMode === 'regicide') {
       return meta;
     }
+    const winner = formatWinnerLabel(match);
     return winner ? `${meta}\n${winner}` : `${meta}\nFinalizada`;
   }
   return meta;

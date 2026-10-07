@@ -1,16 +1,25 @@
 import { PLAYER_COLOR_OPTIONS } from '../constants';
-import type { PreferredCreateMatchGame } from '../types';
+import type { AventurerosTrenSubmode, PreferredCreateMatchGame } from '../types';
 import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
 import { AVENTUREROS_TOKEN_COLOR_OPTIONS } from './aventurerosTren';
 
-export type CreateMatchGameType =
-  | 'standard'
-  | 'pelusas'
-  | 'skull_king'
-  | 'pili_pili'
-  | 'flip7'
-  | 'aventureros_tren'
-  | 'regicide';
+export type CreateMatchGameType = PreferredCreateMatchGame | 'standard';
+
+export function isPelusasGame(gameType: CreateMatchGameType): boolean {
+  return gameType === 'pelusas' || gameType === 'pelusas_revolution';
+}
+
+export function isAventurerosTrenGame(gameType: CreateMatchGameType): boolean {
+  return (
+    gameType === 'aventureros_tren' || gameType === 'aventureros_tren_europa'
+  );
+}
+
+export function aventurerosSubmodeForGame(
+  gameType: CreateMatchGameType,
+): AventurerosTrenSubmode {
+  return gameType === 'aventureros_tren_europa' ? 'europa' : 'base';
+}
 
 export type CreateMatchPlayerLimits = {
   min: number;
@@ -28,11 +37,15 @@ export function getCreateMatchPlayerLimits(
     case 'flip7':
       return { min: 3, max: Number.POSITIVE_INFINITY };
     case 'aventureros_tren':
+    case 'aventureros_tren_europa':
       return { min: 1, max: 5 };
     case 'pelusas':
+    case 'pelusas_revolution':
       return { min: 1, max: Number.POSITIVE_INFINITY };
     case 'regicide':
       return { min: 0, max: 0 };
+    case 'sushi_go':
+      return { min: 2, max: 5 };
     default:
       return { min: 1, max: Number.POSITIVE_INFINITY };
   }
@@ -61,7 +74,12 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
   {
     id: 'pelusas',
     name: 'Pelusas',
-    description: 'Contador de cartas del 1 al 10 y modo Revolution',
+    description: 'Contador de cartas del 1 al 10',
+  },
+  {
+    id: 'pelusas_revolution',
+    name: 'Pelusas Revolution',
+    description: 'Contador de cartas del 1 al 10, más las de 20 y −7',
   },
   {
     id: 'skull_king',
@@ -82,14 +100,25 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
   {
     id: 'aventureros_tren',
     name: 'Aventureros al tren',
+    description: 'Construcción, destinos y desempates (2–5 jugadores)',
+  },
+  {
+    id: 'aventureros_tren_europa',
+    name: 'Aventureros al tren Europa',
     description:
-      'Base o Europa: construcción, destinos y desempates (2–5 jugadores)',
+      'Estaciones, túneles y vías de hasta 8 vagones (2–5 jugadores)',
   },
   {
     id: 'regicide',
     name: 'Regicide',
     description:
       'Asistente cooperativo: vida y ataque de J, Q y K (horizontal)',
+  },
+  {
+    id: 'sushi_go',
+    name: 'Sushi Go',
+    description:
+      'Tres rondas de cartas: maki, nigiri, tempura y pudin (2–5 jugadores)',
   },
 ];
 
@@ -152,6 +181,7 @@ export function getMatchTokenColorOptions(
 ): readonly MatchTokenColorOption[] | null {
   switch (gameType) {
     case 'aventureros_tren':
+    case 'aventureros_tren_europa':
       return AVENTUREROS_TOKEN_COLOR_OPTIONS;
     case 'standard':
       return PLAYER_COLOR_OPTIONS;
@@ -165,6 +195,7 @@ export function getMatchTokenColorHint(
 ): string | null {
   switch (gameType) {
     case 'aventureros_tren':
+    case 'aventureros_tren_europa':
       return 'Elige el color de la locomotora de cada jugador. Solo vale para esta partida; no cambia su color guardado.';
     case 'standard':
       return 'Si el juego tiene fichas de colores, elige uno en cada jugador. Solo vale para esta partida.';

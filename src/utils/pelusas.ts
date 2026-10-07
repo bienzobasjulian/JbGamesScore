@@ -15,6 +15,15 @@ export const PELUSAS_HOW_TO_PLAY = [
   'Gana quien más puntos sume. Si hay empate, gana quien tenga más cartas de 1; si sigue, de 2, y así.',
 ].join('\n\n');
 
+export function getPelusasGameName(revolutionMode: boolean): string {
+  return revolutionMode ? 'Pelusas Revolution' : 'Pelusas';
+}
+
+export function getPelusasHowToPlay(revolutionMode: boolean): string {
+  if (!revolutionMode) return PELUSAS_HOW_TO_PLAY;
+  return `${PELUSAS_HOW_TO_PLAY}\n\nEn Pelusas Revolution también se cuentan las cartas de 20 y de −7, cada una con ese valor.`;
+}
+
 export const PELUSAS_STANDARD_CARDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 export const PELUSAS_REVOLUTION_CARDS = [20, -7] as const;
 
@@ -153,7 +162,7 @@ export function createInProgressPelusasMatch(
   const now = Date.now();
   return {
     id: createId(),
-    name: 'Pelusas',
+    name: getPelusasGameName(session.revolutionMode),
     gameMode: 'pelusas',
     sessionId: sessionId ?? null,
     pelusasRevolution: session.revolutionMode,
@@ -182,7 +191,7 @@ export function createFinishedPelusasMatch(session: PelusasSession): Match {
 
   return {
     id: createId(),
-    name: 'Pelusas',
+    name: getPelusasGameName(session.revolutionMode),
     gameMode: 'pelusas',
     pelusasRevolution: session.revolutionMode,
     settings: { maxRounds: null, maxPointsToWin: null },

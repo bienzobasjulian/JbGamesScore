@@ -70,7 +70,9 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                     ? 'aventureros_tren'
                     : m.gameMode === 'regicide'
                       ? 'regicide'
-                      : 'standard',
+                      : m.gameMode === 'sushi_go'
+                        ? 'sushi_go'
+                        : 'standard',
             pelusasRevolution:
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),
@@ -92,6 +94,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               m.pelusasSession != null &&
               typeof m.pelusasSession === 'object'
                 ? m.pelusasSession
+                : undefined,
+            sushiGoSession:
+              m.gameMode === 'sushi_go' &&
+              m.sushiGoSession != null &&
+              typeof m.sushiGoSession === 'object'
+                ? m.sushiGoSession
                 : undefined,
           } as Match),
         )

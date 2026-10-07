@@ -8,6 +8,8 @@ type Props = {
   onClose: () => void;
   onSaveAndExit: () => void;
   onDeleteAndExit: () => void;
+  /** Si se indica, muestra la opción de cerrar la partida como derrota. */
+  onDefeatAndExit?: () => void;
 };
 
 export function ExitMatchModal({
@@ -16,6 +18,7 @@ export function ExitMatchModal({
   onClose,
   onSaveAndExit,
   onDeleteAndExit,
+  onDefeatAndExit,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -62,6 +65,28 @@ export function ExitMatchModal({
               </Text>
             </View>
           </Pressable>
+
+          {onDefeatAndExit ? (
+            <Pressable
+              onPress={onDefeatAndExit}
+              style={({ pressed }) => [
+                styles.option,
+                styles.optionDefeat,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <View style={[styles.optionIcon, styles.optionIconDefeat]}>
+                <Text style={styles.optionIconText}>☠</Text>
+              </View>
+              <View style={styles.optionTexts}>
+                <Text style={styles.optionTitle}>Registrar derrota y salir</Text>
+                <Text style={styles.optionHint}>
+                  Cierra la partida como derrota y guarda cuántos enemigos
+                  vencisteis
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           <Pressable
             onPress={onDeleteAndExit}
@@ -163,6 +188,10 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.accent + '14',
     borderColor: theme.accent + '50',
   },
+  optionDefeat: {
+    backgroundColor: theme.warning + '14',
+    borderColor: theme.warning + '50',
+  },
   optionDelete: {
     backgroundColor: theme.danger + '10',
     borderColor: theme.danger + '40',
@@ -179,6 +208,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   optionIconSave: {
     backgroundColor: theme.accent,
+  },
+  optionIconDefeat: {
+    backgroundColor: theme.warning,
   },
   optionIconDelete: {
     backgroundColor: theme.danger,

@@ -40,10 +40,14 @@ export type MatchGameMode =
   | 'pili_pili'
   | 'flip7'
   | 'aventureros_tren'
-  | 'regicide';
+  | 'regicide'
+  | 'sushi_go';
 
 /** Juegos dedicados que el usuario puede mostrar al crear una partida. */
-export type PreferredCreateMatchGame = Exclude<MatchGameMode, 'standard'>;
+export type PreferredCreateMatchGame =
+  | Exclude<MatchGameMode, 'standard'>
+  | 'pelusas_revolution'
+  | 'aventureros_tren_europa';
 
 export type PlaySessionStatus = 'active' | 'closed';
 
@@ -90,6 +94,7 @@ export type Match = {
   piliPiliSession?: PiliPiliSession;
   flip7Session?: Flip7Session;
   aventurerosTrenSession?: AventurerosTrenSession;
+  sushiGoSession?: SushiGoSession;
   createdAt: number;
   updatedAt: number;
 };
@@ -191,6 +196,30 @@ export type Flip7Session = {
   rounds: Record<string, Flip7RoundEntry>[];
 };
 
+export type SushiGoRoundEntry = {
+  /** Símbolos de rollo, no número de cartas. */
+  makiRolls: number;
+  tempura: number;
+  sashimi: number;
+  gyoza: number;
+  nigiriSquid: number;
+  nigiriSquidWasabi: number;
+  nigiriSalmon: number;
+  nigiriSalmonWasabi: number;
+  nigiriEgg: number;
+  nigiriEggWasabi: number;
+  /** Pudines jugados en esta ronda. Se conservan hasta el final de la partida. */
+  pudding: number;
+};
+
+export type SushiGoSession = {
+  players: Player[];
+  activeRoundIndex: number;
+  /** Rondas 1 y 3 hacia la izquierda; la 2 hacia la derecha. */
+  alternatePassDirection: boolean;
+  rounds: Record<string, SushiGoRoundEntry>[];
+};
+
 export type AventurerosTrenPhase = 'construccion' | 'destinos';
 
 export type AventurerosTrenSubmode = 'base' | 'europa';
@@ -269,6 +298,7 @@ export type AppScreen =
   | { type: 'flip7Count' }
   | { type: 'aventurerosTrenCount' }
   | { type: 'regicideCount' }
+  | { type: 'sushiGoCount' }
   | { type: 'sessionsList' }
   | { type: 'createSession'; returnTo?: 'home' | 'sessionsList' }
   | { type: 'sessionDetail'; sessionId: string }

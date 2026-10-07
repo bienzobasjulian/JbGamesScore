@@ -12,8 +12,7 @@ import { GameTypePicker } from '../components/GameTypePicker';
 import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
 import { TemplatePicker } from '../components/TemplatePicker';
-import { AventurerosTrenSubmodePicker } from '../components/AventurerosTrenSubmodePicker';
-import { TourAnchor, useAutoTour, useOnboarding } from '../onboarding';
+import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateMatchDraft } from '../types/playerSelection';
 import {
@@ -26,12 +25,15 @@ import {
   SavedPlayer,
 } from '../types';
 import {
+  aventurerosSubmodeForGame,
   CreateMatchGameType,
   getCreateMatchPlayerLimits,
   getMatchTokenColorHint,
   getMatchTokenColorOptions,
   getVisibleCreateMatchGames,
+  isAventurerosTrenGame,
   isDedicatedCreateMatchGame,
+  isPelusasGame,
   resolveCreateMatchGameType,
 } from '../utils/games';
 import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
@@ -50,8 +52,22 @@ function applyRosterColors(
   roster: Player[],
 ): Player[] {
   const options = getMatchTokenColorOptions(gameType);
-  if (gameType !== 'aventureros_tren' || !options) return roster;
+  if (!isAventurerosTrenGame(gameType) || !options) return roster;
   return assignUniquePlayerColors(roster, options);
+}
+
+function gameTypeFromDraft(
+  draft: CreateMatchDraft | null | undefined,
+  fallback: CreateMatchGameType,
+): CreateMatchGameType {
+  if (!draft) return fallback;
+  const legacySubmode = (
+    draft as CreateMatchDraft & { aventurerosSubmode?: string }
+  ).aventurerosSubmode;
+  if (draft.gameType === 'aventureros_tren' && legacySubmode === 'europa') {
+    return 'aventureros_tren_europa';
+  }
+  return draft.gameType;
 }
 
 function buildInitialFromTemplate(
@@ -109,7 +125,11 @@ type Props = {
     name?: string | null,
     sessionId?: string | null,
   ) => void;
-  onStartPelusas: (players: Player[], sessionId?: string | null) => void;
+  onStartPelusas: (
+    players: Player[],
+    sessionId?: string | null,
+    revolutionMode?: boolean,
+  ) => void;
   onStartSkullKing: (players: Player[], sessionId?: string | null) => void;
   onStartPiliPili: (players: Player[], sessionId?: string | null) => void;
   onStartFlip7: (players: Player[], sessionId?: string | null) => void;
@@ -119,6 +139,7 @@ type Props = {
     sessionId?: string | null,
   ) => void;
   onStartRegicide: (sessionId?: string | null) => void;
+  onStartSushiGo: (players: Player[], sessionId?: string | null) => void;
   selfPlayer?: Player | null;
 };
 
@@ -140,12 +161,11 @@ export function CreateMatchScreen({
   onStartFlip7,
   onStartAventurerosTren,
   onStartRegicide,
+  onStartSushiGo,
   selfPlayer = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
-  const { completedTours } = useOnboarding();
-
   const templateInitial = buildInitialFromTemplate(
     templates,
     savedPlayers,
@@ -162,7 +182,7 @@ export function CreateMatchScreen({
 
   const [gameType, setGameType] = useState<CreateMatchGameType>(() =>
     resolveCreateMatchGameType(
-      restoredDraft?.gameType ?? initialGameType,
+      gameTypeFromDraft(restoredDraft, initialGameType),
       preferredCreateMatchGames,
     ),
   );
@@ -175,7 +195,7 @@ export function CreateMatchScreen({
   const [players, setPlayers] = useState<Player[]>(
     applyRosterColors(
       resolveCreateMatchGameType(
-        restoredDraft?.gameType ?? initialGameType,
+        gameTypeFromDraft(restoredDraft, initialGameType),
         preferredCreateMatchGames,
       ),
       restoredDraft?.players ?? templateInitial.players,
@@ -184,23 +204,19 @@ export function CreateMatchScreen({
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
     restoredDraft?.loadedTemplateId ?? templateInitial.loadedTemplateId,
   );
-  const [aventurerosSubmode, setAventurerosSubmode] =
-    useState<AventurerosTrenSubmode>(
-      restoredDraft?.aventurerosSubmode ?? 'base',
-    );
   const [randomStarterName, setRandomStarterName] = useState<string | null>(
     restoredDraft?.randomStarterName ?? null,
   );
 
-  const isPelusas = gameType === 'pelusas';
+  const isPelusas = isPelusasGame(gameType);
+  const isPelusasRevolution = gameType === 'pelusas_revolution';
   const isSkullKing = gameType === 'skull_king';
   const isPiliPili = gameType === 'pili_pili';
   const isFlip7 = gameType === 'flip7';
-  const isAventurerosTren = gameType === 'aventureros_tren';
+  const isAventurerosTren = isAventurerosTrenGame(gameType);
+  const isAventurerosEuropa = gameType === 'aventureros_tren_europa';
   const isRegicide = gameType === 'regicide';
-  useAutoTour('aventurerosSubmode', {
-    enabled: isAventurerosTren && completedTours.includes('createMatch'),
-  });
+  const isSushiGo = gameType === 'sushi_go';
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
   const tokenColors = getMatchTokenColorOptions(gameType);
@@ -208,7 +224,7 @@ export function CreateMatchScreen({
 
   const canStart = isRegicide
     ? true
-    : isPiliPili || isFlip7 || isSkullKing
+    : isPiliPili || isFlip7 || isSkullKing || isSushiGo
       ? players.length >= playerLimits.min && players.length <= playerLimits.max
       : players.length <= playerLimits.max;
   const soloHint = formatSoloPlayerHint(selfPlayer);
@@ -225,7 +241,6 @@ export function CreateMatchScreen({
       matchName,
       players,
       loadedTemplateId,
-      aventurerosSubmode,
       randomStarterName,
     }),
     [
@@ -234,7 +249,6 @@ export function CreateMatchScreen({
       matchName,
       players,
       loadedTemplateId,
-      aventurerosSubmode,
       randomStarterName,
     ],
   );
@@ -324,7 +338,7 @@ export function CreateMatchScreen({
       ensureMatchPlayers(players, selfPlayer),
     );
     if (isPelusas) {
-      onStartPelusas(roster, sessionId ?? null);
+      onStartPelusas(roster, sessionId ?? null, isPelusasRevolution);
     } else if (isSkullKing) {
       onStartSkullKing(roster, sessionId ?? null);
     } else if (isPiliPili) {
@@ -332,7 +346,13 @@ export function CreateMatchScreen({
     } else if (isFlip7) {
       onStartFlip7(roster, sessionId ?? null);
     } else if (isAventurerosTren) {
-      onStartAventurerosTren(roster, aventurerosSubmode, sessionId ?? null);
+      onStartAventurerosTren(
+        roster,
+        aventurerosSubmodeForGame(gameType),
+        sessionId ?? null,
+      );
+    } else if (isSushiGo) {
+      onStartSushiGo(roster, sessionId ?? null);
     } else {
       onStartStandard(
         roster,
@@ -388,8 +408,9 @@ export function CreateMatchScreen({
         </>
       ) : isPelusas ? (
         <Text style={styles.specialHint}>
-          Solo necesitas elegir quién juega. El conteo de cartas y el modo
-          Revolution se configuran en la siguiente pantalla.
+          {isPelusasRevolution
+            ? 'Solo necesitas elegir quién juega. En la siguiente pantalla contarás las cartas del 1 al 10, más las de 20 y −7.'
+            : 'Solo necesitas elegir quién juega. En la siguiente pantalla contarás las cartas del 1 al 10.'}
         </Text>
       ) : isSkullKing ? (
         <Text style={styles.specialHint}>
@@ -418,20 +439,21 @@ export function CreateMatchScreen({
             mostrará en horizontal para gestionar vida y ataque de cada enemigo.
           </Text>
         </View>
-      ) : (
-        <>
-          <TourAnchor id="aventurerosSubmode.picker">
-            <AventurerosTrenSubmodePicker
-              selected={aventurerosSubmode}
-              onSelect={setAventurerosSubmode}
-            />
-          </TourAnchor>
-          <Text style={styles.specialHint}>
-            Dos fases: construcción de vías y comprobación de destinos. De 1 a{' '}
-            {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
-          </Text>
-        </>
-      )}
+      ) : isAventurerosTren ? (
+        <Text style={styles.specialHint}>
+          {isAventurerosEuropa
+            ? 'Dos fases: construcción de vías y comprobación de destinos, con estaciones y túneles. De 1 a '
+            : 'Dos fases: construcción de vías y comprobación de destinos. De 1 a '}
+          {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
+        </Text>
+      ) : isSushiGo ? (
+        <Text style={styles.specialHint}>
+          Tres rondas. Con 2, 3, 4 o 5 jugadores se reparten 10, 9, 8 o 7
+          cartas. Ordena la mesa: las cartas se pasan a la izquierda. Al acabar
+          cada ronda anotas lo que tiene cada uno delante; el pudin se puntúa
+          al final.
+        </Text>
+      ) : null}
 
       {!isRegicide ? (
         <TourAnchor id="createMatch.players">

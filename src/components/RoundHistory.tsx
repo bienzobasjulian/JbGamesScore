@@ -9,6 +9,8 @@ type Props = {
   rounds: RoundScores[];
   /** Total y delta de ronda respetan el suelo en 0 (Pili pili). */
   floorTotalAtZero?: boolean;
+  /** Etiqueta de cada ronda. Si falta, se usa el número. */
+  roundLabels?: string[];
   onHorizontalScrollStart?: () => void;
   onHorizontalScrollEnd?: () => void;
 };
@@ -86,11 +88,14 @@ export function RoundHistory({
   players,
   rounds,
   floorTotalAtZero = false,
+  roundLabels,
   onHorizontalScrollStart,
   onHorizontalScrollEnd,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const wideLabels = (roundLabels ?? []).some((label) => label.length > 2);
+  const roundColStyle = [styles.roundCol, wideLabels && styles.roundColWide];
 
   if (rounds.length === 0) return null;
 
@@ -115,7 +120,7 @@ export function RoundHistory({
       >
         <View style={styles.table}>
           <View style={styles.headerRow}>
-            <Text style={[styles.cell, styles.headerCell, styles.roundCol]}>
+            <Text style={[styles.cell, styles.headerCell, ...roundColStyle]}>
               Ronda
             </Text>
             {players.map((p) => (
@@ -128,8 +133,8 @@ export function RoundHistory({
           </View>
           {rounds.map((round, index) => (
             <View key={index} style={styles.dataRow}>
-              <Text style={[styles.cell, styles.roundCol, styles.roundNum]}>
-                {index + 1}
+              <Text style={[styles.cell, ...roundColStyle, styles.roundNum]}>
+                {roundLabels?.[index] ?? index + 1}
               </Text>
               {players.map((p) => {
                 const rawRoundScore = getRoundScore(round, p.id);
@@ -158,7 +163,7 @@ export function RoundHistory({
             </View>
           ))}
           <View style={[styles.dataRow, styles.totalRow]}>
-            <Text style={[styles.cell, styles.roundCol, styles.totalLabel]}>
+            <Text style={[styles.cell, ...roundColStyle, styles.totalLabel]}>
               Total
             </Text>
             {players.map((p) => (
@@ -228,6 +233,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     width: 52,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  roundColWide: {
+    width: 72,
   },
   playerCol: {
     width: 88,
