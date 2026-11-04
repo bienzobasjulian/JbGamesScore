@@ -66,6 +66,8 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                     ? 'pili_pili'
                     : m.gameMode === 'flip7'
                       ? 'flip7'
+                    : m.gameMode === 'flip7_vengeance'
+                      ? 'flip7_vengeance'
                     : m.gameMode === 'aventureros_tren'
                     ? 'aventureros_tren'
                     : m.gameMode === 'regicide'

@@ -8,6 +8,7 @@ export type TourId =
   | 'skullKing'
   | 'piliPili'
   | 'flip7'
+  | 'flip7Vengeance'
   | 'aventurerosConstruccion'
   | 'aventurerosDestinos'
   | 'regicideSelect'

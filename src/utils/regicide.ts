@@ -1,4 +1,4 @@
-import { Match } from '../types';
+import { Match, Player } from '../types';
 import type { HowToPlaySection } from '../types/howToPlay';
 import { createId, normalizeSettings } from './game';
 
@@ -367,25 +367,40 @@ export function createRegicideMatch(
   session: RegicideSession,
   sessionId?: string | null,
   name?: string | null,
+  players: Player[] = [],
 ): Match {
   const now = Date.now();
   const trimmedName = name?.trim();
+  const roster = players ?? [];
   return {
     id: createId(),
     name: trimmedName ? trimmedName : null,
     sessionId: sessionId ?? null,
     gameMode: 'regicide',
     settings: normalizeSettings({ maxRounds: null, maxPointsToWin: null }),
-    players: [],
+    players: roster,
     rounds: [],
     roundBreakdowns: [],
     activeRoundIndex: 0,
     roundScoringMode: {},
     status: session.victory ? 'finished' : 'in_progress',
+    winnerIds: session.victory ? roster.map((player) => player.id) : undefined,
     regicideSession: session,
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/** En victoria cooperativa, todos los jugadores de la partida cuentan como ganadores. */
+export function getRegicideMatchWinners(match: Match): Player[] {
+  if (match.status !== 'finished' || !match.regicideSession?.victory) {
+    return [];
+  }
+  if (match.winnerIds?.length) {
+    const ids = new Set(match.winnerIds);
+    return match.players.filter((player) => ids.has(player.id));
+  }
+  return match.players;
 }
 
 function sumCardValues(cards: RegicideCard[]): number {

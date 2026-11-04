@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -133,12 +134,20 @@ type Props = {
   onStartSkullKing: (players: Player[], sessionId?: string | null) => void;
   onStartPiliPili: (players: Player[], sessionId?: string | null) => void;
   onStartFlip7: (players: Player[], sessionId?: string | null) => void;
+  onStartFlip7Vengeance: (
+    players: Player[],
+    sessionId?: string | null,
+    brutal?: boolean,
+  ) => void;
   onStartAventurerosTren: (
     players: Player[],
     submode: AventurerosTrenSubmode,
     sessionId?: string | null,
   ) => void;
-  onStartRegicide: (sessionId?: string | null) => void;
+  onStartRegicide: (
+    players: Player[],
+    sessionId?: string | null,
+  ) => void;
   onStartSushiGo: (players: Player[], sessionId?: string | null) => void;
   selfPlayer?: Player | null;
 };
@@ -159,6 +168,7 @@ export function CreateMatchScreen({
   onStartSkullKing,
   onStartPiliPili,
   onStartFlip7,
+  onStartFlip7Vengeance,
   onStartAventurerosTren,
   onStartRegicide,
   onStartSushiGo,
@@ -207,12 +217,16 @@ export function CreateMatchScreen({
   const [randomStarterName, setRandomStarterName] = useState<string | null>(
     restoredDraft?.randomStarterName ?? null,
   );
+  const [flip7VengeanceBrutal, setFlip7VengeanceBrutal] = useState(
+    restoredDraft?.flip7VengeanceBrutal ?? false,
+  );
 
   const isPelusas = isPelusasGame(gameType);
   const isPelusasRevolution = gameType === 'pelusas_revolution';
   const isSkullKing = gameType === 'skull_king';
   const isPiliPili = gameType === 'pili_pili';
   const isFlip7 = gameType === 'flip7';
+  const isFlip7Vengeance = gameType === 'flip7_vengeance';
   const isAventurerosTren = isAventurerosTrenGame(gameType);
   const isAventurerosEuropa = gameType === 'aventureros_tren_europa';
   const isRegicide = gameType === 'regicide';
@@ -223,11 +237,13 @@ export function CreateMatchScreen({
   const tokenColorHint = getMatchTokenColorHint(gameType);
 
   const canStart = isRegicide
-    ? true
-    : isPiliPili || isFlip7 || isSkullKing || isSushiGo
+    ? players.length <= playerLimits.max
+    : isPiliPili || isFlip7 || isFlip7Vengeance || isSkullKing || isSushiGo
       ? players.length >= playerLimits.min && players.length <= playerLimits.max
       : players.length <= playerLimits.max;
-  const soloHint = formatSoloPlayerHint(selfPlayer);
+  const soloHint = isRegicide
+    ? 'Opcional. Si ganáis, la victoria se cuenta a todos en la sesión.'
+    : formatSoloPlayerHint(selfPlayer);
   const startLabel = isPelusas
     ? 'Contar puntos'
     : isRegicide
@@ -242,6 +258,7 @@ export function CreateMatchScreen({
       players,
       loadedTemplateId,
       randomStarterName,
+      flip7VengeanceBrutal,
     }),
     [
       gameType,
@@ -250,6 +267,7 @@ export function CreateMatchScreen({
       players,
       loadedTemplateId,
       randomStarterName,
+      flip7VengeanceBrutal,
     ],
   );
 
@@ -291,6 +309,7 @@ export function CreateMatchScreen({
       preferredCreateMatchGames,
     );
     setGameType(resolved);
+    setFlip7VengeanceBrutal(false);
     setRandomStarterName(null);
     setPlayers((prev) => applyRosterColors(resolved, prev));
     if (isDedicatedCreateMatchGame(resolved)) {
@@ -330,7 +349,7 @@ export function CreateMatchScreen({
   const handleStart = () => {
     if (!canStart) return;
     if (isRegicide) {
-      onStartRegicide(sessionId ?? null);
+      onStartRegicide(players, sessionId ?? null);
       return;
     }
     const roster = applyRosterColors(
@@ -345,6 +364,8 @@ export function CreateMatchScreen({
       onStartPiliPili(roster, sessionId ?? null);
     } else if (isFlip7) {
       onStartFlip7(roster, sessionId ?? null);
+    } else if (isFlip7Vengeance) {
+      onStartFlip7Vengeance(roster, sessionId ?? null, flip7VengeanceBrutal);
     } else if (isAventurerosTren) {
       onStartAventurerosTren(
         roster,
@@ -431,14 +452,36 @@ export function CreateMatchScreen({
           Cartas del 0 al 12 con modificadores y bonus Flip7 (+15). Gana quien
           llegue primero a 200 puntos. Mínimo {playerLimits.min} jugadores.
         </Text>
-      ) : isRegicide ? (
-        <View style={styles.regicideHintBox}>
+      ) : isFlip7Vengeance ? (
+        <>
           <Text style={styles.specialHint}>
-            Asistente cooperativo sin jugadores ni puntuación. Se puede jugar
-            con una baraja de póker normal (52 cartas + bufones). La pantalla se
-            mostrará en horizontal para gestionar vida y ataque de cada enemigo.
+            Cartas del 1 al 13, especiales (The Zero, Unlucky 7, Lucky 13) y
+            modificadores negativos. Gana quien más puntos tenga al llegar
+            alguien a 200. Mínimo {playerLimits.min} jugadores.
           </Text>
-        </View>
+          <View style={styles.brutalRow}>
+            <View style={styles.brutalInfo}>
+              <Text style={styles.brutalLabel}>Modo brutal</Text>
+              <Text style={styles.specialHint}>
+                La ronda puede quedar en negativo y un Flip 7 puede quitarle 15
+                puntos a otro jugador.
+              </Text>
+            </View>
+            <Switch
+              value={flip7VengeanceBrutal}
+              onValueChange={setFlip7VengeanceBrutal}
+              trackColor={{ false: theme.border, true: theme.accentDark }}
+              thumbColor={flip7VengeanceBrutal ? theme.accent : theme.textMuted}
+            />
+          </View>
+        </>
+      ) : isRegicide ? (
+        <Text style={styles.specialHint}>
+          Asistente cooperativo sin puntuación individual. Se puede jugar con
+          una baraja de póker normal (52 cartas + bufones). La pantalla se
+          muestra en horizontal. Los jugadores son opcionales: si los añades y
+          hay victoria, se cuenta a todos en la sesión.
+        </Text>
       ) : isAventurerosTren ? (
         <Text style={styles.specialHint}>
           {isAventurerosEuropa
@@ -455,44 +498,21 @@ export function CreateMatchScreen({
         </Text>
       ) : null}
 
-      {!isRegicide ? (
-        <TourAnchor id="createMatch.players">
-          <MatchPlayerRoster
-            playerCount={players.length}
-            onChoosePlayers={handleChoosePlayers}
-            soloHint={soloHint}
-            maxPlayers={
-              Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
-            }
-          />
-          {tokenColorHint ? (
-            <Text style={styles.specialHint}>{tokenColorHint}</Text>
-          ) : null}
-        </TourAnchor>
-      ) : null}
+      <TourAnchor id="createMatch.players">
+        <MatchPlayerRoster
+          playerCount={players.length}
+          onChoosePlayers={handleChoosePlayers}
+          soloHint={soloHint}
+          maxPlayers={
+            Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
+          }
+        />
+        {tokenColorHint ? (
+          <Text style={styles.specialHint}>{tokenColorHint}</Text>
+        ) : null}
+      </TourAnchor>
     </View>
   );
-
-  if (isRegicide) {
-    return (
-      <View style={styles.container}>
-        <AppHeader
-          title={sessionName ? 'Partida en sesión' : 'Nueva partida'}
-          onBack={onBack}
-        />
-        <View style={styles.regicideBody}>{header}</View>
-        <View style={styles.footer}>
-          <TourAnchor id="createMatch.start">
-            <Button
-              label={startLabel}
-              onPress={handleStart}
-              disabled={!canStart}
-            />
-          </TourAnchor>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -507,7 +527,9 @@ export function CreateMatchScreen({
         listHeaderComponent={header}
         listEmptyComponent={
           <Text style={styles.empty}>
-            Pulsa «Elegir jugadores» para añadir quién juega.
+            {isRegicide
+              ? 'Sin jugadores: puedes abrir el asistente igual. Añádelos si quieres contar la victoria en la sesión.'
+              : 'Pulsa «Elegir jugadores» para añadir quién juega.'}
           </Text>
         }
         onChange={setPlayers}
@@ -526,7 +548,7 @@ export function CreateMatchScreen({
       />
 
       <View style={styles.footer}>
-        {players.length > 1 ? (
+        {players.length > 1 && !isRegicide ? (
           <>
             <Button
               label="Elegir inicio aleatorio"
@@ -589,19 +611,30 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 16,
     color: theme.text,
   },
+  brutalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 14,
+  },
+  brutalInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  brutalLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: theme.text,
+  },
   specialHint: {
     fontSize: 14,
     color: theme.textMuted,
     lineHeight: 20,
     paddingHorizontal: 4,
-  },
-  regicideBody: {
-    flex: 1,
-    paddingTop: 8,
-  },
-  regicideHintBox: {
-    minHeight: 88,
-    justifyContent: 'flex-start',
   },
   list: {
     gap: 12,

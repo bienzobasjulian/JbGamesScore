@@ -37,6 +37,7 @@ import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
 import { SushiGoCounterScreen } from './src/screens/SushiGoCounterScreen';
 import { PiliPiliCounterScreen } from './src/screens/PiliPiliCounterScreen';
 import { Flip7CounterScreen } from './src/screens/Flip7CounterScreen';
+import { Flip7VengeanceCounterScreen } from './src/screens/Flip7VengeanceCounterScreen';
 import { TemplatesListScreen } from './src/screens/TemplatesListScreen';
 import {
   CreateMatchDraft,
@@ -188,6 +189,7 @@ function AppShell() {
           case 'skullKingCount':
           case 'piliPiliCount':
           case 'flip7Count':
+          case 'flip7VengeanceCount':
           case 'aventurerosTrenCount':
           case 'sushiGoCount':
             return false;
@@ -283,11 +285,14 @@ function AppShell() {
             onStartFlip7={(players, sessionId) => {
               app.startFlip7Session(players, sessionId);
             }}
+            onStartFlip7Vengeance={(players, sessionId, brutal) => {
+              app.startFlip7VengeanceSession(players, sessionId, brutal);
+            }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
             }}
-            onStartRegicide={(sessionId) => {
-              app.startRegicideSession(sessionId);
+            onStartRegicide={(players, sessionId) => {
+              app.startRegicideSession(players, sessionId);
             }}
             onStartSushiGo={(players, sessionId) => {
               app.startSushiGoSession(players, sessionId);
@@ -334,11 +339,14 @@ function AppShell() {
             onStartFlip7={(players, sessionId) => {
               app.startFlip7Session(players, sessionId);
             }}
+            onStartFlip7Vengeance={(players, sessionId, brutal) => {
+              app.startFlip7VengeanceSession(players, sessionId, brutal);
+            }}
             onStartAventurerosTren={(players, submode, sessionId) => {
               app.startAventurerosTrenSession(players, submode, sessionId);
             }}
-            onStartRegicide={(sessionId) => {
-              app.startRegicideSession(sessionId);
+            onStartRegicide={(players, sessionId) => {
+              app.startRegicideSession(players, sessionId);
             }}
             onStartSushiGo={(players, sessionId) => {
               app.startSushiGoSession(players, sessionId);
@@ -564,6 +572,7 @@ function AppShell() {
               match.gameMode === 'skull_king' ||
               match.gameMode === 'pili_pili' ||
               match.gameMode === 'flip7' ||
+              match.gameMode === 'flip7_vengeance' ||
               match.gameMode === 'aventureros_tren' ||
               match.gameMode === 'sushi_go'
             }
@@ -707,6 +716,25 @@ function AppShell() {
         );
       }
 
+      case 'flip7VengeanceCount': {
+        if (!app.flip7VengeanceSession) return null;
+        return (
+          <Flip7VengeanceCounterScreen
+            session={app.flip7VengeanceSession}
+            onSaveAndExit={app.saveFlip7VengeanceAndExit}
+            onDeleteAndExit={app.deleteFlip7VengeanceAndExit}
+            onFinishMatch={app.finishFlip7VengeanceSession}
+            onGoToRound={app.goFlip7VengeanceRound}
+            onAddRound={app.addFlip7VengeanceRound}
+            onCycleNumber={app.cycleFlip7VengeanceNumber}
+            onToggleModifier={app.toggleFlip7VengeanceModifier}
+            onToggleSpecial={app.toggleFlip7VengeanceSpecial}
+            onStealFrom={app.setFlip7VengeanceStealTarget}
+            onClearPlayer={app.clearFlip7VengeancePlayer}
+          />
+        );
+      }
+
       case 'flip7Count': {
         if (!app.flip7Session) return null;
         return (
@@ -767,7 +795,6 @@ function AppShell() {
             onFinishMatch={app.finishSushiGoSession}
             onGoToRound={app.goSushiGoRound}
             onUpdateRoundEntry={app.updateSushiGoRoundEntry}
-            onSetAlternatePass={app.setSushiGoAlternatePass}
           />
         );
       }

@@ -37,6 +37,7 @@ import {
   normalizeSushiGoSession,
   rankSushiGoStandings,
 } from './sushiGo';
+import { getRegicideMatchWinners } from './regicide';
 
 export type RankedPlayer = {
   player: Player;
@@ -185,6 +186,7 @@ export function formatMatchTitle(match: Match): string {
   if (match.gameMode === 'skull_king') return 'Skull King';
   if (match.gameMode === 'pili_pili') return 'Pili pili';
   if (match.gameMode === 'flip7') return 'Flip 7';
+  if (match.gameMode === 'flip7_vengeance') return 'Flip7 Venganza';
   if (match.gameMode === 'aventureros_tren') {
     return match.name?.trim() || 'Aventureros al tren';
   }
@@ -245,7 +247,7 @@ export function getMatchRankingFromMatch(match: Match): RankedPlayer[] {
   if (match.gameMode === 'pili_pili') {
     return getPiliPiliMatchRanking(match);
   }
-  if (match.gameMode === 'flip7') {
+  if (match.gameMode === 'flip7' || match.gameMode === 'flip7_vengeance') {
     return getFlip7MatchRanking(match);
   }
   if (match.gameMode === 'pelusas') {
@@ -263,6 +265,10 @@ export function getMatchWinners(match: Match): Player[] {
     return match.players.filter((p) => ids.has(p.id));
   }
 
+  if (match.gameMode === 'regicide') {
+    return getRegicideMatchWinners(match);
+  }
+
   if (match.gameMode === 'aventureros_tren' && match.status === 'finished') {
     return getAventurerosTrenMatchWinners(match);
   }
@@ -271,7 +277,7 @@ export function getMatchWinners(match: Match): Player[] {
     return getPiliPiliMatchWinners(match);
   }
 
-  if (match.gameMode === 'flip7') {
+  if (match.gameMode === 'flip7' || match.gameMode === 'flip7_vengeance') {
     return getFlip7MatchWinners(match);
   }
 
@@ -302,6 +308,9 @@ export function formatWinnerLabel(match: Match): string | null {
   const winners = getMatchWinners(match);
   if (winners.length === 0) return null;
   const names = winners.map((w) => w.name).join(', ');
+  if (match.gameMode === 'regicide') {
+    return `Victoria: ${names}`;
+  }
   if (winners.length > 1) return `Empate: ${names}`;
   return `Ganador: ${names}`;
 }
@@ -319,7 +328,7 @@ export function formatMatchSubtitle(match: Match): string {
 
 export function formatMatchListMeta(match: Match): string {
   const parts = [formatMatchDate(match.updatedAt)];
-  if (match.gameMode !== 'regicide') {
+  if (match.gameMode !== 'regicide' || match.players.length > 0) {
     parts.push(formatPlayerCount(match.players.length));
   }
   if (match.gameMode === 'pelusas') {
@@ -333,6 +342,9 @@ export function formatMatchListMeta(match: Match): string {
   }
   if (match.gameMode === 'flip7') {
     parts.push('Flip 7 · 200 pts');
+  }
+  if (match.gameMode === 'flip7_vengeance') {
+    parts.push('Flip7 Venganza · 200 pts');
   }
   if (match.gameMode === 'aventureros_tren') {
     parts.push(formatMatchTitle(match));
@@ -361,10 +373,10 @@ export function formatMatchListMeta(match: Match): string {
 export function formatMatchListSubtitle(match: Match): string {
   const meta = formatMatchListMeta(match);
   if (match.status === 'finished') {
-    if (match.gameMode === 'regicide') {
-      return meta;
-    }
     const winner = formatWinnerLabel(match);
+    if (match.gameMode === 'regicide') {
+      return winner ? `${meta}\n${winner}` : meta;
+    }
     return winner ? `${meta}\n${winner}` : `${meta}\nFinalizada`;
   }
   return meta;

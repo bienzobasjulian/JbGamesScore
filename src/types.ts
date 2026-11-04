@@ -39,6 +39,7 @@ export type MatchGameMode =
   | 'skull_king'
   | 'pili_pili'
   | 'flip7'
+  | 'flip7_vengeance'
   | 'aventureros_tren'
   | 'regicide'
   | 'sushi_go';
@@ -93,6 +94,9 @@ export type Match = {
   skullKingSession?: SkullKingSession;
   piliPiliSession?: PiliPiliSession;
   flip7Session?: Flip7Session;
+  flip7VengeanceSession?: Flip7VengeanceSession;
+  /** Se conserva al finalizar para repetir la partida con el mismo modo. */
+  flip7VengeanceBrutal?: boolean;
   aventurerosTrenSession?: AventurerosTrenSession;
   sushiGoSession?: SushiGoSession;
   createdAt: number;
@@ -196,6 +200,27 @@ export type Flip7Session = {
   rounds: Record<string, Flip7RoundEntry>[];
 };
 
+export type Flip7VengeanceModifier = '-2' | '-4' | '-6' | '-8' | '-10' | '÷2';
+
+export type Flip7VengeanceSpecial = 'zero' | 'unlucky7' | 'lucky13';
+
+export type Flip7VengeanceRoundEntry = {
+  /** Cada aparición cuenta una carta (el 13 puede salir dos veces con Lucky 13). */
+  numbers: number[];
+  modifiers: Flip7VengeanceModifier[];
+  specials: Flip7VengeanceSpecial[];
+  /** En modo brutal, jugador al que el Flip 7 le quita 15. */
+  flip7StealFromPlayerId?: string | null;
+  closedScore?: number;
+};
+
+export type Flip7VengeanceSession = {
+  players: Player[];
+  activeRoundIndex: number;
+  brutal: boolean;
+  rounds: Record<string, Flip7VengeanceRoundEntry>[];
+};
+
 export type SushiGoRoundEntry = {
   /** Símbolos de rollo, no número de cartas. */
   makiRolls: number;
@@ -296,6 +321,7 @@ export type AppScreen =
   | { type: 'skullKingCount' }
   | { type: 'piliPiliCount' }
   | { type: 'flip7Count' }
+  | { type: 'flip7VengeanceCount' }
   | { type: 'aventurerosTrenCount' }
   | { type: 'regicideCount' }
   | { type: 'sushiGoCount' }

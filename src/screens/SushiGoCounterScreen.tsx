@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
@@ -18,20 +17,17 @@ import { RoundPagination } from '../components/RoundPagination';
 import { SushiGoPlayerRoundPanel } from '../components/SushiGoPlayerRoundPanel';
 import { TourScrollView } from '../onboarding';
 import { useExitMatchModal } from '../hooks/useExitMatchModal';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { SushiGoRoundEntry, SushiGoSession } from '../types';
 import {
   emptySushiGoRoundEntry,
-  formatSushiGoSigned,
   getSushiGoPuddingBeforeRound,
-  getSushiGoPuddingScoreList,
   getSushiGoRoundScoreList,
   getSushiGoStandings,
   rankSushiGoStandings,
   SUSHI_GO_HOW_TO_PLAY_SECTIONS,
   SUSHI_GO_TOTAL_ROUNDS,
   sushiGoHandSize,
-  sushiGoPassDirection,
 } from '../utils/sushiGo';
 
 type Props = {
@@ -45,7 +41,6 @@ type Props = {
     playerId: string,
     patch: Partial<SushiGoRoundEntry>,
   ) => void;
-  onSetAlternatePass: (enabled: boolean) => void;
 };
 
 export function SushiGoCounterScreen({
@@ -55,9 +50,7 @@ export function SushiGoCounterScreen({
   onFinishMatch,
   onGoToRound,
   onUpdateRoundEntry,
-  onSetAlternatePass,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(
     () => new Set(),
@@ -72,10 +65,6 @@ export function SushiGoCounterScreen({
   const roundIndex = session.activeRoundIndex;
   const roundNumber = roundIndex + 1;
   const handSize = sushiGoHandSize(session.players.length);
-  const passDirection = sushiGoPassDirection(
-    roundIndex,
-    session.alternatePassDirection,
-  );
   const roundByPlayer = session.rounds[roundIndex] ?? {};
 
   const roundRows = useMemo(
@@ -87,10 +76,6 @@ export function SushiGoCounterScreen({
     return map;
   }, [roundRows]);
 
-  const puddingRows = useMemo(
-    () => getSushiGoPuddingScoreList(session),
-    [session],
-  );
   const standings = useMemo(() => getSushiGoStandings(session), [session]);
   const ranking = useMemo(() => rankSushiGoStandings(standings), [standings]);
   const standingById = useMemo(() => {
@@ -109,12 +94,6 @@ export function SushiGoCounterScreen({
       }),
     [session.players, session.rounds, roundIndex],
   );
-
-  const anyRolls = roundRows.some((row) => row.rolls > 0);
-  const maxRolls = roundRows.reduce((max, row) => Math.max(max, row.rolls), 0);
-  const puddingTied =
-    puddingRows.length > 0 &&
-    puddingRows.every((row) => row.count === puddingRows[0].count);
 
   const togglePlayer = (playerId: string) => {
     setExpandedPlayers((prev) => {
@@ -184,83 +163,7 @@ export function SushiGoCounterScreen({
           <Text style={styles.roundTitle}>
             Ronda {roundNumber} de {SUSHI_GO_TOTAL_ROUNDS}
           </Text>
-          <Text style={styles.roundSub}>
-            {handSize} cartas por jugador · pasad la mano a la {passDirection}
-          </Text>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={styles.switchLabel}>Pasar a ambos lados</Text>
-              <Text style={styles.switchHint}>
-                Rondas 1 y 3 a la izquierda; la 2 a la derecha.
-              </Text>
-            </View>
-            <Switch
-              value={session.alternatePassDirection}
-              onValueChange={onSetAlternatePass}
-              trackColor={{ false: theme.border, true: theme.accentDark }}
-              thumbColor={
-                session.alternatePassDirection ? theme.accent : theme.textMuted
-              }
-            />
-          </View>
-        </View>
-
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Maki de esta ronda</Text>
-          {roundRows.every((row) => row.maki === 0 && row.rolls === 0) ? (
-            <Text style={styles.summaryBody}>
-              Quien más rollos sume gana 6 puntos y el segundo, 3. Los empates
-              se reparten y se ignora el resto.
-            </Text>
-          ) : (
-            <Text style={styles.summaryBody}>
-              {roundRows
-                .map((row) => {
-                  const name =
-                    session.players.find((player) => player.id === row.playerId)
-                      ?.name ?? '';
-                  return `${name} ${row.rolls} → ${formatSushiGoSigned(row.maki)}`;
-                })
-                .join(' · ')}
-            </Text>
-          )}
-          {!anyRolls && roundRows.some((row) => row.total > 0) && maxRolls === 0 ? (
-            <Text style={styles.summaryNote}>
-              Empate sin rollos: se reparten los 6 puntos y no hay segundo
-              puesto.
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Pudines de la partida</Text>
-          <Text style={styles.summaryBody}>
-            {puddingRows
-              .map((row) => {
-                const name =
-                  session.players.find((player) => player.id === row.playerId)
-                    ?.name ?? '';
-                const points =
-                  row.points === 0 ? '0' : formatSushiGoSigned(row.points);
-                return `${name} ${row.count} (${points})`;
-              })
-              .join(' · ')}
-          </Text>
-          {puddingTied ? (
-            <Text style={styles.summaryNote}>
-              Todos tienen los mismos pudines: nadie suma ni resta por el
-              postre.
-            </Text>
-          ) : session.players.length === 2 ? (
-            <Text style={styles.summaryNote}>
-              A dos jugadores no se pierden puntos por tener menos pudines.
-            </Text>
-          ) : (
-            <Text style={styles.summaryNote}>
-              El postre se suma al acabar la partida: 6 al que más tenga y −6
-              al que menos.
-            </Text>
-          )}
+          <Text style={styles.roundSub}>{handSize} cartas por jugador</Text>
         </View>
 
         {completedRounds.length > 0 ? (
@@ -429,52 +332,6 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 14,
       color: theme.textMuted,
       lineHeight: 20,
-    },
-    switchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginTop: 8,
-    },
-    switchText: {
-      flex: 1,
-      gap: 2,
-    },
-    switchLabel: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: theme.text,
-    },
-    switchHint: {
-      fontSize: 12,
-      color: theme.textMuted,
-      lineHeight: 16,
-    },
-    summaryCard: {
-      backgroundColor: theme.surface,
-      borderRadius: 16,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      gap: 6,
-    },
-    summaryTitle: {
-      fontSize: 13,
-      fontWeight: '800',
-      color: theme.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-    },
-    summaryBody: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.text,
-      lineHeight: 20,
-    },
-    summaryNote: {
-      fontSize: 12,
-      color: theme.textMuted,
-      lineHeight: 17,
     },
     sectionHint: {
       fontSize: 13,

@@ -8,6 +8,7 @@ export type CreateMatchDraft = {
   players: Player[];
   loadedTemplateId: string | null;
   randomStarterName: string | null;
+  flip7VengeanceBrutal?: boolean;
 };
 
 export type EditMatchDraft = {

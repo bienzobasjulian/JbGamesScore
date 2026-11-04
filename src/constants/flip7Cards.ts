@@ -22,6 +22,7 @@ export const FLIP7_NUMBER_COLORS: Record<number, string> = {
   10: '#D64545',
   11: '#5DADE2',
   12: '#935116',
+  13: '#6C3483',
 };
 
 export const FLIP7_MODIFIER_CARD_STYLE = {
@@ -37,3 +38,16 @@ export const FLIP7_NUMBER_CARD_WIDTH = 46;
 export const FLIP7_NUMBER_CARD_HEIGHT = 56;
 export const FLIP7_MODIFIER_CARD_WIDTH = 54;
 export const FLIP7_MODIFIER_CARD_HEIGHT = 64;
+
+/** Cartas de resta de Flip7 Venganza (fondo coral, marco dorado). */
+export const FLIP7_VENGEANCE_MODIFIER_CARD_STYLE = {
+  outer: '#E8C547',
+  outerSelected: '#C9A227',
+  frame: '#1B3A5C',
+  bg: '#E85D4C',
+  bgSelected: '#F07060',
+  text: '#F7F3E8',
+};
+
+export const FLIP7_VENGEANCE_SPECIAL_CARD_WIDTH = 72;
+export const FLIP7_VENGEANCE_SPECIAL_CARD_HEIGHT = 78;

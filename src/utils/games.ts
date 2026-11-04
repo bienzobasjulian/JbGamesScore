@@ -35,6 +35,7 @@ export function getCreateMatchPlayerLimits(
     case 'pili_pili':
       return { min: 2, max: 8 };
     case 'flip7':
+    case 'flip7_vengeance':
       return { min: 3, max: Number.POSITIVE_INFINITY };
     case 'aventureros_tren':
     case 'aventureros_tren_europa':
@@ -43,7 +44,7 @@ export function getCreateMatchPlayerLimits(
     case 'pelusas_revolution':
       return { min: 1, max: Number.POSITIVE_INFINITY };
     case 'regicide':
-      return { min: 0, max: 0 };
+      return { min: 0, max: 4 };
     case 'sushi_go':
       return { min: 2, max: 5 };
     default:
@@ -98,6 +99,12 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
       'Cartas del 0 al 12, modificadores y bonus Flip7 · gana quien llegue a 200 (3+ jugadores)',
   },
   {
+    id: 'flip7_vengeance',
+    name: 'Flip7 Venganza',
+    description:
+      'Del 1 al 13, especiales y modificadores negativos · 200 pts (3+ jugadores)',
+  },
+  {
     id: 'aventureros_tren',
     name: 'Aventureros al tren',
     description: 'Construcción, destinos y desempates (2–5 jugadores)',
@@ -112,7 +119,7 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     id: 'regicide',
     name: 'Regicide',
     description:
-      'Asistente cooperativo: vida y ataque de J, Q y K (horizontal)',
+      'Asistente cooperativo: vida y ataque de J, Q y K · jugadores opcionales para la sesión',
   },
   {
     id: 'sushi_go',

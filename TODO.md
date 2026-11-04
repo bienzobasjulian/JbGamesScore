@@ -1,6 +1,6 @@
 # TODO — Jb Games Score
 
-> Última actualización: 2026-09-03 (ONB-01 en desarrollo)
+> Última actualización: 2026-11-04 (juegos nuevos en pendiente de analizar)
 
 ## Cómo usar este fichero
 
@@ -46,6 +46,18 @@ Ideas o necesidades que aún no están desglosadas ni priorizadas.
 ### [UX-03] Exportar o compartir resultados de partida/sesión
 
 - **Notas:** Texto, imagen o captura de clasificación final para WhatsApp, etc.
+- **Complejidad:** —
+- **Prioridad:** —
+
+### [GAME-07] Añadir el juego 3 Capítulos
+
+- **Notas:** Nuevo juego dedicado (pantalla, reglas y entrada en crear partida).
+- **Complejidad:** —
+- **Prioridad:** —
+
+### [GAME-08] Añadir el juego HeroQuest
+
+- **Notas:** Nuevo juego dedicado (pantalla, reglas y entrada en crear partida).
 - **Complejidad:** —
 - **Prioridad:** —
 
@@ -154,6 +166,10 @@ Tareas completadas (mantener como histórico breve).
 ### [GAME-04] Aventureros al tren — Base y Europa
 
 - **Notas:** Rutas, destinos, fases, submodos.
+
+### [GAME-06] Flip7 Venganza
+
+- **Notas:** Contador al estilo Flip 7: números 1–13, The Zero, Unlucky 7, Lucky 13, modificadores negativos y modo brutal opcional.
 
 ### [GAME-05] Regicide — asistente cooperativo
 

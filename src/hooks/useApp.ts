@@ -27,6 +27,9 @@ import {
   PiliPiliSession,
   Flip7Modifier,
   Flip7Session,
+  Flip7VengeanceModifier,
+  Flip7VengeanceSession,
+  Flip7VengeanceSpecial,
   SushiGoRoundEntry,
   SushiGoSession,
   RoundBreakdown,
@@ -119,6 +122,18 @@ import {
   toggleFlip7PlayerModifier,
   toggleFlip7PlayerNumber,
 } from '../utils/flip7';
+import {
+  appendFlip7VengeanceRound,
+  clearFlip7VengeancePlayerRound,
+  createFinishedFlip7VengeanceMatch,
+  createFlip7VengeanceSession,
+  createInProgressFlip7VengeanceMatch,
+  cycleFlip7VengeancePlayerNumber,
+  FLIP7_VENGEANCE_MIN_PLAYERS,
+  setFlip7VengeanceStealTarget as setFlip7VengeanceStealTargetInRound,
+  toggleFlip7VengeancePlayerModifier,
+  toggleFlip7VengeancePlayerSpecial,
+} from '../utils/flip7Vengeance';
 import {
   clampSushiGoRoundEntry,
   createFinishedSushiGoMatch,
@@ -258,6 +273,8 @@ export function useApp() {
   const [piliPiliSession, setPiliPiliSession] =
     useState<PiliPiliSession | null>(null);
   const [flip7Session, setFlip7Session] = useState<Flip7Session | null>(null);
+  const [flip7VengeanceSession, setFlip7VengeanceSession] =
+    useState<Flip7VengeanceSession | null>(null);
   const [aventurerosTrenSession, setAventurerosTrenSession] =
     useState<AventurerosTrenSession | null>(null);
   const [regicideSession, setRegicideSession] =
@@ -371,6 +388,25 @@ export function useApp() {
       ),
     );
   }, [flip7Session]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !flip7VengeanceSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'flip7_vengeance'
+          ? {
+              ...match,
+              flip7VengeanceSession,
+              players: flip7VengeanceSession.players,
+              activeRoundIndex: flip7VengeanceSession.activeRoundIndex,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [flip7VengeanceSession]);
 
   useEffect(() => {
     const matchId = dedicatedMatchIdRef.current;
@@ -837,15 +873,6 @@ export function useApp() {
     [],
   );
 
-  const setSushiGoAlternatePass = useCallback(
-    (alternatePassDirection: boolean) => {
-      setSushiGoSession((prev) =>
-        prev ? { ...prev, alternatePassDirection } : null,
-      );
-    },
-    [],
-  );
-
   const finishSushiGoSession = useCallback(() => {
     const matchId = dedicatedMatchIdRef.current;
     const playSessionId = dedicatedMatchSessionIdRef.current;
@@ -1211,6 +1238,165 @@ export function useApp() {
     });
   }, []);
 
+  const startFlip7VengeanceSession = useCallback(
+    (players: Player[], sessionId?: string | null, brutal = false) => {
+      if (players.length < FLIP7_VENGEANCE_MIN_PLAYERS) return;
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createFlip7VengeanceSession(players, brutal);
+      const match = createInProgressFlip7VengeanceMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setFlip7VengeanceSession(session);
+      setScreen({ type: 'flip7VengeanceCount' });
+    },
+    [],
+  );
+
+  const saveFlip7VengeanceAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7VengeanceSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteFlip7VengeanceAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7VengeanceSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) next = touchSession(next, match.sessionId);
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const patchFlip7VengeanceRound = useCallback(
+    (
+      roundIndex: number,
+      patch: (
+        round: Flip7VengeanceSession['rounds'][number],
+      ) => Flip7VengeanceSession['rounds'][number],
+    ) => {
+      setFlip7VengeanceSession((prev) => {
+        if (!prev) return null;
+        if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+        const rounds = [...prev.rounds];
+        rounds[roundIndex] = patch(rounds[roundIndex] ?? {});
+        return { ...prev, rounds };
+      });
+    },
+    [],
+  );
+
+  const goFlip7VengeanceRound = useCallback((roundIndex: number) => {
+    setFlip7VengeanceSession((prev) => {
+      if (!prev) return null;
+      if (roundIndex < 0 || roundIndex >= prev.rounds.length) return prev;
+      return { ...prev, activeRoundIndex: roundIndex };
+    });
+  }, []);
+
+  const cycleFlip7VengeanceNumber = useCallback(
+    (roundIndex: number, playerId: string, number: number) => {
+      patchFlip7VengeanceRound(roundIndex, (round) =>
+        cycleFlip7VengeancePlayerNumber(round, playerId, number),
+      );
+    },
+    [patchFlip7VengeanceRound],
+  );
+
+  const toggleFlip7VengeanceModifier = useCallback(
+    (roundIndex: number, playerId: string, modifier: Flip7VengeanceModifier) => {
+      patchFlip7VengeanceRound(roundIndex, (round) =>
+        toggleFlip7VengeancePlayerModifier(round, playerId, modifier),
+      );
+    },
+    [patchFlip7VengeanceRound],
+  );
+
+  const toggleFlip7VengeanceSpecial = useCallback(
+    (roundIndex: number, playerId: string, special: Flip7VengeanceSpecial) => {
+      patchFlip7VengeanceRound(roundIndex, (round) =>
+        toggleFlip7VengeancePlayerSpecial(round, playerId, special),
+      );
+    },
+    [patchFlip7VengeanceRound],
+  );
+
+  const setFlip7VengeanceStealTarget = useCallback(
+    (roundIndex: number, playerId: string, targetId: string | null) => {
+      patchFlip7VengeanceRound(roundIndex, (round) =>
+        setFlip7VengeanceStealTargetInRound(round, playerId, targetId),
+      );
+    },
+    [patchFlip7VengeanceRound],
+  );
+
+  const clearFlip7VengeancePlayer = useCallback(
+    (roundIndex: number, playerId: string) => {
+      patchFlip7VengeanceRound(roundIndex, (round) =>
+        clearFlip7VengeancePlayerRound(round, playerId),
+      );
+    },
+    [patchFlip7VengeanceRound],
+  );
+
+  const addFlip7VengeanceRound = useCallback(() => {
+    setFlip7VengeanceSession((prev) =>
+      prev ? appendFlip7VengeanceRound(prev) : null,
+    );
+  }, []);
+
+  const finishFlip7VengeanceSession = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setFlip7VengeanceSession((prev) => {
+      if (!prev) return null;
+      const finished = createFinishedFlip7VengeanceMatch(prev);
+      const id = matchId ?? finished.id;
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+            flip7VengeanceSession: undefined,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      setScreen({ type: 'game', matchId: id });
+      return null;
+    });
+  }, []);
+
   const finishFlip7Session = useCallback(() => {
     const matchId = dedicatedMatchIdRef.current;
     const playSessionId = dedicatedMatchSessionIdRef.current;
@@ -1471,19 +1657,35 @@ export function useApp() {
     });
   }, []);
 
-  const startRegicideSession = useCallback((sessionId?: string | null) => {
-    if (sessionId !== undefined) {
-      dedicatedMatchSessionIdRef.current = sessionId;
-    }
-    const playSessionId = dedicatedMatchSessionIdRef.current;
-    const session = createRegicideSession();
-    const match = createRegicideMatch(session, playSessionId);
-    regicideMatchIdRef.current = match.id;
-    setRegicideSession(session);
-    setData((prev) => appendMatch(prev, match));
-    setScreen({ type: 'regicideCount' });
-    setMenuOpen(false);
-  }, []);
+  const startRegicideSession = useCallback(
+    (players: Player[] = [], sessionId?: string | null) => {
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createRegicideSession();
+      const match = createRegicideMatch(
+        session,
+        playSessionId,
+        null,
+        players,
+      );
+      regicideMatchIdRef.current = match.id;
+      setRegicideSession(session);
+      setData((prev) =>
+        appendMatch(
+          {
+            ...prev,
+            players: upsertRosterPlayers(prev.players, players),
+          },
+          match,
+        ),
+      );
+      setScreen({ type: 'regicideCount' });
+      setMenuOpen(false);
+    },
+    [],
+  );
 
   const saveRegicideAndExit = useCallback(() => {
     const playSessionId = dedicatedMatchSessionIdRef.current;
@@ -1506,6 +1708,7 @@ export function useApp() {
         updateMatchInData(prev, matchId, (match) => ({
           ...match,
           status: 'finished',
+          winnerIds: undefined,
           updatedAt: Date.now(),
         })),
       );
@@ -1557,6 +1760,9 @@ export function useApp() {
         ...match,
         regicideSession: session,
         status: session.victory ? 'finished' : 'in_progress',
+        winnerIds: session.victory
+          ? match.players.map((player) => player.id)
+          : undefined,
         updatedAt: Date.now(),
       })),
     );
@@ -1781,6 +1987,12 @@ export function useApp() {
         if (match.gameMode === 'flip7' && match.flip7Session) {
           setFlip7Session(normalizeFlip7Session(match.flip7Session));
           setScreen({ type: 'flip7Count' });
+          setMenuOpen(false);
+          return;
+        }
+        if (match.gameMode === 'flip7_vengeance' && match.flip7VengeanceSession) {
+          setFlip7VengeanceSession(match.flip7VengeanceSession);
+          setScreen({ type: 'flip7VengeanceCount' });
           setMenuOpen(false);
           return;
         }
@@ -2103,6 +2315,8 @@ export function useApp() {
       setSkullKingSession(null);
       setPiliPiliSession(null);
       setAventurerosTrenSession(null);
+      setFlip7Session(null);
+      setFlip7VengeanceSession(null);
     }
     setData((prev) => {
       const match = prev.matches.find((m) => m.id === matchId);
@@ -2127,6 +2341,7 @@ export function useApp() {
           current.type === 'skullKingCount' ||
           current.type === 'piliPiliCount' ||
           current.type === 'flip7Count' ||
+          current.type === 'flip7VengeanceCount' ||
           current.type === 'aventurerosTrenCount') &&
         isActiveDedicated
       ) {
@@ -2561,6 +2776,31 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'flip7_vengeance') {
+        const session = createFlip7VengeanceSession(
+          source.players,
+          source.flip7VengeanceBrutal ?? source.flip7VengeanceSession?.brutal,
+        );
+        const match = createInProgressFlip7VengeanceMatch(
+          session,
+          source.sessionId,
+        );
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setFlip7VengeanceSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
+        setScreen({ type: 'flip7VengeanceCount' });
+        return;
+      }
+
       if (source.gameMode === 'flip7') {
         const session = createFlip7Session(source.players);
         const match = createInProgressFlip7Match(session, source.sessionId);
@@ -2611,11 +2851,20 @@ export function useApp() {
           session,
           source.sessionId,
           source.name,
+          source.players,
         );
         regicideMatchIdRef.current = match.id;
         dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
         setRegicideSession(session);
-        setData((prev) => appendMatch(prev, match));
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
         setScreen({ type: 'regicideCount' });
         return;
       }
@@ -2748,6 +2997,18 @@ export function useApp() {
     clearFlip7RoundPlayer,
     addFlip7Round,
     finishFlip7Session,
+    flip7VengeanceSession,
+    startFlip7VengeanceSession,
+    saveFlip7VengeanceAndExit,
+    deleteFlip7VengeanceAndExit,
+    goFlip7VengeanceRound,
+    cycleFlip7VengeanceNumber,
+    toggleFlip7VengeanceModifier,
+    toggleFlip7VengeanceSpecial,
+    setFlip7VengeanceStealTarget,
+    clearFlip7VengeancePlayer,
+    addFlip7VengeanceRound,
+    finishFlip7VengeanceSession,
     aventurerosTrenSession,
     startAventurerosTrenSession,
     exitAventurerosTren,
@@ -2774,7 +3035,6 @@ export function useApp() {
     deleteSushiGoAndExit,
     goSushiGoRound,
     updateSushiGoRoundEntry,
-    setSushiGoAlternatePass,
     finishSushiGoSession,
     goMatchesList,
     goPlayersList,

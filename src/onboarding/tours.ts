@@ -173,6 +173,29 @@ export const TOURS: Record<TourId, TourDefinition> = {
       },
     ],
   },
+  flip7Vengeance: {
+    id: 'flip7Vengeance',
+    steps: [
+      {
+        id: 'flip7Vengeance.players',
+        title: 'Cartas de la ronda',
+        body: 'Toca un jugador y marca números, especiales y modificadores. Lucky 13 vale 13. Siete números distintos suman el bonus Flip 7 (+15).',
+        anchorId: 'flip7Vengeance.players',
+      },
+      {
+        id: 'flip7Vengeance.rounds',
+        title: 'Rondas',
+        body: 'El + confirma la ronda y abre la siguiente. Si alguien llega a 200, puedes finalizar. Puedes volver a una anterior para editarla.',
+        anchorId: 'flip7Vengeance.rounds',
+      },
+      {
+        id: 'flip7Vengeance.menu',
+        title: 'Cómo jugar',
+        body: 'En el menú está el tutorial y las reglas, incluidas las cartas de acción y el modo brutal si lo activaste al crear la partida.',
+        anchorId: 'flip7Vengeance.menu',
+      },
+    ],
+  },
   flip7: {
     id: 'flip7',
     steps: [
@@ -270,6 +293,7 @@ export const TOUR_LABELS: Record<TourId, string> = {
   skullKing: 'Tutorial de Skull King',
   piliPili: 'Tutorial de Pili pili',
   flip7: 'Tutorial de Flip 7',
+  flip7Vengeance: 'Tutorial de Flip7 Venganza',
   aventurerosConstruccion: 'Tutorial de construcción',
   aventurerosDestinos: 'Tutorial de destinos',
   regicideSelect: 'Tutorial de enemigo',

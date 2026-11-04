@@ -80,11 +80,11 @@ export const SUSHI_GO_HOW_TO_PLAY_SECTIONS: HowToPlaySection[] = [
       {
         type: 'heading',
         title: 'Maki',
-        body: 'Se suman los símbolos de rollo de las cartas, no el número de cartas. Quien más rollos tenga gana 6 puntos. El segundo, 3. Si hay empate, se reparten esos puntos a partes iguales y se ignora el resto. Si empatan el primer puesto, no se dan puntos de segundo.',
+        body: 'Se suman los símbolos de rollo de las cartas, no el número de cartas. Quien más rollos tenga gana 6 puntos. El segundo, 3. Si hay empate, se reparten esos puntos a partes iguales y se ignora el resto. Si empatan el primer puesto, no se dan puntos de segundo. Quien no tenga ningún rollo no entra en el ranking.',
       },
       {
         type: 'note',
-        text: 'Ejemplo: Carla 5 rollos, Pablo 3, Ana 3 y Luisa 2. Carla gana 6. Pablo y Ana se reparten los 3 del segundo puesto (1 cada uno). Luisa no puntúa.',
+        text: 'Ejemplo: Carla 5 rollos, Pablo 3, Ana 3 y Luisa 0. Carla gana 6. Pablo y Ana se reparten los 3 del segundo puesto (1 cada uno). Luisa, sin rollos, no puntúa.',
       },
       {
         type: 'heading',
@@ -315,6 +315,9 @@ export function scoreMakiRolls(rolls: number[]): number[] {
   if (rolls.length === 0) return scores;
 
   const max = Math.max(...rolls);
+  // Sin rollos no hay ranking de maki: el 0 no cuenta como puesto.
+  if (max <= 0) return scores;
+
   const first = rolls
     .map((value, index) => (value === max ? index : -1))
     .filter((index) => index >= 0);
@@ -322,9 +325,9 @@ export function scoreMakiRolls(rolls: number[]): number[] {
   for (const index of first) scores[index] = firstShare;
   if (first.length > 1) return scores;
 
-  const rest = rolls.filter((value) => value !== max);
-  if (rest.length === 0) return scores;
-  const secondValue = Math.max(...rest);
+  const restWithRolls = rolls.filter((value) => value > 0 && value !== max);
+  if (restWithRolls.length === 0) return scores;
+  const secondValue = Math.max(...restWithRolls);
   const second = rolls
     .map((value, index) => (value === secondValue ? index : -1))
     .filter((index) => index >= 0);
