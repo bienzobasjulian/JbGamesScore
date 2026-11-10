@@ -20,6 +20,53 @@ export function resolveTemplatePlayers(
     }));
 }
 
+export type TemplateFactTone = 'high' | 'low' | 'neutral';
+
+export type TemplateFact = {
+  label: string;
+  tone: TemplateFactTone;
+};
+
+export function getTemplateFacts(
+  template: MatchTemplate,
+  savedPlayers: SavedPlayer[],
+): { facts: TemplateFact[]; playersLabel: string | null } {
+  const settings = normalizeSettings(template.settings);
+  const facts: TemplateFact[] = [];
+
+  if (settings.maxRounds != null) {
+    facts.push({
+      label: `${settings.maxRounds} rondas`,
+      tone: 'neutral',
+    });
+  }
+  if (settings.maxPointsToWin != null) {
+    facts.push({
+      label: settings.lowestScoreWins
+        ? `Pierde a ${settings.maxPointsToWin}`
+        : `Objetivo ${settings.maxPointsToWin}`,
+      tone: settings.lowestScoreWins ? 'low' : 'high',
+    });
+  } else if (settings.lowestScoreWins) {
+    facts.push({ label: 'Más bajo', tone: 'low' });
+  }
+  if (facts.length === 0) {
+    facts.push({ label: 'Sin límite', tone: 'neutral' });
+  }
+
+  const players = resolveTemplatePlayers(template, savedPlayers);
+  let playersLabel: string | null = null;
+  if (players.length === 1) {
+    playersLabel = players[0].name;
+  } else if (players.length > 1 && players.length <= 3) {
+    playersLabel = players.map((player) => player.name).join(', ');
+  } else if (players.length > 3) {
+    playersLabel = `${players.length} jugadores`;
+  }
+
+  return { facts, playersLabel };
+}
+
 export function formatTemplateSubtitle(
   template: MatchTemplate,
   savedPlayers: SavedPlayer[],

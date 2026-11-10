@@ -1,134 +1,111 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
+import Svg, { Circle, Rect } from 'react-native-svg';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
-import { ScoringMode } from '../types';
-import { BreakdownEditor } from './BreakdownEditor';
-import { ScoreStepper } from './ScoreStepper';
+import { ScoreCalculatorSheet } from './ScoreCalculatorSheet';
 
 type Props = {
   roundScore: number;
   breakdownItems: number[];
-  mode: ScoringMode;
   color: string;
   disabled?: boolean;
-  onModeChange: (mode: ScoringMode) => void;
-  onAdjust: (delta: number) => void;
   onSetScore: (value: number) => void;
-  onAddBreakdownItem: (value: number) => void;
-  onRemoveBreakdownItem: (index: number) => void;
+  onSetBreakdown: (items: number[]) => void;
+  onSheetOpenChange?: (open: boolean) => void;
 };
 
 export function RoundScoringPanel({
   roundScore,
   breakdownItems,
-  mode,
   color,
   disabled,
-  onModeChange,
-  onAdjust,
   onSetScore,
-  onAddBreakdownItem,
-  onRemoveBreakdownItem,
+  onSetBreakdown,
+  onSheetOpenChange,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const hasFormula = breakdownItems.length > 0;
+
+  useEffect(() => {
+    onSheetOpenChange?.(sheetOpen);
+  }, [onSheetOpenChange, sheetOpen]);
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.modeRow}>
-        <Pressable
-          onPress={() => onModeChange('direct')}
-          disabled={disabled}
-          style={({ pressed }) => [
-            styles.modeBtn,
-            mode === 'direct' && styles.modeBtnActive,
-            pressed && styles.modeBtnPressed,
-          ]}
-        >
-          <Text
-            style={[
-              styles.modeLabel,
-              mode === 'direct' && styles.modeLabelActive,
-            ]}
-          >
-            Directo
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onModeChange('breakdown')}
-          disabled={disabled}
-          style={({ pressed }) => [
-            styles.modeBtn,
-            mode === 'breakdown' && styles.modeBtnActive,
-            pressed && styles.modeBtnPressed,
-          ]}
-        >
-          <Text
-            style={[
-              styles.modeLabel,
-              mode === 'breakdown' && styles.modeLabelActive,
-            ]}
-          >
-            Desglose
-          </Text>
-        </Pressable>
-      </View>
+    <>
+      <Pressable
+        disabled={disabled}
+        onPress={() => setSheetOpen(true)}
+        style={({ pressed }) => [
+          styles.calcBtn,
+          (sheetOpen || hasFormula) && {
+            backgroundColor: color + '33',
+            borderColor: color,
+          },
+          disabled && styles.disabled,
+          pressed && !disabled && styles.pressed,
+        ]}
+        accessibilityLabel="Calculadora de puntos"
+      >
+        <CalculatorIcon
+          color={sheetOpen || hasFormula ? color : theme.textMuted}
+        />
+      </Pressable>
 
-      {mode === 'direct' ? (
-        <ScoreStepper
-          value={roundScore}
-          onAdjust={onAdjust}
-          onSetValue={onSetScore}
-          color={color}
-          disabled={disabled}
-        />
-      ) : (
-        <BreakdownEditor
-          items={breakdownItems}
-          total={roundScore}
-          color={color}
-          disabled={disabled}
-          onAdd={onAddBreakdownItem}
-          onRemove={onRemoveBreakdownItem}
-        />
-      )}
-    </View>
+      <ScoreCalculatorSheet
+        visible={sheetOpen}
+        roundScore={roundScore}
+        items={breakdownItems}
+        onClose={() => setSheetOpen(false)}
+        onSetScore={onSetScore}
+        onSetBreakdown={onSetBreakdown}
+      />
+    </>
   );
 }
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  wrap: {
-    flex: 1,
-    gap: 10,
-    minWidth: 0,
-    alignItems: 'stretch',
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 6,
-    alignSelf: 'flex-end',
-  },
-  modeBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.border,
-    backgroundColor: theme.surfaceLight,
-  },
-  modeBtnActive: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accent + '22',
-  },
-  modeBtnPressed: {
-    opacity: 0.8,
-  },
-  modeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.textMuted,
-  },
-  modeLabelActive: {
-    color: theme.accent,
-    fontWeight: '700',
-  },
-});
+function CalculatorIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={4}
+        y={2.5}
+        width={16}
+        height={19}
+        rx={2.2}
+        stroke={color}
+        strokeWidth={1.7}
+      />
+      <Rect x={7} y={5.2} width={10} height={3.2} rx={0.6} fill={color} />
+      <Circle cx={8.2} cy={12.2} r={1.05} fill={color} />
+      <Circle cx={12} cy={12.2} r={1.05} fill={color} />
+      <Circle cx={15.8} cy={12.2} r={1.05} fill={color} />
+      <Circle cx={8.2} cy={16} r={1.05} fill={color} />
+      <Circle cx={12} cy={16} r={1.05} fill={color} />
+      <Circle cx={15.8} cy={16} r={1.05} fill={color} />
+      <Circle cx={8.2} cy={19.2} r={1.05} fill={color} />
+      <Circle cx={12} cy={19.2} r={1.05} fill={color} />
+    </Svg>
+  );
+}
+
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    calcBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      backgroundColor: theme.surfaceLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    disabled: {
+      opacity: 0.45,
+    },
+    pressed: {
+      opacity: 0.75,
+    },
+  });

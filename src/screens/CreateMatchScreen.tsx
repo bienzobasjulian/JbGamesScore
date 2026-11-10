@@ -194,9 +194,23 @@ export function CreateMatchScreen({
     savedPlayers,
     initialTemplateId,
   );
+  const gameAllowList = useMemo(() => {
+    if (
+      initialGameType !== 'standard' &&
+      !preferredCreateMatchGames.includes(
+        initialGameType as PreferredCreateMatchGame,
+      )
+    ) {
+      return [
+        ...preferredCreateMatchGames,
+        initialGameType as PreferredCreateMatchGame,
+      ];
+    }
+    return preferredCreateMatchGames;
+  }, [initialGameType, preferredCreateMatchGames]);
   const visibleGames = useMemo(
-    () => getVisibleCreateMatchGames(preferredCreateMatchGames),
-    [preferredCreateMatchGames],
+    () => getVisibleCreateMatchGames(gameAllowList),
+    [gameAllowList],
   );
   const showGamePicker = visibleGames.length > 0;
   useAutoTour('createMatch', {
@@ -206,7 +220,7 @@ export function CreateMatchScreen({
   const [gameType, setGameType] = useState<CreateMatchGameType>(() =>
     resolveCreateMatchGameType(
       gameTypeFromDraft(restoredDraft, initialGameType),
-      preferredCreateMatchGames,
+      gameAllowList,
     ),
   );
   const [settings, setSettings] = useState<GameSettings>(
@@ -219,7 +233,7 @@ export function CreateMatchScreen({
     applyRosterColors(
       resolveCreateMatchGameType(
         gameTypeFromDraft(restoredDraft, initialGameType),
-        preferredCreateMatchGames,
+        gameAllowList,
       ),
       restoredDraft?.players ?? templateInitial.players,
     ),
@@ -316,7 +330,12 @@ export function CreateMatchScreen({
 
   const returnScreen: AppScreen = sessionId
     ? { type: 'createSessionMatch', sessionId }
-    : { type: 'createMatch', templateId: initialTemplateId };
+    : {
+        type: 'createMatch',
+        templateId: initialTemplateId,
+        gameType:
+          initialGameType === 'standard' ? undefined : initialGameType,
+      };
 
   const handleChoosePlayers = () => {
     onOpenPlayerSelection({
@@ -349,7 +368,7 @@ export function CreateMatchScreen({
   const handleSelectGame = (next: CreateMatchGameType) => {
     const resolved = resolveCreateMatchGameType(
       next,
-      preferredCreateMatchGames,
+      gameAllowList,
     );
     setGameType(resolved);
     setFlip7VengeanceBrutal(false);
@@ -365,12 +384,12 @@ export function CreateMatchScreen({
   useEffect(() => {
     const resolved = resolveCreateMatchGameType(
       gameType,
-      preferredCreateMatchGames,
+      gameAllowList,
     );
     if (resolved !== gameType) {
       handleSelectGame(resolved);
     }
-  }, [gameType, preferredCreateMatchGames]);
+  }, [gameType, gameAllowList]);
 
   const handleSelectTemplate = (template: MatchTemplate | null) => {
     if (!template) {

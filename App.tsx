@@ -22,6 +22,7 @@ import { CreateSessionScreen } from './src/screens/CreateSessionScreen';
 import { CreateWinnerMatchScreen } from './src/screens/CreateWinnerMatchScreen';
 import { RegicideCounterScreen } from './src/screens/RegicideCounterScreen';
 import { GameScreen } from './src/screens/GameScreen';
+import { GamesListScreen } from './src/screens/GamesListScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EditMatchScreen } from './src/screens/EditMatchScreen';
 import { EditTemplateScreen } from './src/screens/EditTemplateScreen';
@@ -132,6 +133,7 @@ function AppShell() {
             return false;
 
           case 'createMatch':
+          case 'gamesList':
           case 'matchesList':
           case 'playersList':
           case 'sessionsList':
@@ -240,9 +242,16 @@ function AppShell() {
             recentSessions={app.recentSessions}
             allMatches={app.data.matches}
             recentPlayers={app.recentPlayers}
+            templates={app.data.templates}
+            savedPlayers={app.data.players}
+            preferredGames={app.data.preferredCreateMatchGames ?? []}
             selfPlayerId={app.selfPlayerId}
             onMenuPress={app.openMenu}
             onCreateMatch={app.goCreateMatch}
+            onOpenGame={(gameType) => app.goCreateMatch(undefined, gameType)}
+            onViewAllGames={app.goGamesList}
+            onPlayTemplate={app.playTemplate}
+            onViewAllTemplates={app.goTemplatesList}
             onCreateSession={app.goCreateSession}
             onOpenMatch={app.openMatch}
             onOpenSession={app.goSessionDetail}
@@ -269,6 +278,7 @@ function AppShell() {
               app.data.preferredCreateMatchGames ?? []
             }
             initialTemplateId={initialTemplateId}
+            initialGameType={app.screen.gameType ?? 'standard'}
             restoredDraft={restoredDraft}
             onBack={app.goHome}
             onOpenPlayerSelection={app.openSelectPlayers}
@@ -504,6 +514,14 @@ function AppShell() {
           />
         );
 
+      case 'gamesList':
+        return (
+          <GamesListScreen
+            onBack={app.goHome}
+            onOpenGame={(gameType) => app.goCreateMatch(undefined, gameType)}
+          />
+        );
+
       case 'templatesList':
         return (
           <TemplatesListScreen
@@ -617,24 +635,15 @@ function AppShell() {
                 : undefined
             }
             floorRoundTotalsAtZero={match.gameMode === 'pili_pili'}
-            onAddBreakdownItem={(playerId, value) =>
-              app.addBreakdownItem(match.id, playerId, value)
-            }
-            onRemoveBreakdownItem={(playerId, index) =>
-              app.removeBreakdownItem(match.id, playerId, index)
+            onSetBreakdown={(playerId, items) =>
+              app.setRoundBreakdown(match.id, playerId, items)
             }
             onGoToRound={(roundIndex) =>
               app.goToRound(match.id, roundIndex)
             }
             onAddRound={() => app.addNextRound(match.id)}
-            onAdjust={(playerId, delta) =>
-              app.adjustRoundScore(match.id, playerId, delta)
-            }
             onSetScore={(playerId, value) =>
               app.setRoundScore(match.id, playerId, value)
-            }
-            onScoringModeChange={(playerId, mode) =>
-              app.setRoundScoringMode(match.id, playerId, mode)
             }
             onBack={() => {
               if (match.sessionId) {

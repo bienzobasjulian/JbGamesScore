@@ -20,7 +20,7 @@ import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
-import { GameState, ScoringMode } from '../types';
+import { GameState } from '../types';
 import {
   checkGameOver,
   formatPointsGoal,
@@ -31,10 +31,7 @@ import {
   sortPlayersByScore,
 } from '../utils/game';
 import { getMatchRankingFromState, RankedPlayer } from '../utils/match';
-import {
-  getPlayerBreakdownItems,
-  getPlayerScoringMode,
-} from '../utils/scoring';
+import { getPlayerBreakdownItems } from '../utils/scoring';
 
 type Props = {
   state: GameState;
@@ -46,11 +43,8 @@ type Props = {
   floorRoundTotalsAtZero?: boolean;
   roundLabels?: string[];
   isWinnerOnlyMatch?: boolean;
-  onAdjust: (playerId: string, delta: number) => void;
   onSetScore: (playerId: string, value: number) => void;
-  onScoringModeChange: (playerId: string, mode: ScoringMode) => void;
-  onAddBreakdownItem: (playerId: string, value: number) => void;
-  onRemoveBreakdownItem: (playerId: string, index: number) => void;
+  onSetBreakdown: (playerId: string, items: number[]) => void;
   onGoToRound: (roundIndex: number) => void;
   onAddRound: () => void;
   onBack: () => void;
@@ -71,11 +65,8 @@ export function GameScreen({
   floorRoundTotalsAtZero = false,
   roundLabels,
   isWinnerOnlyMatch = false,
-  onAdjust,
   onSetScore,
-  onScoringModeChange,
-  onAddBreakdownItem,
-  onRemoveBreakdownItem,
+  onSetBreakdown,
   onGoToRound,
   onAddRound,
   onBack,
@@ -336,22 +327,8 @@ export function GameScreen({
                   activeBreakdown,
                   item.id,
                 )}
-                scoringMode={getPlayerScoringMode(
-                  state.roundScoringMode,
-                  item.id,
-                  activeBreakdown[item.id],
-                )}
-                onAdjust={(delta) => onAdjust(item.id, delta)}
                 onSetScore={(value) => onSetScore(item.id, value)}
-                onScoringModeChange={(mode) =>
-                  onScoringModeChange(item.id, mode)
-                }
-                onAddBreakdownItem={(value) =>
-                  onAddBreakdownItem(item.id, value)
-                }
-                onRemoveBreakdownItem={(index) =>
-                  onRemoveBreakdownItem(item.id, index)
-                }
+                onSetBreakdown={(items) => onSetBreakdown(item.id, items)}
               />
             )}
           />

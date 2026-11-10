@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { TemplateListRow } from '../components/TemplateListRow';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { MatchTemplate, SavedPlayer } from '../types';
-import { formatTemplateSubtitle } from '../utils/template';
+import { getTemplateFacts } from '../utils/template';
 
 type Props = {
   templates: MatchTemplate[];
@@ -31,7 +31,18 @@ export function TemplatesListScreen({
   const styles = useThemedStyles(createStyles);
 
   const [toDelete, setToDelete] = useState<MatchTemplate | null>(null);
-  const sorted = [...templates].sort((a, b) => b.updatedAt - a.updatedAt);
+  const [query, setQuery] = useState('');
+  const sorted = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return [...templates]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .filter((template) => {
+        if (!needle) return true;
+        const facts = getTemplateFacts(template, savedPlayers);
+        return [template.name, facts.playersLabel ?? '', ...facts.facts.map((fact) => fact.label)]
+          .some((value) => value.toLowerCase().includes(needle));
+      });
+  }, [query, savedPlayers, templates]);
 
   const confirmDelete = () => {
     if (!toDelete) return;
@@ -54,23 +65,39 @@ export function TemplatesListScreen({
         style={styles.createBtn}
       />
 
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Buscar..."
+        placeholderTextColor={theme.textMuted}
+        style={styles.search}
+        autoCorrect={false}
+        clearButtonMode="while-editing"
+      />
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {sorted.length === 0 ? (
+        {templates.length === 0 ? (
           <Text style={styles.empty}>No hay plantillas guardadas</Text>
+        ) : sorted.length === 0 ? (
+          <Text style={styles.empty}>Ninguna plantilla coincide con la búsqueda</Text>
         ) : (
-          sorted.map((template) => (
-            <TemplateListRow
-              key={template.id}
-              title={template.name}
-              subtitle={formatTemplateSubtitle(template, savedPlayers)}
-              onPlay={() => onPlayTemplate(template.id)}
-              onEdit={() => onEditTemplate(template.id)}
-              onDelete={() => setToDelete(template)}
-            />
-          ))
+          sorted.map((template) => {
+            const facts = getTemplateFacts(template, savedPlayers);
+            return (
+              <TemplateListRow
+                key={template.id}
+                title={template.name}
+                facts={facts.facts}
+                playersLabel={facts.playersLabel}
+                onPlay={() => onPlayTemplate(template.id)}
+                onEdit={() => onEditTemplate(template.id)}
+                onDelete={() => setToDelete(template)}
+              />
+            );
+          })
         )}
       </ScrollView>
 
@@ -103,7 +130,18 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginBottom: 16,
   },
   createBtn: {
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  search: {
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
+    color: theme.text,
+    fontSize: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
   },
   scroll: {
     paddingBottom: 24,

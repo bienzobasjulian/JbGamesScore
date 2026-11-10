@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
+import { HomeCarouselSection } from '../components/HomeCarouselSection';
 import { ListRow } from '../components/ListRow';
 import { MatchListRow } from '../components/MatchListRow';
 import { SectionBlock } from '../components/SectionBlock';
@@ -7,8 +8,10 @@ import { SectionLabel } from '../components/SectionLabel';
 import { SessionListRow } from '../components/SessionListRow';
 import { TourScrollView, useAutoTour } from '../onboarding';
 import { useThemedStyles, type AppTheme } from '../theme';
-import { Match, PlaySession, SavedPlayer } from '../types';
+import { Match, MatchTemplate, PlaySession, PreferredCreateMatchGame, SavedPlayer } from '../types';
+import { getVisibleCreateMatchGames } from '../utils/games';
 import { formatPlayerLastUsed } from '../utils/players';
+import { getTemplateFacts } from '../utils/template';
 
 type Props = {
   inProgressMatches: Match[];
@@ -16,9 +19,16 @@ type Props = {
   recentSessions: PlaySession[];
   allMatches: Match[];
   recentPlayers: SavedPlayer[];
+  templates: MatchTemplate[];
+  savedPlayers: SavedPlayer[];
+  preferredGames: PreferredCreateMatchGame[];
   selfPlayerId?: string | null;
   onMenuPress: () => void;
   onCreateMatch: () => void;
+  onOpenGame: (gameType: PreferredCreateMatchGame) => void;
+  onViewAllGames: () => void;
+  onPlayTemplate: (templateId: string) => void;
+  onViewAllTemplates: () => void;
   onCreateSession: () => void;
   onOpenMatch: (matchId: string) => void;
   onOpenSession: (sessionId: string) => void;
@@ -33,9 +43,16 @@ export function HomeScreen({
   recentSessions,
   allMatches,
   recentPlayers,
+  templates,
+  savedPlayers,
+  preferredGames,
   selfPlayerId,
   onMenuPress,
   onCreateMatch,
+  onOpenGame,
+  onViewAllGames,
+  onPlayTemplate,
+  onViewAllTemplates,
   onCreateSession,
   onOpenMatch,
   onOpenSession,
@@ -48,6 +65,10 @@ export function HomeScreen({
 
   const hasAnyMatch =
     inProgressMatches.length > 0 || recentFinishedMatches.length > 0;
+  const recentTemplates = [...templates]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 8);
+  const visibleGames = getVisibleCreateMatchGames(preferredGames);
 
   return (
     <View style={styles.container}>
@@ -64,6 +85,74 @@ export function HomeScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {visibleGames.length > 0 ? (
+          <HomeCarouselSection title="Juegos" onAction={onViewAllGames}>
+            {visibleGames.map((game) => (
+              <Pressable
+                key={game.id}
+                onPress={() =>
+                  onOpenGame(game.id as PreferredCreateMatchGame)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={game.name}
+                style={({ pressed }) => [
+                  styles.gameChip,
+                  pressed && styles.chipPressed,
+                ]}
+              >
+                <Text style={styles.gameChipText}>{game.name}</Text>
+              </Pressable>
+            ))}
+          </HomeCarouselSection>
+        ) : null}
+
+        <HomeCarouselSection title="Plantillas" onAction={onViewAllTemplates}>
+          {recentTemplates.length === 0 ? (
+            <Text style={styles.emptyCarousel}>
+              Aún no hay plantillas. Créalas desde Ver todo.
+            </Text>
+          ) : (
+            recentTemplates.map((template) => {
+              const facts = getTemplateFacts(template, savedPlayers);
+              return (
+                <Pressable
+                  key={template.id}
+                  onPress={() => onPlayTemplate(template.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={template.name}
+                  style={({ pressed }) => [
+                    styles.templateCard,
+                    pressed && styles.chipPressed,
+                  ]}
+                >
+                  <Text style={styles.templateTitle} numberOfLines={1}>
+                    {template.name}
+                  </Text>
+                  <View style={styles.templateFacts}>
+                    {facts.facts.map((fact) => (
+                      <Text
+                        key={fact.label}
+                        style={[
+                          styles.templateFact,
+                          fact.tone === 'high' && styles.templateFactHigh,
+                          fact.tone === 'low' && styles.templateFactLow,
+                        ]}
+                      >
+                        {fact.label}
+                      </Text>
+                    ))}
+                  </View>
+                  {facts.playersLabel ? (
+                    <Text style={styles.templateSubtitle} numberOfLines={1}>
+                      {facts.playersLabel}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            })
+          )}
+        </HomeCarouselSection>
+
         <SectionBlock
           title="Sesiones de juego"
           actionLabel="Nueva sesión"
@@ -204,5 +293,66 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 13,
     color: theme.textMuted,
     marginBottom: 4,
+  },
+  gameChip: {
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minWidth: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameChipText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.text,
+    textAlign: 'center',
+  },
+  templateCard: {
+    width: 210,
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  templateTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  templateFacts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  templateFact: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.accent,
+  },
+  templateFactHigh: {
+    color: theme.success,
+  },
+  templateFactLow: {
+    color: theme.danger,
+  },
+  templateSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: theme.textMuted,
+  },
+  chipPressed: {
+    opacity: 0.75,
+  },
+  emptyCarousel: {
+    fontSize: 14,
+    color: theme.textMuted,
+    paddingVertical: 8,
   },
 });

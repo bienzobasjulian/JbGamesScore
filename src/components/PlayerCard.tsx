@@ -1,22 +1,19 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useThemedStyles, type AppTheme } from '../theme';
 import { Player } from '../types';
+import { formatBreakdownExpression, formatScoreNumber } from '../utils/scoring';
 import { PlayerAvatar } from './PlayerAvatar';
 import { RoundScoringPanel } from './RoundScoringPanel';
-import { ScoringMode } from '../types';
 
 type Props = {
   player: Player;
   total: number;
   roundScore: number;
   breakdownItems?: number[];
-  scoringMode?: ScoringMode;
   rank?: number;
-  onAdjust: (delta: number) => void;
-  onSetScore?: (value: number) => void;
-  onScoringModeChange?: (mode: ScoringMode) => void;
-  onAddBreakdownItem?: (value: number) => void;
-  onRemoveBreakdownItem?: (index: number) => void;
+  onSetScore: (value: number) => void;
+  onSetBreakdown?: (items: number[]) => void;
   onRemove?: () => void;
   showRoundControls?: boolean;
   showTotal?: boolean;
@@ -29,22 +26,48 @@ export function PlayerCard({
   roundScore,
   rank,
   breakdownItems = [],
-  scoringMode = 'direct',
-  onAdjust,
   onSetScore,
-  onScoringModeChange,
-  onAddBreakdownItem,
-  onRemoveBreakdownItem,
+  onSetBreakdown,
   onRemove,
   showRoundControls = true,
   showTotal = true,
   controlsDisabled,
 }: Props) {
-  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [scoreText, setScoreText] = useState(formatScoreNumber(roundScore));
+  const [scoreFocused, setScoreFocused] = useState(false);
+  const scoreTextRef = useRef(scoreText);
+  const scoreFocusedRef = useRef(scoreFocused);
+  scoreTextRef.current = scoreText;
+  scoreFocusedRef.current = scoreFocused;
+
+  useEffect(() => {
+    if (!scoreFocused) setScoreText(formatScoreNumber(roundScore));
+  }, [roundScore, scoreFocused]);
+
+  useEffect(() => {
+    return () => {
+      if (scoreFocusedRef.current) {
+        onSetScore(parseScore(scoreTextRef.current));
+      }
+    };
+  }, [onSetScore]);
+
+  const commitScore = () => {
+    const value = parseScore(scoreText);
+    onSetScore(value);
+    setScoreText(formatScoreNumber(value));
+    setScoreFocused(false);
+  };
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        calculatorOpen && styles.cardActive,
+      ]}
+    >
       <View style={styles.header}>
         <PlayerAvatar
           name={player.name}
@@ -77,6 +100,55 @@ export function PlayerCard({
             </Text>
           )}
         </View>
+        {showRoundControls ? (
+          <View style={styles.scoreBlock}>
+            <View style={styles.scoreRow}>
+              <View
+                style={[
+                  styles.scorePill,
+                  scoreFocused && styles.scorePillFocused,
+                ]}
+              >
+                <TextInput
+                  style={[
+                    styles.scoreValue,
+                    roundScore < 0 && !scoreFocused && styles.negative,
+                  ]}
+                  underlineColorAndroid="transparent"
+                  value={scoreText}
+                  onChangeText={(next) => {
+                    const sanitized = sanitizeScoreInput(next);
+                    setScoreText(sanitized);
+                    const parsed = tryParseScore(sanitized);
+                    if (parsed !== null) onSetScore(parsed);
+                  }}
+                  onFocus={() => setScoreFocused(true)}
+                  onBlur={commitScore}
+                  onSubmitEditing={commitScore}
+                  editable={!controlsDisabled}
+                  keyboardType="numbers-and-punctuation"
+                  returnKeyType="done"
+                  selectTextOnFocus
+                  maxLength={8}
+                />
+              </View>
+              <RoundScoringPanel
+                roundScore={roundScore}
+                breakdownItems={breakdownItems}
+                color={player.color}
+                disabled={controlsDisabled}
+                onSetScore={onSetScore}
+                onSetBreakdown={onSetBreakdown ?? (() => {})}
+                onSheetOpenChange={setCalculatorOpen}
+              />
+            </View>
+            {breakdownItems.length > 1 ? (
+              <Text style={styles.formula} numberOfLines={2}>
+                {formatBreakdownExpression(breakdownItems)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {onRemove && (
           <Pressable onPress={onRemove} hitSlop={12} style={styles.remove}>
             <Text style={styles.removeText}>✕</Text>
@@ -84,25 +156,31 @@ export function PlayerCard({
         )}
       </View>
 
-      {showRoundControls && (
-        <View style={styles.roundSection}>
-          <Text style={styles.roundLabel}>Esta ronda</Text>
-          <RoundScoringPanel
-            roundScore={roundScore}
-            breakdownItems={breakdownItems}
-            mode={scoringMode}
-            color={player.color}
-            disabled={controlsDisabled}
-            onModeChange={onScoringModeChange ?? (() => {})}
-            onAdjust={onAdjust}
-            onSetScore={onSetScore ?? (() => {})}
-            onAddBreakdownItem={onAddBreakdownItem ?? (() => {})}
-            onRemoveBreakdownItem={onRemoveBreakdownItem ?? (() => {})}
-          />
-        </View>
-      )}
     </View>
   );
+}
+
+function sanitizeScoreInput(text: string): string {
+  const normalized = text.replace(/\./g, ',');
+  const negative = normalized.trim().startsWith('-');
+  const digits = normalized.replace(/[^\d,]/g, '');
+  const [whole, ...rest] = digits.split(',');
+  const fraction = rest.join('');
+  const body = fraction.length > 0 ? `${whole},${fraction}` : whole;
+  return negative ? `-${body}` : body;
+}
+
+function tryParseScore(text: string): number | null {
+  const trimmed = text.trim().replace(',', '.');
+  if (trimmed === '' || trimmed === '-' || trimmed === ',' || trimmed === '-,') {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseScore(text: string): number {
+  return tryParseScore(text) ?? 0;
 }
 
 const createStyles = (theme: AppTheme) => StyleSheet.create({
@@ -114,10 +192,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.border,
     gap: 14,
   },
+  cardActive: {
+    borderColor: theme.accent,
+    borderWidth: 1.5,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   avatar: {
     width: 48,
@@ -133,6 +215,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   info: {
     flex: 1,
+    minWidth: 0,
     gap: 2,
   },
   nameRow: {
@@ -176,15 +259,45 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 18,
     color: theme.textMuted,
   },
-  roundSection: {
-    gap: 10,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
+  scoreBlock: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    gap: 2,
   },
-  roundLabel: {
-    fontSize: 14,
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scorePill: {
+    width: 76,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    justifyContent: 'center',
+  },
+  scorePillFocused: {
+    borderColor: theme.accent,
+  },
+  scoreValue: {
+    width: '100%',
+    height: 40,
+    paddingVertical: 0,
+    paddingHorizontal: 6,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  formula: {
+    fontSize: 11,
     color: theme.textMuted,
-    fontWeight: '600',
+    textAlign: 'right',
+    maxWidth: 124,
+  },
+  negative: {
+    color: theme.danger,
   },
 });

@@ -1,8 +1,12 @@
 import { PLAYER_COLOR_OPTIONS } from '../constants';
 import type { AventurerosTrenSubmode, PreferredCreateMatchGame } from '../types';
 import { HERO_QUEST_MAX_PLAYERS, HERO_QUEST_MIN_PLAYERS } from './heroQuest';
-import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
+import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS, SKULL_KING_TOTAL_ROUNDS } from './skullKing';
 import { AVENTUREROS_TOKEN_COLOR_OPTIONS } from './aventurerosTren';
+import { FLIP7_WIN_AT } from './flip7';
+import { FLIP7_VENGEANCE_WIN_AT } from './flip7Vengeance';
+import { PILI_PILI_LOSE_AT } from './piliPili';
+import { SUSHI_GO_TOTAL_ROUNDS } from './sushiGo';
 
 export type CreateMatchGameType = PreferredCreateMatchGame | 'standard';
 
@@ -169,6 +173,89 @@ export function normalizePreferredCreateMatchGames(
     (id): id is PreferredCreateMatchGame =>
       seen.has(id as PreferredCreateMatchGame),
   );
+}
+
+export type GameCatalogTone = 'high' | 'low' | 'neutral';
+
+export type GameCatalogMeta = {
+  /** Rango real de jugadores. Vacío si el juego no fija un máximo. */
+  playersLabel: string | null;
+  /** Rondas fijas del juego, si las tiene. */
+  roundsLabel: string | null;
+  objectiveLabel: string | null;
+  objectiveTone: GameCatalogTone;
+};
+
+function formatKnownPlayerRange(limits: CreateMatchPlayerLimits): string | null {
+  if (!Number.isFinite(limits.max) || limits.max <= 0) return null;
+  if (limits.min <= 0) return `hasta ${limits.max}`;
+  if (limits.min === limits.max) return `${limits.min}`;
+  return `${limits.min}–${limits.max}`;
+}
+
+export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMeta {
+  const playersLabel = formatKnownPlayerRange(getCreateMatchPlayerLimits(gameType));
+  switch (gameType) {
+    case 'flip7':
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: `Objetivo ${FLIP7_WIN_AT}`,
+        objectiveTone: 'high',
+      };
+    case 'flip7_vengeance':
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: `Objetivo ${FLIP7_VENGEANCE_WIN_AT}`,
+        objectiveTone: 'high',
+      };
+    case 'skull_king':
+      return {
+        playersLabel,
+        roundsLabel: `${SKULL_KING_TOTAL_ROUNDS} rondas`,
+        objectiveLabel: 'Más alto',
+        objectiveTone: 'high',
+      };
+    case 'sushi_go':
+      return {
+        playersLabel,
+        roundsLabel: `${SUSHI_GO_TOTAL_ROUNDS} rondas`,
+        objectiveLabel: 'Más alto',
+        objectiveTone: 'high',
+      };
+    case 'pili_pili':
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: `Pierde a ${PILI_PILI_LOSE_AT}`,
+        objectiveTone: 'low',
+      };
+    case 'pelusas':
+    case 'pelusas_revolution':
+    case 'aventureros_tren':
+    case 'aventureros_tren_europa':
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: 'Más alto',
+        objectiveTone: 'high',
+      };
+    case 'regicide':
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: 'Cooperativo',
+        objectiveTone: 'neutral',
+      };
+    default:
+      return {
+        playersLabel,
+        roundsLabel: null,
+        objectiveLabel: null,
+        objectiveTone: 'neutral',
+      };
+  }
 }
 
 export function getVisibleCreateMatchGames(

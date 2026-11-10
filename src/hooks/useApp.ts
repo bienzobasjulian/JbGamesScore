@@ -490,11 +490,14 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
-  const goCreateMatch = useCallback((templateId?: string) => {
-    dedicatedMatchSessionIdRef.current = null;
-    setScreen({ type: 'createMatch', templateId });
-    setMenuOpen(false);
-  }, []);
+  const goCreateMatch = useCallback(
+    (templateId?: string, gameType?: PreferredCreateMatchGame) => {
+      dedicatedMatchSessionIdRef.current = null;
+      setScreen({ type: 'createMatch', templateId, gameType });
+      setMenuOpen(false);
+    },
+    [],
+  );
 
   const playTemplate = useCallback((templateId: string) => {
     setScreen({ type: 'createMatch', templateId });
@@ -2050,6 +2053,11 @@ export function useApp() {
     setMenuOpen(false);
   }, []);
 
+  const goGamesList = useCallback(() => {
+    setScreen({ type: 'gamesList' });
+    setMenuOpen(false);
+  }, []);
+
   const goSettings = useCallback(() => {
     setScreen({ type: 'settings' });
     setMenuOpen(false);
@@ -2922,6 +2930,35 @@ export function useApp() {
     [updateMatch],
   );
 
+  const setRoundBreakdown = useCallback(
+    (matchId: string, playerId: string, items: number[]) => {
+      updateMatch(matchId, (match) => {
+        if (match.status === 'finished') return match;
+        const m = normalizeMatchRounds(match);
+        const cleaned = items.filter((value) => Number.isFinite(value));
+        return {
+          ...patchActiveRound(m, (round, breakdown) => {
+            const nextBreakdown = { ...breakdown };
+            if (cleaned.length === 0) {
+              delete nextBreakdown[playerId];
+            } else {
+              nextBreakdown[playerId] = cleaned;
+            }
+            return {
+              round: { ...round, [playerId]: sumBreakdownItems(cleaned) },
+              breakdown: nextBreakdown,
+            };
+          }),
+          roundScoringMode: {
+            ...m.roundScoringMode,
+            [playerId]: cleaned.length > 0 ? 'breakdown' : 'direct',
+          },
+        };
+      });
+    },
+    [updateMatch],
+  );
+
   const removeBreakdownItem = useCallback(
     (matchId: string, playerId: string, index: number) => {
       updateMatch(matchId, (match) => {
@@ -3359,6 +3396,7 @@ export function useApp() {
     goMatchesList,
     goPlayersList,
     goTemplatesList,
+    goGamesList,
     goSettings,
     goSessionsList,
     goCreateSession,
@@ -3404,6 +3442,7 @@ export function useApp() {
     setRoundScore,
     setRoundScoringMode,
     addBreakdownItem,
+    setRoundBreakdown,
     removeBreakdownItem,
     markMatchFinished,
     finishMatch,

@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import type { TemplateFact } from '../utils/template';
 
 type Props = {
   title: string;
-  subtitle: string;
+  facts: TemplateFact[];
+  playersLabel: string | null;
   onPlay: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -11,7 +13,8 @@ type Props = {
 
 export function TemplateListRow({
   title,
-  subtitle,
+  facts,
+  playersLabel,
   onPlay,
   onEdit,
   onDelete,
@@ -20,15 +23,30 @@ export function TemplateListRow({
   const styles = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.row}>
-      <View style={styles.texts}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={2}>
-          {subtitle}
-        </Text>
+    <View style={styles.card}>
+      <Text style={styles.title} numberOfLines={1}>
+        {title}
+      </Text>
+      <View style={styles.facts}>
+        {facts.map((fact) => (
+          <View
+            key={fact.label}
+            style={[
+              styles.fact,
+              { backgroundColor: toneColor(theme, fact.tone) + '22' },
+            ]}
+          >
+            <Text style={[styles.factLabel, { color: toneColor(theme, fact.tone) }]}>
+              {fact.label}
+            </Text>
+          </View>
+        ))}
       </View>
+      {playersLabel ? (
+        <Text style={styles.players} numberOfLines={1}>
+          {playersLabel}
+        </Text>
+      ) : null}
       <View style={styles.actions}>
         <Pressable
           onPress={onPlay}
@@ -54,61 +72,82 @@ export function TemplateListRow({
   );
 }
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  row: {
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-    gap: 10,
-  },
-  texts: {
-    gap: 3,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.text,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: theme.textMuted,
-    lineHeight: 18,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  action: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  play: {
-    borderColor: theme.accent + '55',
-    backgroundColor: theme.accent + '14',
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  playLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.accent,
-  },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  deleteLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.danger,
-  },
-});
+function toneColor(theme: AppTheme, tone: TemplateFact['tone']): string {
+  if (tone === 'high') return theme.success;
+  if (tone === 'low') return theme.danger;
+  return theme.accent;
+}
+
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: theme.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 8,
+      marginBottom: 10,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    facts: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    fact: {
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    factLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    players: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginTop: 2,
+    },
+    action: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      backgroundColor: theme.surfaceLight,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    play: {
+      borderColor: theme.accent + '55',
+      backgroundColor: theme.accent + '14',
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    playLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.accent,
+    },
+    actionLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    deleteLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.danger,
+    },
+  });

@@ -415,12 +415,17 @@ export type AppData = {
 
 export type AppScreen =
   | { type: 'home' }
-  | { type: 'createMatch'; templateId?: string }
+  | {
+      type: 'createMatch';
+      templateId?: string;
+      gameType?: PreferredCreateMatchGame;
+    }
   | { type: 'game'; matchId: string }
   | { type: 'editMatch'; matchId: string }
   | { type: 'matchesList' }
   | { type: 'playersList' }
   | { type: 'templatesList' }
+  | { type: 'gamesList' }
   | { type: 'editTemplate'; templateId?: string }
   | { type: 'pelusasSetup' }
   | { type: 'pelusasCount' }
