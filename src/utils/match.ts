@@ -194,6 +194,7 @@ export function formatMatchTitle(match: Match): string {
     return match.name?.trim() || 'Regicide';
   }
   if (match.gameMode === 'sushi_go') return 'Sushi Go';
+  if (match.gameMode === 'hero_quest') return 'HeroQuest';
   if (match.players.length === 0) return 'Partida vacía';
   const names = match.players.map((p) => p.name);
   if (names.length === 1) return names[0];
@@ -289,6 +290,8 @@ export function getMatchWinners(match: Match): Player[] {
     return getSushiGoMatchWinners(match);
   }
 
+  if (match.gameMode === 'hero_quest') return [];
+
   const state = matchToGameState(match);
   const over = checkGameOver(state);
   if (over.winners.length > 0) return over.winners;
@@ -316,6 +319,7 @@ export function formatWinnerLabel(match: Match): string | null {
 }
 
 export function formatMatchSubtitle(match: Match): string {
+  if (match.gameMode === 'hero_quest') return 'Fichas';
   const m = normalizeMatchRounds(match);
   if (match.status === 'finished') return 'Finalizada';
   const current = m.activeRoundIndex + 1;
@@ -351,6 +355,9 @@ export function formatMatchListMeta(match: Match): string {
   }
   if (match.gameMode === 'sushi_go') {
     parts.push('Sushi Go · 3 rondas');
+  }
+  if (match.gameMode === 'hero_quest') {
+    parts.push('HeroQuest · fichas');
   }
   if (match.gameMode === 'regicide') {
     parts.push('Regicide');
@@ -501,5 +508,8 @@ export function initialAppData(): AppData {
     sessions: [],
     selfPlayerId: null,
     preferredCreateMatchGames: [],
+    menteVacunaCategories: [],
+    menteVacunaQuestions: [],
+    menteVacunaArchivedIds: [],
   };
 }

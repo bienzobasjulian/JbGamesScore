@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   value: number;
@@ -132,7 +133,9 @@ export function ScoreStepper({
           pressed && !disabled && styles.pressed,
         ]}
       >
-        <Text style={styles.btnTextPlus}>+</Text>
+        <Text style={[styles.btnTextPlus, { color: getPlayerAvatarTextColor(color) }]}>
+          +
+        </Text>
       </Pressable>
     </View>
   );

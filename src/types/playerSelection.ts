@@ -1,4 +1,4 @@
-import { GameSettings, Player } from '../types';
+import { GameSettings, HeroQuestHeroId, Player } from '../types';
 import { CreateMatchGameType } from '../utils/games';
 
 export type CreateMatchDraft = {
@@ -9,6 +9,9 @@ export type CreateMatchDraft = {
   loadedTemplateId: string | null;
   randomStarterName: string | null;
   flip7VengeanceBrutal?: boolean;
+  /** Clase de HeroQuest por id de jugador. Una clase distinta cada uno. */
+  heroQuestClassByPlayer?: Partial<Record<string, HeroQuestHeroId>>;
+  heroQuestNameByPlayer?: Record<string, string>;
 };
 
 export type EditMatchDraft = {

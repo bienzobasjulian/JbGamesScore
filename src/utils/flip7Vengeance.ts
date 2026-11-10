@@ -10,7 +10,7 @@ import type { HowToPlayItem } from '../types/howToPlay';
 import { createId } from './game';
 import { emptyRoundBreakdown } from './rounds';
 
-export const FLIP7_VENGEANCE_MIN_PLAYERS = 3;
+export const FLIP7_VENGEANCE_MIN_PLAYERS = 1;
 export const FLIP7_VENGEANCE_WIN_AT = 200;
 export const FLIP7_VENGEANCE_BONUS = 15;
 export const FLIP7_VENGEANCE_MAX_NUMBERS = 7;

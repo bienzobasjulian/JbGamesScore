@@ -432,6 +432,12 @@ export function GameScreen({
           <CurrentRankingModal
             visible={rankingModalVisible}
             ranking={ranking}
+            pointsGoal={
+              state.settings.maxPointsToWin != null &&
+              state.settings.maxPointsToWin > 0
+                ? state.settings.maxPointsToWin
+                : null
+            }
             onClose={() => setRankingModalVisible(false)}
           />
           <FinishMatchModal

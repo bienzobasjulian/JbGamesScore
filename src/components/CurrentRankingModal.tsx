@@ -8,9 +8,15 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   ranking: RankedPlayer[];
+  pointsGoal?: number | null;
 };
 
-export function CurrentRankingModal({ visible, onClose, ranking }: Props) {
+export function CurrentRankingModal({
+  visible,
+  onClose,
+  ranking,
+  pointsGoal = null,
+}: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const bottomInset = useSheetBottomInset();
@@ -34,7 +40,11 @@ export function CurrentRankingModal({ visible, onClose, ranking }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <MatchRanking ranking={ranking} showPodium={false} />
+            <MatchRanking
+              ranking={ranking}
+              showPodium={false}
+              pointsGoal={pointsGoal}
+            />
           </ScrollView>
           <Pressable
             onPress={onClose}

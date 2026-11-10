@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Polygon, Rect } from 'react-native-svg';
 import {
   PLAYER_AVATAR_SVG_PATHS,
+  PLAYER_AVATAR_SVG_STROKE,
   PLAYER_AVATAR_SVG_VIEWBOX,
 } from '../utils/playerAvatarPaths';
 import {
@@ -22,16 +23,26 @@ function GameIconPath({
   color,
   d,
   size,
+  strokeWidth,
   viewBox = '0 0 512 512',
 }: {
   color: string;
   d: string;
   size: number;
+  strokeWidth?: number;
   viewBox?: string;
 }) {
   return (
     <Svg width={size} height={size} viewBox={viewBox}>
-      <Path d={d} fill={color} fillRule="evenodd" />
+      <Path
+        d={d}
+        fill={strokeWidth ? 'none' : color}
+        stroke={strokeWidth ? color : undefined}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fillRule="evenodd"
+      />
     </Svg>
   );
 }
@@ -172,6 +183,7 @@ export function PlayerAvatarIcon({
         d={svgPath}
         color={color}
         size={size}
+        strokeWidth={PLAYER_AVATAR_SVG_STROKE[id]}
         viewBox={PLAYER_AVATAR_SVG_VIEWBOX[id]}
       />
     );

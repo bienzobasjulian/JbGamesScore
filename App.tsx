@@ -34,6 +34,8 @@ import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SessionsListScreen } from './src/screens/SessionsListScreen';
 import { SelectPlayersScreen } from './src/screens/SelectPlayersScreen';
 import { SkullKingCounterScreen } from './src/screens/SkullKingCounterScreen';
+import { HeroQuestCounterScreen } from './src/screens/HeroQuestCounterScreen';
+import { MenteVacunaScreen } from './src/screens/MenteVacunaScreen';
 import { SushiGoCounterScreen } from './src/screens/SushiGoCounterScreen';
 import { PiliPiliCounterScreen } from './src/screens/PiliPiliCounterScreen';
 import { Flip7CounterScreen } from './src/screens/Flip7CounterScreen';
@@ -297,6 +299,22 @@ function AppShell() {
             onStartSushiGo={(players, sessionId) => {
               app.startSushiGoSession(players, sessionId);
             }}
+            onStartHeroQuest={(
+              players,
+              sessionId,
+              matchName,
+              heroByPlayer,
+              nameByPlayer,
+            ) => {
+              app.startHeroQuestSession(
+                players,
+                sessionId,
+                matchName,
+                heroByPlayer,
+                nameByPlayer,
+              );
+            }}
+            onStartMenteVacuna={app.openMenteVacuna}
             selfPlayer={app.selfPlayer}
           />
         );
@@ -351,6 +369,22 @@ function AppShell() {
             onStartSushiGo={(players, sessionId) => {
               app.startSushiGoSession(players, sessionId);
             }}
+            onStartHeroQuest={(
+              players,
+              sessionId,
+              matchName,
+              heroByPlayer,
+              nameByPlayer,
+            ) => {
+              app.startHeroQuestSession(
+                players,
+                sessionId,
+                matchName,
+                heroByPlayer,
+                nameByPlayer,
+              );
+            }}
+            onStartMenteVacuna={app.openMenteVacuna}
             selfPlayer={app.selfPlayer}
           />
         );
@@ -574,7 +608,8 @@ function AppShell() {
               match.gameMode === 'flip7' ||
               match.gameMode === 'flip7_vengeance' ||
               match.gameMode === 'aventureros_tren' ||
-              match.gameMode === 'sushi_go'
+              match.gameMode === 'sushi_go' ||
+              match.gameMode === 'hero_quest'
             }
             roundLabels={
               match.gameMode === 'sushi_go'
@@ -798,6 +833,36 @@ function AppShell() {
           />
         );
       }
+
+      case 'heroQuestCount': {
+        if (!app.heroQuestSession) return null;
+        return (
+          <HeroQuestCounterScreen
+            session={app.heroQuestSession}
+            onSaveAndExit={app.saveHeroQuestAndExit}
+            onDeleteAndExit={app.deleteHeroQuestAndExit}
+            onFinishMatch={app.finishHeroQuestSession}
+            onUpdateSheet={app.updateHeroQuestSheet}
+          />
+        );
+      }
+
+      case 'menteVacuna':
+        return (
+          <MenteVacunaScreen
+            categories={app.data.menteVacunaCategories ?? []}
+            customQuestions={app.data.menteVacunaQuestions ?? []}
+            archivedIds={app.data.menteVacunaArchivedIds ?? []}
+            onBack={app.goHome}
+            onAddCategory={app.addMenteVacunaCategory}
+            onRemoveCategory={app.removeMenteVacunaCategory}
+            onAddQuestion={app.addMenteVacunaQuestion}
+            onUpdateQuestion={app.updateMenteVacunaQuestion}
+            onRemoveQuestion={app.removeMenteVacunaQuestion}
+            onArchiveQuestion={app.archiveMenteVacunaQuestion}
+            onUnarchiveQuestion={app.unarchiveMenteVacunaQuestion}
+          />
+        );
 
       default:
         return null;

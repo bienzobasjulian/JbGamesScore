@@ -1,5 +1,6 @@
 import { PLAYER_COLOR_OPTIONS } from '../constants';
 import type { AventurerosTrenSubmode, PreferredCreateMatchGame } from '../types';
+import { HERO_QUEST_MAX_PLAYERS, HERO_QUEST_MIN_PLAYERS } from './heroQuest';
 import { SKULL_KING_MAX_PLAYERS, SKULL_KING_MIN_PLAYERS } from './skullKing';
 import { AVENTUREROS_TOKEN_COLOR_OPTIONS } from './aventurerosTren';
 
@@ -36,7 +37,7 @@ export function getCreateMatchPlayerLimits(
       return { min: 2, max: 8 };
     case 'flip7':
     case 'flip7_vengeance':
-      return { min: 3, max: Number.POSITIVE_INFINITY };
+      return { min: 1, max: Number.POSITIVE_INFINITY };
     case 'aventureros_tren':
     case 'aventureros_tren_europa':
       return { min: 1, max: 5 };
@@ -47,6 +48,10 @@ export function getCreateMatchPlayerLimits(
       return { min: 0, max: 4 };
     case 'sushi_go':
       return { min: 2, max: 5 };
+    case 'hero_quest':
+      return { min: HERO_QUEST_MIN_PLAYERS, max: HERO_QUEST_MAX_PLAYERS };
+    case 'mente_vacuna':
+      return { min: 0, max: 0 };
     default:
       return { min: 1, max: Number.POSITIVE_INFINITY };
   }
@@ -96,13 +101,13 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     id: 'flip7',
     name: 'Flip 7',
     description:
-      'Cartas del 0 al 12, modificadores y bonus Flip7 · gana quien llegue a 200 (3+ jugadores)',
+      'Cartas del 0 al 12, modificadores y bonus Flip7 · gana quien llegue a 200',
   },
   {
     id: 'flip7_vengeance',
     name: 'Flip7 Venganza',
     description:
-      'Del 1 al 13, especiales y modificadores negativos · 200 pts (3+ jugadores)',
+      'Del 1 al 13, especiales y modificadores negativos · 200 pts',
   },
   {
     id: 'aventureros_tren',
@@ -126,6 +131,17 @@ export const CREATE_MATCH_GAMES: CreateMatchGameOption[] = [
     name: 'Sushi Go',
     description:
       'Tres rondas de cartas: maki, nigiri, tempura y pudin (2–5 jugadores)',
+  },
+  {
+    id: 'hero_quest',
+    name: 'HeroQuest',
+    description:
+      'Un héroe por jugador: Bárbaro, Enano, Elfo o Mago (1–4)',
+  },
+  {
+    id: 'mente_vacuna',
+    name: 'Mente Vacuna',
+    description: 'Preguntas para coincidir. Sin puntuación ni jugadores',
   },
 ];
 

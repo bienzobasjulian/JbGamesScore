@@ -19,6 +19,7 @@ const TOUR_IDS: TourId[] = [
   'aventurerosDestinos',
   'regicideSelect',
   'regicideCombat',
+  'heroQuest',
 ];
 
 function isTourId(value: string): value is TourId {

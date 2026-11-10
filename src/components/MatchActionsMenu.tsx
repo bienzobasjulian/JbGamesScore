@@ -8,9 +8,12 @@ type Props = {
   onViewRanking?: () => void;
   onEditMatch: () => void;
   onFinishMatch: () => void;
+  finishHint?: string;
   canEditMatch?: boolean;
   onViewTutorial?: () => void;
   onHowToPlay?: () => void;
+  onSaveAndExit?: () => void;
+  onDeleteAndExit?: () => void;
 };
 
 export function MatchActionsMenu({
@@ -19,9 +22,12 @@ export function MatchActionsMenu({
   onViewRanking,
   onEditMatch,
   onFinishMatch,
+  finishHint = 'Ver podio y decidir si guardar la partida',
   canEditMatch = true,
   onViewTutorial,
   onHowToPlay,
+  onSaveAndExit,
+  onDeleteAndExit,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -126,10 +132,46 @@ export function MatchActionsMenu({
             <Text style={[styles.optionTitle, styles.optionTitleFinish]}>
               Finalizar partida
             </Text>
-            <Text style={styles.optionHint}>
-              Ver podio y decidir si guardar la partida
-            </Text>
+            <Text style={styles.optionHint}>{finishHint}</Text>
           </Pressable>
+
+          {onSaveAndExit ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onSaveAndExit();
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text style={styles.optionTitle}>Guardar y salir</Text>
+              <Text style={styles.optionHint}>
+                La partida queda en curso para retomarla más tarde
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {onDeleteAndExit ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onDeleteAndExit();
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text style={[styles.optionTitle, styles.optionTitleFinish]}>
+                Salir y eliminar
+              </Text>
+              <Text style={styles.optionHint}>
+                Borra esta partida y su progreso
+              </Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
             onPress={onClose}

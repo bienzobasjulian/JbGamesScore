@@ -10,6 +10,11 @@ type Props = {
   onDeleteAndExit: () => void;
   /** Si se indica, muestra la opción de cerrar la partida como derrota. */
   onDefeatAndExit?: () => void;
+  saveTitle?: string;
+  saveHint?: string;
+  onFinishAndExit?: () => void;
+  finishTitle?: string;
+  finishHint?: string;
 };
 
 export function ExitMatchModal({
@@ -19,6 +24,11 @@ export function ExitMatchModal({
   onSaveAndExit,
   onDeleteAndExit,
   onDefeatAndExit,
+  saveTitle = 'Guardar partida y salir',
+  saveHint = 'La partida quedará guardada para retomarla después',
+  onFinishAndExit,
+  finishTitle = 'Finalizar partida',
+  finishHint = 'La campaña se cierra. Las fichas quedan guardadas como resultado.',
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -59,10 +69,8 @@ export function ExitMatchModal({
               <Text style={styles.optionIconText}>💾</Text>
             </View>
             <View style={styles.optionTexts}>
-              <Text style={styles.optionTitle}>Guardar partida y salir</Text>
-              <Text style={styles.optionHint}>
-                La partida quedará guardada para retomarla después
-              </Text>
+              <Text style={styles.optionTitle}>{saveTitle}</Text>
+              <Text style={styles.optionHint}>{saveHint}</Text>
             </View>
           </Pressable>
 
@@ -84,6 +92,25 @@ export function ExitMatchModal({
                   Cierra la partida como derrota y guarda cuántos enemigos
                   vencisteis
                 </Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          {onFinishAndExit ? (
+            <Pressable
+              onPress={onFinishAndExit}
+              style={({ pressed }) => [
+                styles.option,
+                styles.optionSave,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <View style={[styles.optionIcon, styles.optionIconSave]}>
+                <Text style={styles.optionIconText}>✓</Text>
+              </View>
+              <View style={styles.optionTexts}>
+                <Text style={styles.optionTitle}>{finishTitle}</Text>
+                <Text style={styles.optionHint}>{finishHint}</Text>
               </View>
             </Pressable>
           ) : null}

@@ -13,7 +13,7 @@ import { FinishMatchModal } from '../components/FinishMatchModal';
 import { Flip7VengeancePlayerRoundPanel } from '../components/Flip7VengeancePlayerRoundPanel';
 import { HowToPlayScreen } from '../components/HowToPlayScreen';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
-import { PlayerAvatar } from '../components/PlayerAvatar';
+import { Flip7RaceRanking } from '../components/Flip7RaceRanking';
 import { RoundErrorsModal } from '../components/RoundErrorsModal';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
@@ -211,29 +211,11 @@ export function Flip7VengeanceCounterScreen({
 
         <View style={styles.rankingPanel}>
           <Text style={styles.rankingTitle}>Clasificación</Text>
-          {cumulativeRanking.map(({ player, total }, index) => (
-            <View key={player.id} style={styles.rankingRow}>
-              <Text style={styles.rankingPos}>{index + 1}.</Text>
-              <PlayerAvatar
-                name={player.name}
-                color={player.color}
-                avatar={player.avatar}
-                size={28}
-                radius={8}
-              />
-              <Text style={styles.rankingName} numberOfLines={1}>
-                {player.name}
-              </Text>
-              <Text
-                style={[
-                  styles.rankingScore,
-                  total >= FLIP7_VENGEANCE_WIN_AT && styles.rankingScoreWin,
-                ]}
-              >
-                {total} pts
-              </Text>
-            </View>
-          ))}
+          <Flip7RaceRanking
+            entries={cumulativeRanking}
+            goal={FLIP7_VENGEANCE_WIN_AT}
+            allowNegative
+          />
         </View>
 
         {completedRounds.length > 0 ? (
@@ -353,6 +335,7 @@ export function Flip7VengeanceCounterScreen({
           total: entry.total,
           rank: index + 1,
         }))}
+        pointsGoal={FLIP7_VENGEANCE_WIN_AT}
       />
 
       <RoundErrorsModal
@@ -410,21 +393,6 @@ const createStyles = (theme: AppTheme) =>
       color: theme.textMuted,
       marginBottom: 4,
     },
-    rankingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingVertical: 4,
-    },
-    rankingPos: {
-      width: 22,
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.textMuted,
-    },
-    rankingName: { flex: 1, fontSize: 15, fontWeight: '600', color: theme.text },
-    rankingScore: { fontSize: 15, fontWeight: '800', color: theme.accent },
-    rankingScoreWin: { color: theme.success },
     gameOverBanner: {
       backgroundColor: theme.success + '22',
       borderRadius: 16,

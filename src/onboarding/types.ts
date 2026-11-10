@@ -12,7 +12,8 @@ export type TourId =
   | 'aventurerosConstruccion'
   | 'aventurerosDestinos'
   | 'regicideSelect'
-  | 'regicideCombat';
+  | 'regicideCombat'
+  | 'heroQuest';
 
 export type LayoutRect = {
   x: number;

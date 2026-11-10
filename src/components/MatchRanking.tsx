@@ -2,15 +2,22 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { RankedPlayer } from '../utils/match';
 import { PlayerAvatar } from './PlayerAvatar';
+import { ScoreProgressFill } from './ScoreProgressFill';
 
 type Props = {
   ranking: RankedPlayer[];
   showPodium?: boolean;
+  /** Si la partida tiene un tope, la lista muestra el avance hacia esa meta. */
+  pointsGoal?: number | null;
 };
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-export function MatchRanking({ ranking, showPodium = true }: Props) {
+export function MatchRanking({
+  ranking,
+  showPodium = true,
+  pointsGoal = null,
+}: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -23,6 +30,8 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
         ? [ranking[1], ranking[0]]
         : [ranking[0]]
     : [];
+
+  const hasGoal = pointsGoal != null && pointsGoal > 0;
 
   const podiumHeights = showPodium
     ? ranking.length >= 3
@@ -90,22 +99,48 @@ export function MatchRanking({ ranking, showPodium = true }: Props) {
         {showPodium ? (
           <Text style={styles.listTitle}>Clasificación</Text>
         ) : null}
-        {ranking.map((entry) => (
-          <View key={entry.player.id} style={styles.listRow}>
-            <Text style={styles.listRank}>#{entry.rank}</Text>
-            <PlayerAvatar
-              name={entry.player.name}
-              color={entry.player.color}
-              avatar={entry.player.avatar}
-              size={28}
-              radius={8}
-            />
-            <Text style={styles.listName} numberOfLines={1}>
-              {entry.player.name}
-            </Text>
-            <Text style={styles.listScore}>{entry.total} pts</Text>
-          </View>
-        ))}
+        {ranking.map((entry) => {
+          const goal = hasGoal ? pointsGoal : null;
+          const reached = goal != null && entry.total >= goal;
+          const behind = goal != null && entry.total < 0;
+          const fill =
+            goal != null ? Math.min(1, Math.max(0, entry.total) / goal) : 0;
+
+          return (
+            <View key={entry.player.id} style={styles.listItem}>
+              <View style={styles.listRow}>
+                <Text style={styles.listRank}>#{entry.rank}</Text>
+                <PlayerAvatar
+                  name={entry.player.name}
+                  color={entry.player.color}
+                  avatar={entry.player.avatar}
+                  size={28}
+                  radius={8}
+                />
+                <Text style={styles.listName} numberOfLines={1}>
+                  {entry.player.name}
+                </Text>
+                <Text
+                  style={[
+                    styles.listScore,
+                    reached && styles.listScoreReached,
+                    behind && styles.listScoreBehind,
+                  ]}
+                >
+                  {goal != null ? `${entry.total}/${goal}` : `${entry.total} pts`}
+                </Text>
+              </View>
+              {goal != null ? (
+                <View style={styles.track}>
+                  <ScoreProgressFill
+                    progress={fill}
+                    color={reached ? theme.success : entry.player.color}
+                  />
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -200,11 +235,21 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
+  listItem: {
+    gap: 6,
+    paddingVertical: 4,
+  },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 6,
+  },
+  track: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: theme.surfaceLight,
+    marginLeft: 38,
+    overflow: 'hidden',
   },
   listRank: {
     width: 28,
@@ -227,5 +272,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: theme.accent,
+    fontVariant: ['tabular-nums'],
+  },
+  listScoreReached: {
+    color: theme.success,
+  },
+  listScoreBehind: {
+    color: theme.danger,
   },
 });

@@ -55,11 +55,6 @@ Ideas o necesidades que aún no están desglosadas ni priorizadas.
 - **Complejidad:** —
 - **Prioridad:** —
 
-### [GAME-08] Añadir el juego HeroQuest
-
-- **Notas:** Nuevo juego dedicado (pantalla, reglas y entrada en crear partida).
-- **Complejidad:** —
-- **Prioridad:** —
 
 
 
@@ -170,6 +165,10 @@ Tareas completadas (mantener como histórico breve).
 ### [GAME-06] Flip7 Venganza
 
 - **Notas:** Contador al estilo Flip 7: números 1–13, The Zero, Unlucky 7, Lucky 13, modificadores negativos y modo brutal opcional.
+
+### [GAME-08] HeroQuest — fichas de personaje
+
+- **Notas:** Partida con una ficha por personaje (vida, combate, equipo, mochila, monedero e historia). Se anotan todos en el mismo dispositivo.
 
 ### [GAME-05] Regicide — asistente cooperativo
 

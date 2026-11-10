@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   Switch,
   Text,
@@ -22,6 +23,7 @@ import {
   GameSettings,
   MatchTemplate,
   Player,
+  HeroQuestHeroId,
   PreferredCreateMatchGame,
   SavedPlayer,
 } from '../types';
@@ -38,6 +40,7 @@ import {
   resolveCreateMatchGameType,
 } from '../utils/games';
 import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
+import { HERO_QUEST_PRESETS } from '../utils/heroQuest';
 import { defaultSettings } from '../utils/game';
 import {
   assignUniquePlayerColors,
@@ -149,6 +152,14 @@ type Props = {
     sessionId?: string | null,
   ) => void;
   onStartSushiGo: (players: Player[], sessionId?: string | null) => void;
+  onStartHeroQuest: (
+    players: Player[],
+    sessionId?: string | null,
+    matchName?: string | null,
+    heroByPlayer?: Record<string, HeroQuestHeroId>,
+    nameByPlayer?: Record<string, string>,
+  ) => void;
+  onStartMenteVacuna: () => void;
   selfPlayer?: Player | null;
 };
 
@@ -172,6 +183,8 @@ export function CreateMatchScreen({
   onStartAventurerosTren,
   onStartRegicide,
   onStartSushiGo,
+  onStartHeroQuest,
+  onStartMenteVacuna,
   selfPlayer = null,
 }: Props) {
   const theme = useTheme();
@@ -220,6 +233,12 @@ export function CreateMatchScreen({
   const [flip7VengeanceBrutal, setFlip7VengeanceBrutal] = useState(
     restoredDraft?.flip7VengeanceBrutal ?? false,
   );
+  const [heroQuestClassByPlayer, setHeroQuestClassByPlayer] = useState<
+    Partial<Record<string, HeroQuestHeroId>>
+  >(restoredDraft?.heroQuestClassByPlayer ?? {});
+  const [heroQuestNameByPlayer, setHeroQuestNameByPlayer] = useState<
+    Record<string, string>
+  >(restoredDraft?.heroQuestNameByPlayer ?? {});
 
   const isPelusas = isPelusasGame(gameType);
   const isPelusasRevolution = gameType === 'pelusas_revolution';
@@ -231,16 +250,32 @@ export function CreateMatchScreen({
   const isAventurerosEuropa = gameType === 'aventureros_tren_europa';
   const isRegicide = gameType === 'regicide';
   const isSushiGo = gameType === 'sushi_go';
+  const isHeroQuest = gameType === 'hero_quest';
+  const isMenteVacuna = gameType === 'mente_vacuna';
   const isSpecialGame = isDedicatedCreateMatchGame(gameType);
   const playerLimits = getCreateMatchPlayerLimits(gameType);
   const tokenColors = getMatchTokenColorOptions(gameType);
   const tokenColorHint = getMatchTokenColorHint(gameType);
 
-  const canStart = isRegicide
-    ? players.length <= playerLimits.max
-    : isPiliPili || isFlip7 || isFlip7Vengeance || isSkullKing || isSushiGo
-      ? players.length >= playerLimits.min && players.length <= playerLimits.max
-      : players.length <= playerLimits.max;
+  const withinLimits =
+    players.length >= playerLimits.min && players.length <= playerLimits.max;
+  const heroQuestReady =
+    players.every((player) => heroQuestClassByPlayer[player.id]) &&
+    new Set(players.map((player) => heroQuestClassByPlayer[player.id])).size ===
+      players.length;
+  const canStart = isMenteVacuna
+    ? true
+    : isRegicide
+      ? players.length <= playerLimits.max
+      : isHeroQuest
+        ? withinLimits && heroQuestReady
+        : isPiliPili ||
+            isFlip7 ||
+            isFlip7Vengeance ||
+            isSkullKing ||
+            isSushiGo
+          ? withinLimits
+          : players.length <= playerLimits.max;
   const soloHint = isRegicide
     ? 'Opcional. Si ganáis, la victoria se cuenta a todos en la sesión.'
     : formatSoloPlayerHint(selfPlayer);
@@ -248,7 +283,11 @@ export function CreateMatchScreen({
     ? 'Contar puntos'
     : isRegicide
       ? 'Abrir asistente'
-      : 'Comenzar partida';
+      : isHeroQuest
+        ? 'Abrir fichas'
+        : isMenteVacuna
+          ? 'Ver preguntas'
+          : 'Comenzar partida';
 
   const buildDraft = useMemo(
     (): CreateMatchDraft => ({
@@ -259,6 +298,8 @@ export function CreateMatchScreen({
       loadedTemplateId,
       randomStarterName,
       flip7VengeanceBrutal,
+      heroQuestClassByPlayer,
+      heroQuestNameByPlayer,
     }),
     [
       gameType,
@@ -268,6 +309,8 @@ export function CreateMatchScreen({
       loadedTemplateId,
       randomStarterName,
       flip7VengeanceBrutal,
+      heroQuestClassByPlayer,
+      heroQuestNameByPlayer,
     ],
   );
 
@@ -348,6 +391,10 @@ export function CreateMatchScreen({
 
   const handleStart = () => {
     if (!canStart) return;
+    if (isMenteVacuna) {
+      onStartMenteVacuna();
+      return;
+    }
     if (isRegicide) {
       onStartRegicide(players, sessionId ?? null);
       return;
@@ -374,6 +421,24 @@ export function CreateMatchScreen({
       );
     } else if (isSushiGo) {
       onStartSushiGo(roster, sessionId ?? null);
+    } else if (isHeroQuest) {
+      onStartHeroQuest(
+        roster,
+        sessionId ?? null,
+        matchName.trim() || null,
+        Object.fromEntries(
+          roster.flatMap((player) => {
+            const heroId = heroQuestClassByPlayer[player.id];
+            return heroId ? [[player.id, heroId]] : [];
+          }),
+        ),
+        Object.fromEntries(
+          roster.map((player) => [
+            player.id,
+            heroQuestNameByPlayer[player.id]?.trim() ?? '',
+          ]),
+        ),
+      );
     } else {
       onStartStandard(
         roster,
@@ -496,8 +561,33 @@ export function CreateMatchScreen({
           cada ronda anotas lo que tiene cada uno delante; el pudin se puntúa
           al final.
         </Text>
+      ) : isMenteVacuna ? (
+        <Text style={styles.specialHint}>
+          Se muestra una pregunta. Todo el mundo intenta decir lo mismo. No se
+          anotan jugadores ni puntos. Puedes añadir tus propias preguntas.
+        </Text>
+      ) : isHeroQuest ? (
+        <>
+          <View style={styles.namePanel}>
+            <Text style={styles.nameLabel}>Nombre de la partida</Text>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Ej. La mazmorra del mago"
+              placeholderTextColor={theme.textMuted}
+              value={matchName}
+              onChangeText={setMatchName}
+              maxLength={40}
+              returnKeyType="done"
+            />
+          </View>
+          <Text style={styles.specialHint}>
+            De {playerLimits.min} a {playerLimits.max} jugadores. Cada uno elige
+            una clase y no se puede repetir: Bárbaro, Enano, Elfo o Mago.
+          </Text>
+        </>
       ) : null}
 
+      {!isMenteVacuna ? (
       <TourAnchor id="createMatch.players">
         <MatchPlayerRoster
           playerCount={players.length}
@@ -510,7 +600,66 @@ export function CreateMatchScreen({
         {tokenColorHint ? (
           <Text style={styles.specialHint}>{tokenColorHint}</Text>
         ) : null}
+        {isHeroQuest
+          ? players.map((player) => (
+              <View key={player.id} style={styles.classBlock}>
+                <Text style={styles.nameLabel}>{player.name}</Text>
+                <View style={styles.classRow}>
+                  {HERO_QUEST_PRESETS.map((preset) => {
+                    const selected =
+                      heroQuestClassByPlayer[player.id] === preset.id;
+                    const taken = players.some(
+                      (other) =>
+                        other.id !== player.id &&
+                        heroQuestClassByPlayer[other.id] === preset.id,
+                    );
+                    return (
+                      <Pressable
+                        key={preset.id}
+                        disabled={taken}
+                        onPress={() =>
+                          setHeroQuestClassByPlayer((prev) => ({
+                            ...prev,
+                            [player.id]: preset.id,
+                          }))
+                        }
+                        style={[
+                          styles.classChip,
+                          selected && styles.classChipOn,
+                          taken && styles.classChipOff,
+                        ]}
+                      >
+                        <Text style={styles.classEmoji}>{preset.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.className,
+                            selected && styles.classNameOn,
+                          ]}
+                        >
+                          {preset.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <TextInput
+                  style={styles.nameInput}
+                  placeholder="Nombre del héroe (opcional)"
+                  placeholderTextColor={theme.textMuted}
+                  value={heroQuestNameByPlayer[player.id] ?? ''}
+                  onChangeText={(text) =>
+                    setHeroQuestNameByPlayer((prev) => ({
+                      ...prev,
+                      [player.id]: text,
+                    }))
+                  }
+                  maxLength={32}
+                />
+              </View>
+            ))
+          : null}
       </TourAnchor>
+      ) : null}
     </View>
   );
 
@@ -522,15 +671,17 @@ export function CreateMatchScreen({
       />
 
       <ReorderablePlayersList
-        players={players}
+        players={isMenteVacuna ? [] : players}
         contentContainerStyle={styles.list}
         listHeaderComponent={header}
         listEmptyComponent={
+          isMenteVacuna ? null : (
           <Text style={styles.empty}>
             {isRegicide
               ? 'Sin jugadores: puedes abrir el asistente igual. Añádelos si quieres contar la victoria en la sesión.'
               : 'Pulsa «Elegir jugadores» para añadir quién juega.'}
           </Text>
+          )
         }
         onChange={setPlayers}
         onRemove={handleRemove}
@@ -548,7 +699,7 @@ export function CreateMatchScreen({
       />
 
       <View style={styles.footer}>
-        {players.length > 1 && !isRegicide ? (
+        {players.length > 1 && !isRegicide && !isHeroQuest && !isMenteVacuna ? (
           <>
             <Button
               label="Elegir inicio aleatorio"
@@ -630,6 +781,34 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontWeight: '800',
     color: theme.text,
   },
+  classBlock: {
+    gap: 12,
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
+  },
+  classRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  classChip: {
+    width: '47%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.bg,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+  },
+  classChipOn: { backgroundColor: theme.accent, borderColor: theme.accent },
+  classChipOff: { opacity: 0.35 },
+  classEmoji: { fontSize: 18 },
+  className: { color: theme.text, fontWeight: '700' },
+  classNameOn: { color: theme.onAccent },
   specialHint: {
     fontSize: 14,
     color: theme.textMuted,

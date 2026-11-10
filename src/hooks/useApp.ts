@@ -32,6 +32,8 @@ import {
   Flip7VengeanceSpecial,
   SushiGoRoundEntry,
   SushiGoSession,
+  HeroQuestSession,
+  HeroQuestSheet,
   RoundBreakdown,
   RoundScores,
   SavedPlayer,
@@ -134,6 +136,16 @@ import {
   toggleFlip7VengeancePlayerModifier,
   toggleFlip7VengeancePlayerSpecial,
 } from '../utils/flip7Vengeance';
+import {
+  clampHeroQuestSheet,
+  createFinishedHeroQuestMatch,
+  createHeroQuestSession,
+  createInProgressHeroQuestMatch,
+  HERO_QUEST_MAX_PLAYERS,
+  HERO_QUEST_MIN_PLAYERS,
+  normalizeHeroQuestSession,
+} from '../utils/heroQuest';
+import { menteVacunaCategory } from '../utils/menteVacuna';
 import {
   clampSushiGoRoundEntry,
   createFinishedSushiGoMatch,
@@ -261,6 +273,9 @@ export function useApp() {
     sessions: [],
     selfPlayerId: null,
     preferredCreateMatchGames: [],
+    menteVacunaCategories: [],
+    menteVacunaQuestions: [],
+    menteVacunaArchivedIds: [],
   });
   const [screen, setScreen] = useState<AppScreen>({ type: 'home' });
   const [loaded, setLoaded] = useState(false);
@@ -282,6 +297,8 @@ export function useApp() {
   const [sushiGoSession, setSushiGoSession] = useState<SushiGoSession | null>(
     null,
   );
+  const [heroQuestSession, setHeroQuestSession] =
+    useState<HeroQuestSession | null>(null);
   const dedicatedMatchSessionIdRef = useRef<string | null>(null);
   const dedicatedMatchIdRef = useRef<string | null>(null);
   const regicideMatchIdRef = useRef<string | null>(null);
@@ -445,6 +462,25 @@ export function useApp() {
       ),
     );
   }, [sushiGoSession]);
+
+  useEffect(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    if (!matchId || !heroQuestSession) return;
+    setData((prev) =>
+      updateMatchInData(prev, matchId, (match) =>
+        match.gameMode === 'hero_quest'
+          ? {
+              ...match,
+              heroQuestSession,
+              name: heroQuestSession.matchName?.trim() || match.name,
+              players: heroQuestSession.players,
+              status: 'in_progress',
+              updatedAt: Date.now(),
+            }
+          : match,
+      ),
+    );
+  }, [heroQuestSession]);
 
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -903,6 +939,237 @@ export function useApp() {
       setScreen({ type: 'game', matchId: id });
       return null;
     });
+  }, []);
+
+  const startHeroQuestSession = useCallback(
+    (
+      players: Player[],
+      sessionId?: string | null,
+      matchName?: string | null,
+      heroByPlayer?: Record<string, string | null | undefined>,
+      nameByPlayer?: Record<string, string | null | undefined>,
+    ) => {
+      if (
+        players.length < HERO_QUEST_MIN_PLAYERS ||
+        players.length > HERO_QUEST_MAX_PLAYERS
+      ) {
+        return;
+      }
+      if (sessionId !== undefined) {
+        dedicatedMatchSessionIdRef.current = sessionId;
+      }
+      const playSessionId = dedicatedMatchSessionIdRef.current;
+      const session = createHeroQuestSession(
+        players,
+        matchName,
+        heroByPlayer,
+        nameByPlayer,
+      );
+      const match = createInProgressHeroQuestMatch(session, playSessionId);
+      dedicatedMatchIdRef.current = match.id;
+      setData((prev) => ({
+        ...prev,
+        players: upsertRosterPlayers(prev.players, players),
+        matches: [...prev.matches, match],
+      }));
+      setHeroQuestSession(session);
+      setScreen({ type: 'heroQuestCount' });
+    },
+    [],
+  );
+
+  const saveHeroQuestAndExit = useCallback(() => {
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setHeroQuestSession(null);
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const deleteHeroQuestAndExit = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setHeroQuestSession(null);
+    if (matchId) {
+      setData((prev) => {
+        const match = prev.matches.find((m) => m.id === matchId);
+        let next: AppData = {
+          ...prev,
+          matches: prev.matches.filter((m) => m.id !== matchId),
+        };
+        if (match?.sessionId) {
+          next = touchSession(next, match.sessionId);
+        }
+        return next;
+      });
+    }
+    navigateAfterDedicatedExit(playSessionId);
+  }, [navigateAfterDedicatedExit]);
+
+  const updateHeroQuestSheet = useCallback(
+    (playerId: string, patch: Partial<HeroQuestSheet>) => {
+      setHeroQuestSession((prev) => {
+        if (!prev || !prev.sheets[playerId]) return prev;
+        return {
+          ...prev,
+          sheets: {
+            ...prev.sheets,
+            [playerId]: clampHeroQuestSheet({
+              ...prev.sheets[playerId],
+              ...patch,
+            }),
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const finishHeroQuestSession = useCallback(() => {
+    const matchId = dedicatedMatchIdRef.current;
+    const playSessionId = dedicatedMatchSessionIdRef.current;
+    dedicatedMatchIdRef.current = null;
+    dedicatedMatchSessionIdRef.current = null;
+    setHeroQuestSession((prev) => {
+      if (!prev) return null;
+      const finished = createFinishedHeroQuestMatch(prev);
+      setData((data) => {
+        const base = {
+          ...data,
+          players: upsertRosterPlayers(data.players, prev.players),
+        };
+        if (matchId) {
+          return updateMatchInData(base, matchId, (match) => ({
+            ...finished,
+            id: matchId,
+            sessionId: match.sessionId ?? playSessionId ?? null,
+            createdAt: match.createdAt,
+          }));
+        }
+        return appendMatch(base, {
+          ...finished,
+          sessionId: playSessionId ?? null,
+        });
+      });
+      navigateAfterDedicatedExit(playSessionId);
+      return null;
+    });
+  }, [navigateAfterDedicatedExit]);
+
+  const openMenteVacuna = useCallback(() => {
+    setScreen({ type: 'menteVacuna' });
+  }, []);
+
+  const addMenteVacunaCategory = useCallback((name: string, icon: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setData((prev) => ({
+      ...prev,
+      menteVacunaCategories: [
+        ...(prev.menteVacunaCategories ?? []),
+        {
+          id: createId(),
+          name: trimmed,
+          icon: icon.trim() || '\u{1F4CC}',
+          minAge: 0,
+          source: 'custom',
+        },
+      ],
+    }));
+  }, []);
+
+  const removeMenteVacunaCategory = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      menteVacunaCategories: (prev.menteVacunaCategories ?? []).filter(
+        (category) => category.id !== id,
+      ),
+      menteVacunaQuestions: (prev.menteVacunaQuestions ?? []).filter(
+        (question) => question.categoryId !== id,
+      ),
+    }));
+  }, []);
+
+  const addMenteVacunaQuestion = useCallback((text: string, categoryId: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setData((prev) => {
+      const category = menteVacunaCategory(categoryId, prev.menteVacunaCategories ?? []);
+      return {
+        ...prev,
+        menteVacunaQuestions: [
+          {
+            id: createId(),
+            text: trimmed,
+            categoryId,
+            source: 'custom' as const,
+            creatorId: prev.selfPlayerId ?? null,
+            createdAt: Date.now(),
+            active: true,
+            minAge: category.minAge,
+          },
+          ...(prev.menteVacunaQuestions ?? []),
+        ],
+      };
+    });
+  }, []);
+
+  const updateMenteVacunaQuestion = useCallback(
+    (id: string, text: string, categoryId: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      setData((prev) => {
+        const category = menteVacunaCategory(
+          categoryId,
+          prev.menteVacunaCategories ?? [],
+        );
+        return {
+          ...prev,
+          menteVacunaQuestions: (prev.menteVacunaQuestions ?? []).map((question) =>
+            question.id === id
+              ? {
+                  ...question,
+                  text: trimmed,
+                  categoryId,
+                  minAge: category.minAge,
+                }
+              : question,
+          ),
+        };
+      });
+    },
+    [],
+  );
+
+  const archiveMenteVacunaQuestion = useCallback((id: string) => {
+    setData((prev) => {
+      const current = prev.menteVacunaArchivedIds ?? [];
+      if (current.includes(id)) return prev;
+      return { ...prev, menteVacunaArchivedIds: [...current, id] };
+    });
+  }, []);
+
+  const unarchiveMenteVacunaQuestion = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      menteVacunaArchivedIds: (prev.menteVacunaArchivedIds ?? []).filter(
+        (archivedId) => archivedId !== id,
+      ),
+    }));
+  }, []);
+
+  const removeMenteVacunaQuestion = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      menteVacunaQuestions: (prev.menteVacunaQuestions ?? []).filter(
+        (question) => question.id !== id,
+      ),
+      menteVacunaArchivedIds: (prev.menteVacunaArchivedIds ?? []).filter(
+        (archivedId) => archivedId !== id,
+      ),
+    }));
   }, []);
 
   const startPiliPiliSession = useCallback(
@@ -2011,6 +2278,12 @@ export function useApp() {
           setMenuOpen(false);
           return;
         }
+        if (match.gameMode === 'hero_quest' && match.heroQuestSession) {
+          setHeroQuestSession(normalizeHeroQuestSession(match.heroQuestSession));
+          setScreen({ type: 'heroQuestCount' });
+          setMenuOpen(false);
+          return;
+        }
       }
 
       setScreen({ type: 'game', matchId });
@@ -2869,6 +3142,39 @@ export function useApp() {
         return;
       }
 
+      if (source.gameMode === 'hero_quest') {
+        const heroByPlayer: Record<string, string> = {};
+        const nameByPlayer: Record<string, string> = {};
+        for (const player of source.players) {
+          const sheet = source.heroQuestSession?.sheets[player.id];
+          if (sheet?.heroId && sheet.heroId !== 'custom') {
+            heroByPlayer[player.id] = sheet.heroId;
+          }
+          if (sheet?.characterName) nameByPlayer[player.id] = sheet.characterName;
+        }
+        const session = createHeroQuestSession(
+          source.players,
+          source.name,
+          heroByPlayer,
+          nameByPlayer,
+        );
+        const match = createInProgressHeroQuestMatch(session, source.sessionId);
+        dedicatedMatchIdRef.current = match.id;
+        dedicatedMatchSessionIdRef.current = source.sessionId ?? null;
+        setHeroQuestSession(session);
+        setData((prev) =>
+          appendMatch(
+            {
+              ...prev,
+              players: upsertRosterPlayers(prev.players, source.players),
+            },
+            match,
+          ),
+        );
+        setScreen({ type: 'heroQuestCount' });
+        return;
+      }
+
       if (source.gameMode === 'sushi_go') {
         const session = createSushiGoSession(source.players);
         const match = createInProgressSushiGoMatch(session, source.sessionId);
@@ -3036,6 +3342,20 @@ export function useApp() {
     goSushiGoRound,
     updateSushiGoRoundEntry,
     finishSushiGoSession,
+    heroQuestSession,
+    startHeroQuestSession,
+    saveHeroQuestAndExit,
+    deleteHeroQuestAndExit,
+    updateHeroQuestSheet,
+    finishHeroQuestSession,
+    openMenteVacuna,
+    addMenteVacunaCategory,
+    removeMenteVacunaCategory,
+    addMenteVacunaQuestion,
+    updateMenteVacunaQuestion,
+    removeMenteVacunaQuestion,
+    archiveMenteVacunaQuestion,
+    unarchiveMenteVacunaQuestion,
     goMatchesList,
     goPlayersList,
     goTemplatesList,

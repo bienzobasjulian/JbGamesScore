@@ -19,7 +19,7 @@ export function normalizeFlip7Session(session: Flip7Session): Flip7Session {
   };
 }
 
-export const FLIP7_MIN_PLAYERS = 3;
+export const FLIP7_MIN_PLAYERS = 1;
 export const FLIP7_WIN_AT = 200;
 
 export const FLIP7_HOW_TO_PLAY = [

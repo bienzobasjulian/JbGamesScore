@@ -42,7 +42,9 @@ export type MatchGameMode =
   | 'flip7_vengeance'
   | 'aventureros_tren'
   | 'regicide'
-  | 'sushi_go';
+  | 'sushi_go'
+  | 'hero_quest'
+  | 'mente_vacuna';
 
 /** Juegos dedicados que el usuario puede mostrar al crear una partida. */
 export type PreferredCreateMatchGame =
@@ -99,6 +101,7 @@ export type Match = {
   flip7VengeanceBrutal?: boolean;
   aventurerosTrenSession?: AventurerosTrenSession;
   sushiGoSession?: SushiGoSession;
+  heroQuestSession?: HeroQuestSession;
   createdAt: number;
   updatedAt: number;
 };
@@ -237,6 +240,82 @@ export type SushiGoRoundEntry = {
   pudding: number;
 };
 
+export type HeroQuestHeroId =
+  | 'barbarian'
+  | 'dwarf'
+  | 'elf'
+  | 'wizard'
+  | 'custom';
+
+export type HeroQuestItemCategory = 'gear' | 'item' | 'spell' | 'quest';
+
+export type HeroQuestGearSlot = 'weapon' | 'armor' | 'shield' | 'helmet';
+
+export type HeroQuestStatus = 'alive' | 'dead' | 'retired';
+
+export type HeroQuestItem = {
+  id: string;
+  name: string;
+  category: HeroQuestItemCategory;
+  gear: HeroQuestGearSlot | null;
+  /** Dados extra al equipar. Arma suma ataque; armadura, escudo y casco suman defensa. */
+  bonus: number;
+  equipped: boolean;
+  quantity: number;
+  description: string;
+  used: boolean;
+};
+
+export type HeroQuestGoldEntry = {
+  id: string;
+  delta: number;
+  note: string;
+  at: number;
+};
+
+export type HeroQuestQuestEntry = {
+  id: string;
+  number: string;
+  name: string;
+  date: string;
+  result: string;
+  rewards: string;
+};
+
+export type HeroQuestSheet = {
+  /** null hasta que se elige el héroe. */
+  heroId: HeroQuestHeroId | null;
+  /** Nombre propio del héroe. La clase se muestra aparte. */
+  characterName: string;
+  emoji: string;
+  health: number;
+  maxHealth: number;
+  mind: number;
+  maxMind: number;
+  /** Dados de la carta. No cambian al equipar. */
+  baseAttack: number;
+  baseDefense: number;
+  /** Ajuste manual para reglas caseras o efectos puntuales. */
+  attackMod: number;
+  defenseMod: number;
+  /** Se suma al resultado de 2D6. */
+  moveMod: number;
+  gold: number;
+  goldLog: HeroQuestGoldEntry[];
+  items: HeroQuestItem[];
+  notes: string;
+  status: HeroQuestStatus;
+  quests: HeroQuestQuestEntry[];
+};
+
+export type HeroQuestSession = {
+  matchName: string | null;
+  /** Día en que empezó la campaña. */
+  startedAt: number;
+  players: Player[];
+  sheets: Record<string, HeroQuestSheet>;
+};
+
 export type SushiGoSession = {
   players: Player[];
   activeRoundIndex: number;
@@ -295,6 +374,27 @@ export type AventurerosTrenSession = {
   scoring: Record<string, AventurerosTrenPlayerScoring>;
 };
 
+export type MenteVacunaQuestionSource = 'official' | 'custom';
+
+export type MenteVacunaCategory = {
+  id: string;
+  name: string;
+  icon: string;
+  minAge: number;
+  source: MenteVacunaQuestionSource;
+};
+
+export type MenteVacunaQuestion = {
+  id: string;
+  text: string;
+  categoryId: string;
+  source: MenteVacunaQuestionSource;
+  creatorId: string | null;
+  createdAt: number;
+  active: boolean;
+  minAge: number;
+};
+
 export type AppData = {
   players: SavedPlayer[];
   groups: PlayerGroup[];
@@ -305,6 +405,12 @@ export type AppData = {
   selfPlayerId?: string | null;
   /** Juegos dedicados visibles en Nueva partida. Vacío = no mostrar el apartado. */
   preferredCreateMatchGames: PreferredCreateMatchGame[];
+  /** Categorías creadas en este dispositivo. Las oficiales viven en código. */
+  menteVacunaCategories: MenteVacunaCategory[];
+  /** Preguntas personalizadas de Mente Vacuna. El banco oficial vive en código. */
+  menteVacunaQuestions: MenteVacunaQuestion[];
+  /** Ids de preguntas que el usuario no quiere que vuelvan a salir. */
+  menteVacunaArchivedIds: string[];
 };
 
 export type AppScreen =
@@ -325,6 +431,8 @@ export type AppScreen =
   | { type: 'aventurerosTrenCount' }
   | { type: 'regicideCount' }
   | { type: 'sushiGoCount' }
+  | { type: 'heroQuestCount' }
+  | { type: 'menteVacuna' }
   | { type: 'sessionsList' }
   | { type: 'createSession'; returnTo?: 'home' | 'sessionsList' }
   | { type: 'sessionDetail'; sessionId: string }

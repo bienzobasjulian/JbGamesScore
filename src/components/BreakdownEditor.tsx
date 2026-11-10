@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { formatBreakdownItem } from '../utils/scoring';
+import { getPlayerAvatarTextColor } from '../utils/players';
 
 type Props = {
   items: number[];
@@ -131,7 +132,14 @@ export function BreakdownEditor({
               pressed && parsePoints(draft) !== null && styles.pressed,
             ]}
           >
-            <Text style={styles.addBtnText}>Añadir</Text>
+            <Text
+              style={[
+                styles.addBtnText,
+                { color: getPlayerAvatarTextColor(color) },
+              ]}
+            >
+              Añadir
+            </Text>
           </Pressable>
         </View>
       )}

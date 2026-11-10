@@ -258,6 +258,29 @@ export const TOURS: Record<TourId, TourDefinition> = {
       },
     ],
   },
+  heroQuest: {
+    id: 'heroQuest',
+    steps: [
+      {
+        id: 'heroQuest.players',
+        title: 'Jugadores',
+        body: 'Cada pestaña es un jugador. Dentro está la ficha de su héroe.',
+        anchorId: 'heroQuest.players',
+      },
+      {
+        id: 'heroQuest.sheet',
+        title: 'Ficha',
+        body: 'Anota la vida, la mente, el ataque, la defensa, el oro y el inventario. La vida y la mente no pasan del máximo de la clase.',
+        anchorId: 'heroQuest.sheet',
+      },
+      {
+        id: 'heroQuest.menu',
+        title: 'Menú',
+        body: 'Desde aquí guardas y sales para seguir otro día, cierras la campaña o borras la partida.',
+        anchorId: 'heroQuest.menu',
+      },
+    ],
+  },
   regicideCombat: {
     id: 'regicideCombat',
     steps: [
@@ -298,4 +321,5 @@ export const TOUR_LABELS: Record<TourId, string> = {
   aventurerosDestinos: 'Tutorial de destinos',
   regicideSelect: 'Tutorial de enemigo',
   regicideCombat: 'Tutorial de combate',
+  heroQuest: 'Tutorial de HeroQuest',
 };

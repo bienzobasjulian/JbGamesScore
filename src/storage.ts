@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants';
-import { AppData, Match, MatchTemplate, PlaySession, PlayerGroup, SavedPlayer } from './types';
+import { AppData, Match, MatchTemplate, MenteVacunaCategory, MenteVacunaQuestion, PlaySession, PlayerGroup, SavedPlayer } from './types';
+import {
+  menteVacunaCategories,
+  normalizeMenteVacunaCategory,
+  normalizeMenteVacunaQuestion,
+} from './utils/menteVacuna';
 import { createId, normalizeSettings } from './utils/game';
 import { normalizePreferredCreateMatchGames } from './utils/games';
 import { createMatch, initialAppData, pickPlayerColor } from './utils/match';
@@ -74,7 +79,11 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
                       ? 'regicide'
                       : m.gameMode === 'sushi_go'
                         ? 'sushi_go'
-                        : 'standard',
+                        : m.gameMode === 'hero_quest'
+                          ? 'hero_quest'
+                          : m.gameMode === 'mente_vacuna'
+                            ? 'mente_vacuna'
+                            : 'standard',
             pelusasRevolution:
               m.gameMode === 'pelusas' ? Boolean(m.pelusasRevolution) : undefined,
             createdAt: m.createdAt ?? Date.now(),
@@ -102,6 +111,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               m.sushiGoSession != null &&
               typeof m.sushiGoSession === 'object'
                 ? m.sushiGoSession
+                : undefined,
+            heroQuestSession:
+              m.gameMode === 'hero_quest' &&
+              m.heroQuestSession != null &&
+              typeof m.heroQuestSession === 'object'
+                ? m.heroQuestSession
                 : undefined,
           } as Match),
         )
@@ -151,6 +166,35 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
     preferredCreateMatchGames: normalizePreferredCreateMatchGames(
       raw.preferredCreateMatchGames,
     ),
+    menteVacunaCategories: Array.isArray(raw.menteVacunaCategories)
+      ? raw.menteVacunaCategories
+          .map((category) => normalizeMenteVacunaCategory(category))
+          .filter((category): category is MenteVacunaCategory => category != null)
+      : [],
+    menteVacunaQuestions: Array.isArray(raw.menteVacunaQuestions)
+      ? raw.menteVacunaQuestions
+          .map((question) =>
+            normalizeMenteVacunaQuestion(
+              question,
+              menteVacunaCategories(
+                Array.isArray(raw.menteVacunaCategories)
+                  ? raw.menteVacunaCategories
+                      .map((category) => normalizeMenteVacunaCategory(category))
+                      .filter(
+                        (category): category is MenteVacunaCategory =>
+                          category != null,
+                      )
+                  : [],
+              ),
+            ),
+          )
+          .filter((question): question is MenteVacunaQuestion => question != null)
+      : [],
+    menteVacunaArchivedIds: Array.isArray(raw.menteVacunaArchivedIds)
+      ? raw.menteVacunaArchivedIds.filter(
+          (id): id is string => typeof id === 'string' && id.length > 0,
+        )
+      : [],
   };
 
   const validSelfId =
@@ -206,6 +250,9 @@ async function migrateLegacyGame(): Promise<AppData | null> {
       templates: [],
       sessions: [],
       preferredCreateMatchGames: [],
+      menteVacunaCategories: [],
+      menteVacunaQuestions: [],
+      menteVacunaArchivedIds: [],
     };
   } catch {
     return null;
