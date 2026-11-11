@@ -15,7 +15,7 @@ type Props = {
   takenColors?: string[];
   onChangeColor?: (color: string) => void;
   onDrag: () => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 };
 
 export function TurnOrderPlayerCard({
@@ -79,9 +79,11 @@ export function TurnOrderPlayerCard({
             <Text style={styles.iconText}>::</Text>
           </Pressable>
 
-          <Pressable onPress={onRemove} hitSlop={8} style={styles.removeBtn}>
-            <Text style={styles.removeText}>x</Text>
-          </Pressable>
+          {onRemove ? (
+            <Pressable onPress={onRemove} hitSlop={8} style={styles.removeBtn}>
+              <Text style={styles.removeText}>x</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 

@@ -273,7 +273,10 @@ export function RegicideCounterScreen({
   const activeBoss = getActiveRegicideBoss(session);
   const tierBosses = getRegicideTierBosses(session);
   const remainingBosses = useMemo(
-    () => getRemainingRegicideBosses(session),
+    () =>
+      getRemainingRegicideBosses(session).filter(
+        (boss) => boss.rank === session.currentTier,
+      ),
     [session],
   );
 

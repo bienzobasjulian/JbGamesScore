@@ -10,6 +10,7 @@ type Props = {
   showLogo?: boolean;
   menuTourAnchorId?: string;
   menuIcon?: 'menu' | 'more';
+  plain?: boolean;
 };
 
 export function AppHeader({
@@ -20,6 +21,7 @@ export function AppHeader({
   showLogo = false,
   menuTourAnchorId,
   menuIcon = 'menu',
+  plain = false,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -27,7 +29,11 @@ export function AppHeader({
   return (
     <View style={styles.row}>
       {onBack ? (
-        <Pressable onPress={onBack} hitSlop={12} style={styles.iconBtn}>
+        <Pressable
+          onPress={onBack}
+          hitSlop={12}
+          style={styles.plainBtn}
+        >
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
       ) : showLogo ? (
@@ -40,7 +46,10 @@ export function AppHeader({
         <View style={styles.iconPlaceholder} />
       )}
       <View style={styles.titles}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text
+          style={[styles.title, plain && styles.titleCentered]}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
@@ -102,6 +111,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  plainBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconPlaceholder: {
     width: 40,
   },
@@ -133,6 +148,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     color: theme.text,
+  },
+  titleCentered: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 14,

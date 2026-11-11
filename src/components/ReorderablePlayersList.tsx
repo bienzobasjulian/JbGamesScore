@@ -18,7 +18,7 @@ type Props = {
   listEmptyComponent?: ReactElement | null;
   listFooterComponent?: ReactElement | null;
   onChange: (players: Player[]) => void;
-  onRemove: (playerId: string) => void;
+  onRemove?: (playerId: string) => void;
   tokenColors?: readonly PlayerColorOption[];
   onChangeColor?: (playerId: string, color: string) => void;
 };
@@ -84,7 +84,7 @@ export function ReorderablePlayersList({
                     : undefined
                 }
                 onDrag={drag}
-                onRemove={() => onRemove(item.id)}
+                onRemove={onRemove ? () => onRemove(item.id) : undefined}
               />
             </ScaleDecorator>
           )}

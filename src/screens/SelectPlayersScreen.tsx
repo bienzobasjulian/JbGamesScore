@@ -34,6 +34,10 @@ type Props = {
   initialPlayers: Player[];
   maxPlayers: number;
   allowAnonymous: boolean;
+  minPlayers?: number;
+  embedded?: boolean;
+  confirmLabel?: string;
+  showStepBack?: boolean;
   onBack: () => void;
   onConfirm: (players: Player[]) => void;
   onCreatePlayer: (name: string, avatar?: string | null) => Player | null;
@@ -101,6 +105,10 @@ export function SelectPlayersScreen({
   initialPlayers,
   maxPlayers,
   allowAnonymous,
+  minPlayers = 0,
+  embedded = false,
+  confirmLabel,
+  showStepBack = false,
   onBack,
   onConfirm,
   onCreatePlayer,
@@ -331,9 +339,18 @@ export function SelectPlayersScreen({
     </View>
   );
 
+  const confirmText =
+    confirmLabel ??
+    (totalSelected > 0
+      ? `Añadir jugadores (${totalSelected})`
+      : 'Añadir jugadores');
+  const canConfirm = totalSelected >= minPlayers && totalSelected <= (hasMax ? maxPlayers : totalSelected);
+
   return (
-    <View style={styles.container}>
-      <AppHeader title="Elegir jugadores" onBack={onBack} />
+    <View style={[styles.container, embedded && styles.embedded]}>
+      {embedded ? null : (
+        <AppHeader title="Elegir jugadores" onBack={onBack} />
+      )}
 
       <FlatList
         data={filteredPlayers}
@@ -373,14 +390,20 @@ export function SelectPlayersScreen({
             {totalSelected} seleccionado{totalSelected === 1 ? '' : 's'}
           </Text>
         )}
-        <Button
-          label={
-            totalSelected > 0
-              ? `Añadir jugadores (${totalSelected})`
-              : 'Añadir jugadores'
-          }
-          onPress={handleConfirm}
-        />
+        <View style={styles.footerActions}>
+          {showStepBack ? (
+            <View style={styles.footerAction}>
+              <Button label="Atrás" onPress={onBack} variant="secondary" />
+            </View>
+          ) : null}
+          <View style={styles.footerAction}>
+            <Button
+              label={confirmText}
+              onPress={handleConfirm}
+              disabled={!canConfirm}
+            />
+          </View>
+        </View>
       </View>
 
       <CreatePlayerSheet
@@ -397,6 +420,9 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  embedded: {
+    padding: 0,
   },
   list: {
     paddingBottom: 16,
@@ -579,6 +605,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     gap: 10,
     borderTopWidth: 1,
     borderTopColor: theme.border,
+  },
+  footerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  footerAction: {
+    flex: 1,
   },
   footerHint: {
     fontSize: 13,

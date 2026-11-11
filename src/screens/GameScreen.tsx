@@ -456,10 +456,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
     marginTop: 2,
   },
   backBtnPressed: {
@@ -475,10 +471,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
     marginTop: 2,
   },
   menuIcon: {

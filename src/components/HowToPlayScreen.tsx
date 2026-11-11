@@ -168,6 +168,7 @@ type Props = {
   items?: HowToPlayItem[];
   footer?: string;
   sections?: HowToPlaySection[];
+  embedded?: boolean;
 };
 
 export function HowToPlayScreen({
@@ -177,6 +178,7 @@ export function HowToPlayScreen({
   footer,
   sections,
   onBack,
+  embedded = false,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -194,7 +196,7 @@ export function HowToPlayScreen({
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} onBack={onBack} />
+      {embedded ? null : <AppHeader title={title} onBack={onBack} />}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"

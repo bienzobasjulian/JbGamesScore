@@ -75,7 +75,7 @@ export type CreateMatchGameOption = {
 
 export const CREATE_MATCH_STANDARD_OPTION: CreateMatchGameOption = {
   id: 'standard',
-  name: 'Ninguno',
+  name: 'Juego personalizado',
   description: 'Partida libre con plantilla, ajustes y jugadores',
 };
 
@@ -258,13 +258,68 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
   }
 }
 
+export type DedicatedMatchFact = {
+  label: string;
+  value: string;
+};
+
+export function getDedicatedMatchFacts(
+  gameType: CreateMatchGameType,
+): DedicatedMatchFact[] {
+  switch (gameType) {
+    case 'pelusas':
+    case 'pelusas_revolution':
+    case 'aventureros_tren':
+    case 'aventureros_tren_europa':
+      return [
+        { label: 'Condición de victoria', value: 'Puntuación más alta' },
+      ];
+    case 'skull_king':
+      return [
+        { label: 'Condición de victoria', value: 'Puntuación más alta' },
+        { label: 'Rondas', value: String(SKULL_KING_TOTAL_ROUNDS) },
+      ];
+    case 'pili_pili':
+      return [
+        {
+          label: 'Condición de derrota',
+          value: `Pierde el que llega a ${PILI_PILI_LOSE_AT}`,
+        },
+      ];
+    case 'flip7':
+      return [
+        {
+          label: 'Condición de victoria',
+          value: `Gana el que llega a ${FLIP7_WIN_AT}`,
+        },
+      ];
+    case 'flip7_vengeance':
+      return [
+        {
+          label: 'Condición de victoria',
+          value: `Gana el que llega a ${FLIP7_VENGEANCE_WIN_AT}`,
+        },
+      ];
+    case 'sushi_go':
+      return [
+        { label: 'Condición de victoria', value: 'Puntuación más alta' },
+        { label: 'Rondas', value: String(SUSHI_GO_TOTAL_ROUNDS) },
+      ];
+    default:
+      return [];
+  }
+}
+
 export function getVisibleCreateMatchGames(
   preferred: readonly PreferredCreateMatchGame[],
 ): CreateMatchGameOption[] {
   const allowed = new Set(preferred);
-  return DEDICATED_CREATE_MATCH_GAMES.filter((game) =>
-    allowed.has(game.id as PreferredCreateMatchGame),
-  );
+  return [
+    CREATE_MATCH_STANDARD_OPTION,
+    ...DEDICATED_CREATE_MATCH_GAMES.filter((game) =>
+      allowed.has(game.id as PreferredCreateMatchGame),
+    ),
+  ];
 }
 
 export function resolveCreateMatchGameType(

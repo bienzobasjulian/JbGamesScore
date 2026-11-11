@@ -17,7 +17,6 @@ type Props = {
 export function RoundScoringPanel({
   roundScore,
   breakdownItems,
-  color,
   disabled,
   onSetScore,
   onSetBreakdown,
@@ -26,8 +25,6 @@ export function RoundScoringPanel({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const hasFormula = breakdownItems.length > 0;
-
   useEffect(() => {
     onSheetOpenChange?.(sheetOpen);
   }, [onSheetOpenChange, sheetOpen]);
@@ -39,18 +36,12 @@ export function RoundScoringPanel({
         onPress={() => setSheetOpen(true)}
         style={({ pressed }) => [
           styles.calcBtn,
-          (sheetOpen || hasFormula) && {
-            backgroundColor: color + '33',
-            borderColor: color,
-          },
           disabled && styles.disabled,
           pressed && !disabled && styles.pressed,
         ]}
         accessibilityLabel="Calculadora de puntos"
       >
-        <CalculatorIcon
-          color={sheetOpen || hasFormula ? color : theme.textMuted}
-        />
+        <CalculatorIcon color={theme.textMuted} />
       </Pressable>
 
       <ScoreCalculatorSheet

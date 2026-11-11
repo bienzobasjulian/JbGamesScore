@@ -1,17 +1,22 @@
-import { useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  Dimensions,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
+import { GameRulesSheet } from './GameRulesSheet';
+import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import {
-  CREATE_MATCH_GAMES,
-  CREATE_MATCH_STANDARD_OPTION,
+  getCreateMatchHowTo,
+  type CreateMatchHowTo,
+} from '../utils/createMatchHowTo';
+import {
   CreateMatchGameOption,
   CreateMatchGameType,
 } from '../utils/games';
@@ -22,249 +27,230 @@ type Props = {
   games: CreateMatchGameOption[];
 };
 
-type TriggerLayout = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-const DROPDOWN_GAP = 4;
-const DROPDOWN_MAX_HEIGHT = 360;
-const SCREEN_PADDING = 16;
-
-function getDropdownLayout(trigger: TriggerLayout) {
-  const windowHeight = Dimensions.get('window').height;
-  const triggerBottom = trigger.y + trigger.height;
-  const spaceBelow = windowHeight - triggerBottom - SCREEN_PADDING;
-  const spaceAbove = trigger.y - SCREEN_PADDING;
-  const openBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove;
-  const maxListHeight = Math.min(
-    DROPDOWN_MAX_HEIGHT,
-    Math.max(
-      120,
-      (openBelow ? spaceBelow : spaceAbove) - DROPDOWN_GAP,
-    ),
-  );
-
-  if (openBelow) {
-    return {
-      maxListHeight,
-      style: {
-        top: triggerBottom + DROPDOWN_GAP,
-        left: trigger.x,
-        width: trigger.width,
-        maxHeight: maxListHeight,
-      },
-    };
-  }
-
-  return {
-    maxListHeight,
-    style: {
-      bottom: windowHeight - trigger.y + DROPDOWN_GAP,
-      left: trigger.x,
-      width: trigger.width,
-      maxHeight: maxListHeight,
-    },
-  };
-}
-
 export function GameTypePicker({ selected, onSelect, games }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
-
+  const bottomInset = useSheetBottomInset();
   const [open, setOpen] = useState(false);
-  const [triggerLayout, setTriggerLayout] = useState<TriggerLayout | null>(
-    null,
-  );
-  const triggerRef = useRef<View>(null);
-  const options = [CREATE_MATCH_STANDARD_OPTION, ...games];
-  const current =
-    CREATE_MATCH_GAMES.find((g) => g.id === selected) ??
-    CREATE_MATCH_STANDARD_OPTION;
+  const [query, setQuery] = useState('');
+  const [rules, setRules] = useState<CreateMatchHowTo | null>(null);
+
+  const selectedGame = games.find((game) => game.id === selected);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return games;
+    return games.filter((game) =>
+      game.name.toLocaleLowerCase().includes(needle),
+    );
+  }, [games, query]);
 
   const close = () => {
     setOpen(false);
-    setTriggerLayout(null);
+    setQuery('');
   };
 
-  const openDropdown = () => {
-    triggerRef.current?.measureInWindow((x, y, width, height) => {
-      setTriggerLayout({ x, y, width, height });
-      setOpen(true);
-    });
-  };
-
-  const pick = (gameType: CreateMatchGameType) => {
-    onSelect(gameType);
+  const pick = (game: CreateMatchGameOption) => {
+    onSelect(game.id);
     close();
   };
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.label}>Juego</Text>
-
-      <View ref={triggerRef} collapsable={false}>
-        <Pressable
-          onPress={openDropdown}
-          style={({ pressed }) => [
-            styles.trigger,
-            open && styles.triggerOpen,
-            pressed && styles.triggerPressed,
-          ]}
-        >
-          <Text style={styles.triggerText} numberOfLines={1}>
-            {current.name}
-          </Text>
-          <Text style={styles.chevron}>{open ? '▲' : '▼'}</Text>
-        </Pressable>
-      </View>
+    <>
+    <Pressable
+      onPress={() => setOpen(true)}
+      style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Elegir juego"
+    >
+      <Text style={styles.triggerText} numberOfLines={1}>
+        {selectedGame?.name ?? 'Elegir juego'}
+      </Text>
+      <Ionicons name="pencil-outline" size={18} color={theme.textMuted} />
+    </Pressable>
 
       <Modal
-        visible={open && triggerLayout != null}
+        visible={open}
         transparent
-        animationType="fade"
+        animationType="slide"
+        statusBarTranslucent
         onRequestClose={close}
       >
-        <View style={styles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={close} />
-          {triggerLayout ? (
-            (() => {
-              const { style: listPosition } = getDropdownLayout(triggerLayout);
-              return (
-                <View style={[styles.list, listPosition]}>
-                  <ScrollView
-                    keyboardShouldPersistTaps="handled"
-                    nestedScrollEnabled
-                    bounces={false}
-                    showsVerticalScrollIndicator
-                  >
-                    {options.map((game, index) => {
-                      const isSelected = selected === game.id;
-                      const isLast = index === options.length - 1;
-                      return (
-                        <Pressable
-                          key={game.id}
-                          onPress={() => pick(game.id)}
-                          style={({ pressed }) => [
-                            styles.option,
-                            isLast && styles.optionLast,
-                            isSelected && styles.optionSelected,
-                            pressed && styles.optionPressed,
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={close} />
+          <View style={[styles.sheet, { paddingBottom: 12 + bottomInset }]}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Juego</Text>
+            <TextInput
+              style={styles.search}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Buscar juego"
+              placeholderTextColor={theme.textMuted}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {filtered.length === 0 ? (
+                <Text style={styles.empty}>Ningún juego coincide</Text>
+              ) : (
+                filtered.map((game) => {
+                  const isSelected = game.id === selected;
+                  const howTo = getCreateMatchHowTo(game.id);
+                  return (
+                    <View key={game.id} style={styles.option}>
+                      <Pressable
+                        onPress={() => pick(game)}
+                        style={({ pressed }) => [
+                          styles.optionMain,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionTitle,
+                            isSelected && styles.optionTitleSelected,
                           ]}
+                          numberOfLines={1}
                         >
-                          <Text
-                            style={[
-                              styles.optionTitle,
-                              isSelected && styles.optionTitleSelected,
-                            ]}
-                          >
-                            {game.name}
-                          </Text>
-                          <Text style={styles.optionSub}>{game.description}</Text>
+                          {game.name}
+                        </Text>
+                        {isSelected ? (
+                          <Text style={styles.check}>✓</Text>
+                        ) : null}
+                      </Pressable>
+                      {howTo ? (
+                        <Pressable
+                          onPress={() => setRules(howTo)}
+                          hitSlop={8}
+                          accessibilityLabel={`Cómo jugar a ${game.name}`}
+                          style={styles.infoBtn}
+                        >
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={22}
+                            color={theme.textMuted}
+                          />
                         </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              );
-            })()
-          ) : null}
+                      ) : null}
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
-    </View>
+
+      <GameRulesSheet rules={rules} onClose={() => setRules(null)} />
+    </>
   );
 }
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  panel: {
-    backgroundColor: theme.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.textMuted,
-  },
-  trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  triggerOpen: {
-    borderColor: theme.accent,
-  },
-  triggerPressed: {
-    opacity: 0.9,
-  },
-  triggerText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  chevron: {
-    fontSize: 12,
-    color: theme.textMuted,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-  },
-  list: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: theme.surfaceLight,
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    maxHeight: 360,
-    zIndex: 1,
-  },
-  option: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-    gap: 2,
-  },
-  optionLast: {
-    borderBottomWidth: 0,
-  },
-  optionSelected: {
-    backgroundColor: theme.accent + '14',
-  },
-  optionPressed: {
-    opacity: 0.85,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  optionTitleSelected: {
-    color: theme.accent,
-  },
-  optionSub: {
-    fontSize: 12,
-    color: theme.textMuted,
-    lineHeight: 16,
-  },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    trigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+    triggerText: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    overlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    sheet: {
+      maxHeight: '78%',
+      backgroundColor: theme.bg,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      gap: 12,
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.border,
+      marginBottom: 4,
+    },
+    sheetTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.text,
+    },
+    search: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: theme.text,
+    },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    optionMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      gap: 12,
+    },
+    infoBtn: {
+      paddingLeft: 8,
+      paddingVertical: 16,
+    },
+    optionTitle: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    optionTitleSelected: {
+      color: theme.accent,
+      fontWeight: '800',
+    },
+    check: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: theme.accent,
+    },
+    empty: {
+      paddingVertical: 24,
+      textAlign: 'center',
+      color: theme.textMuted,
+      fontSize: 15,
+    },
+  });

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -9,20 +10,27 @@ import {
 } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
+import { GameRulesSheet } from '../components/GameRulesSheet';
+import {
+  CardsIcon,
+  GoalIcon,
+  PawnsIcon,
+} from '../components/MatchSummaryIcons';
 import { GameTypePicker } from '../components/GameTypePicker';
-import { MatchPlayerRoster } from '../components/MatchPlayerRoster';
 import { ReorderablePlayersList } from '../components/ReorderablePlayersList';
+import { SelectPlayersScreen } from './SelectPlayersScreen';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { CreateMatchDraft } from '../types/playerSelection';
 import {
-  AppScreen,
   AventurerosTrenSubmode,
   GameSettings,
   MatchTemplate,
   Player,
+  PlayerGroup,
   HeroQuestHeroId,
   PreferredCreateMatchGame,
   SavedPlayer,
@@ -33,13 +41,13 @@ import {
   getCreateMatchPlayerLimits,
   getMatchTokenColorHint,
   getMatchTokenColorOptions,
+  getDedicatedMatchFacts,
   getVisibleCreateMatchGames,
   isAventurerosTrenGame,
   isDedicatedCreateMatchGame,
   isPelusasGame,
   resolveCreateMatchGameType,
 } from '../utils/games';
-import { AVENTUREROS_TREN_MAX_PLAYERS } from '../utils/aventurerosTren';
 import { HERO_QUEST_PRESETS } from '../utils/heroQuest';
 import { defaultSettings } from '../utils/game';
 import {
@@ -47,6 +55,7 @@ import {
   ensureMatchPlayers,
   formatSoloPlayerHint,
 } from '../utils/players';
+import { getCreateMatchHowTo } from '../utils/createMatchHowTo';
 import { applyTemplateDraft } from '../utils/template';
 
 const SKIP_CREATE_MATCH_GAME_TOUR = ['createMatch.game'];
@@ -108,6 +117,8 @@ function buildInitialFromTemplate(
 type Props = {
   templates: MatchTemplate[];
   savedPlayers: SavedPlayer[];
+  groups: PlayerGroup[];
+  onCreatePlayer: (name: string, avatar?: string | null) => Player | null;
   preferredCreateMatchGames?: PreferredCreateMatchGame[];
   initialTemplateId?: string;
   initialGameType?: CreateMatchGameType;
@@ -115,14 +126,6 @@ type Props = {
   sessionName?: string;
   restoredDraft?: CreateMatchDraft | null;
   onBack: () => void;
-  onOpenPlayerSelection: (config: {
-    draftKey: 'createMatch';
-    parentDraft: CreateMatchDraft;
-    players: Player[];
-    maxPlayers: number;
-    allowAnonymous: boolean;
-    returnScreen: AppScreen;
-  }) => void;
   onStartStandard: (
     players: Player[],
     settings: GameSettings,
@@ -166,6 +169,8 @@ type Props = {
 export function CreateMatchScreen({
   templates,
   savedPlayers,
+  groups,
+  onCreatePlayer,
   preferredCreateMatchGames = [],
   initialTemplateId,
   initialGameType = 'standard',
@@ -173,7 +178,6 @@ export function CreateMatchScreen({
   sessionName,
   restoredDraft,
   onBack,
-  onOpenPlayerSelection,
   onStartStandard,
   onStartPelusas,
   onStartSkullKing,
@@ -241,7 +245,7 @@ export function CreateMatchScreen({
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(
     restoredDraft?.loadedTemplateId ?? templateInitial.loadedTemplateId,
   );
-  const [randomStarterName, setRandomStarterName] = useState<string | null>(
+  const [, setRandomStarterName] = useState<string | null>(
     restoredDraft?.randomStarterName ?? null,
   );
   const [flip7VengeanceBrutal, setFlip7VengeanceBrutal] = useState(
@@ -261,7 +265,6 @@ export function CreateMatchScreen({
   const isFlip7 = gameType === 'flip7';
   const isFlip7Vengeance = gameType === 'flip7_vengeance';
   const isAventurerosTren = isAventurerosTrenGame(gameType);
-  const isAventurerosEuropa = gameType === 'aventureros_tren_europa';
   const isRegicide = gameType === 'regicide';
   const isSushiGo = gameType === 'sushi_go';
   const isHeroQuest = gameType === 'hero_quest';
@@ -301,69 +304,94 @@ export function CreateMatchScreen({
         ? 'Abrir fichas'
         : isMenteVacuna
           ? 'Ver preguntas'
-          : 'Comenzar partida';
+          : 'Empezar';
 
-  const buildDraft = useMemo(
-    (): CreateMatchDraft => ({
-      gameType,
-      settings,
-      matchName,
-      players,
-      loadedTemplateId,
-      randomStarterName,
-      flip7VengeanceBrutal,
-      heroQuestClassByPlayer,
-      heroQuestNameByPlayer,
-    }),
-    [
-      gameType,
-      settings,
-      matchName,
-      players,
-      loadedTemplateId,
-      randomStarterName,
-      flip7VengeanceBrutal,
-      heroQuestClassByPlayer,
-      heroQuestNameByPlayer,
-    ],
-  );
-
-  const returnScreen: AppScreen = sessionId
-    ? { type: 'createSessionMatch', sessionId }
-    : {
-        type: 'createMatch',
-        templateId: initialTemplateId,
-        gameType:
-          initialGameType === 'standard' ? undefined : initialGameType,
-      };
-
-  const handleChoosePlayers = () => {
-    onOpenPlayerSelection({
-      draftKey: 'createMatch',
-      parentDraft: buildDraft,
-      players,
-      maxPlayers: playerLimits.max,
-      allowAnonymous: true,
-      returnScreen,
+  const handleShuffle = () => {
+    setPlayers((prev) => {
+      const next = [...prev];
+      for (let index = next.length - 1; index > 0; index -= 1) {
+        const swap = Math.floor(Math.random() * (index + 1));
+        const current = next[index];
+        next[index] = next[swap];
+        next[swap] = current;
+      }
+      return next;
     });
-  };
-
-  const handleRemove = (id: string) => {
-    setPlayers((prev) => prev.filter((p) => p.id !== id));
     setRandomStarterName(null);
   };
 
-  const handlePickRandomStarter = () => {
-    if (players.length < 2) return;
-    const randomIndex = Math.floor(Math.random() * players.length);
-    const picked = players[randomIndex];
-    const rotated = [
-      ...players.slice(randomIndex),
-      ...players.slice(0, randomIndex),
-    ];
-    setPlayers(rotated);
-    setRandomStarterName(picked.name);
+  const steps = isMenteVacuna
+    ? (['rules', 'summary'] as const)
+    : isRegicide || players.length === 1
+      ? (['rules', 'players', 'summary'] as const)
+      : (['rules', 'players', 'order', 'summary'] as const);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const pristine = useRef({
+    gameType,
+    settings: JSON.stringify(settings),
+    matchName,
+    players: players.map((player) => player.id).join('|'),
+    loadedTemplateId,
+    flip7VengeanceBrutal,
+  });
+  const hasEnteredData =
+    gameType !== pristine.current.gameType ||
+    JSON.stringify(settings) !== pristine.current.settings ||
+    matchName !== pristine.current.matchName ||
+    players.map((player) => player.id).join('|') !== pristine.current.players ||
+    loadedTemplateId !== pristine.current.loadedTemplateId ||
+    flip7VengeanceBrutal !== pristine.current.flip7VengeanceBrutal;
+  const step = steps[Math.min(stepIndex, steps.length - 1)];
+  const stepTitle =
+    step === 'rules'
+      ? 'Juego y reglas'
+      : step === 'players'
+        ? 'Jugadores'
+        : step === 'order'
+          ? 'Orden de juego'
+          : 'Resumen';
+
+  const goToPreviousStep = () => {
+    setStepIndex((current) => Math.max(0, current - 1));
   };
+
+  const requestLeave = () => {
+    if (hasEnteredData) {
+      setConfirmLeave(true);
+      return;
+    }
+    onBack();
+  };
+
+  const goNext = () => {
+    setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+  };
+
+  const selectedGameName = isSpecialGame
+    ? (visibleGames.find((game) => game.id === gameType)?.name ?? 'Partida')
+    : 'Partida personalizada';
+  const selectedTemplateName = templates.find(
+    (template) => template.id === loadedTemplateId,
+  )?.name;
+  const matchFacts = getDedicatedMatchFacts(gameType);
+  const howTo = getCreateMatchHowTo(gameType);
+  const finishSummary = matchFacts.length > 0
+    ? matchFacts.map((fact) => `${fact.label}: ${fact.value}`).join('\n')
+    : isSpecialGame
+    ? 'Reglas del juego'
+    : [
+        settings.maxRounds != null ? `${settings.maxRounds} rondas` : null,
+        settings.maxPointsToWin != null
+          ? `${settings.maxPointsToWin} puntos`
+          : null,
+        settings.lowestScoreWins
+          ? 'Gana el que tenga menos puntos'
+          : 'Gana el que tenga más puntos',
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'Manual';
 
   const handleSelectGame = (next: CreateMatchGameType) => {
     const resolved = resolveCreateMatchGameType(
@@ -485,17 +513,21 @@ export function CreateMatchScreen({
 
       {!isSpecialGame ? (
         <>
-          <View style={styles.namePanel}>
-            <Text style={styles.nameLabel}>Nombre de la partida (opcional)</Text>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Ej. Domino del viernes"
-              placeholderTextColor={theme.textMuted}
-              value={matchName}
-              onChangeText={setMatchName}
-              maxLength={40}
-              returnKeyType="done"
-            />
+          <View style={styles.nameBlock}>
+            <Text style={styles.sectionLabel}>
+              Nombre de la partida (opcional)
+            </Text>
+            <View style={styles.nameField}>
+              <TextInput
+                style={[styles.nameInput, { outlineWidth: 0 } as object]}
+                placeholder="Ej. Domino del viernes"
+                placeholderTextColor={theme.textMuted}
+                value={matchName}
+                onChangeText={setMatchName}
+                maxLength={40}
+                returnKeyType="done"
+              />
+            </View>
           </View>
 
           <TourAnchor id="createMatch.templates">
@@ -508,41 +540,33 @@ export function CreateMatchScreen({
           </TourAnchor>
 
           <TourAnchor id="createMatch.settings">
-            <GameSettingsPanel settings={settings} onChange={setSettings} />
+            <GameSettingsPanel
+              settings={settings}
+              onChange={setSettings}
+              flat
+            />
           </TourAnchor>
         </>
-      ) : isPelusas ? (
-        <Text style={styles.specialHint}>
-          {isPelusasRevolution
-            ? 'Solo necesitas elegir quién juega. En la siguiente pantalla contarás las cartas del 1 al 10, más las de 20 y −7.'
-            : 'Solo necesitas elegir quién juega. En la siguiente pantalla contarás las cartas del 1 al 10.'}
-        </Text>
-      ) : isSkullKing ? (
-        <Text style={styles.specialHint}>
-          Partida a 10 rondas de bazas. Elige entre {playerLimits.min} y{' '}
-          {playerLimits.max} jugadores. Ordena la lista: el primero es el
-          repartidor de la ronda 1 y el de su izquierda el jugador inicial de
-          esa ronda.
-        </Text>
-      ) : isPiliPili ? (
-        <Text style={styles.specialHint}>
-          Apuestas de bazas con Pilis de penalización. La partida termina cuando
-          alguien llega a 7 Pilis; gana quien tenga menos. Elige entre{' '}
-          {playerLimits.min} y {playerLimits.max} jugadores. Ordena la lista con
-          el primer jugador como repartidor de la ronda 1.
-        </Text>
-      ) : isFlip7 ? (
-        <Text style={styles.specialHint}>
-          Cartas del 0 al 12 con modificadores y bonus Flip7 (+15). Gana quien
-          llegue primero a 200 puntos. Mínimo {playerLimits.min} jugadores.
-        </Text>
-      ) : isFlip7Vengeance ? (
+      ) : matchFacts.length > 0 ? (
         <>
-          <Text style={styles.specialHint}>
-            Cartas del 1 al 13, especiales (The Zero, Unlucky 7, Lucky 13) y
-            modificadores negativos. Gana quien más puntos tenga al llegar
-            alguien a 200. Mínimo {playerLimits.min} jugadores.
-          </Text>
+          <View style={styles.facts}>
+            {matchFacts.map((fact) => (
+              <View key={fact.label} style={styles.factRow}>
+                <Text style={styles.sectionLabel}>{fact.label}</Text>
+                <Text style={styles.factValue}>{fact.value}</Text>
+              </View>
+            ))}
+            {howTo ? (
+              <Pressable
+                onPress={() => setRulesOpen(true)}
+                hitSlop={8}
+                style={styles.howToButton}
+              >
+                <Text style={styles.howToLink}>¿Cómo jugar?</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {isFlip7Vengeance ? (
           <View style={styles.brutalRow}>
             <View style={styles.brutalInfo}>
               <Text style={styles.brutalLabel}>Modo brutal</Text>
@@ -558,6 +582,7 @@ export function CreateMatchScreen({
               thumbColor={flip7VengeanceBrutal ? theme.accent : theme.textMuted}
             />
           </View>
+          ) : null}
         </>
       ) : isRegicide ? (
         <Text style={styles.specialHint}>
@@ -566,20 +591,6 @@ export function CreateMatchScreen({
           muestra en horizontal. Los jugadores son opcionales: si los añades y
           hay victoria, se cuenta a todos en la sesión.
         </Text>
-      ) : isAventurerosTren ? (
-        <Text style={styles.specialHint}>
-          {isAventurerosEuropa
-            ? 'Dos fases: construcción de vías y comprobación de destinos, con estaciones y túneles. De 1 a '
-            : 'Dos fases: construcción de vías y comprobación de destinos. De 1 a '}
-          {AVENTUREROS_TREN_MAX_PLAYERS} jugadores.
-        </Text>
-      ) : isSushiGo ? (
-        <Text style={styles.specialHint}>
-          Tres rondas. Con 2, 3, 4 o 5 jugadores se reparten 10, 9, 8 o 7
-          cartas. Ordena la mesa: las cartas se pasan a la izquierda. Al acabar
-          cada ronda anotas lo que tiene cada uno delante; el pudin se puntúa
-          al final.
-        </Text>
       ) : isMenteVacuna ? (
         <Text style={styles.specialHint}>
           Se muestra una pregunta. Todo el mundo intenta decir lo mismo. No se
@@ -587,17 +598,19 @@ export function CreateMatchScreen({
         </Text>
       ) : isHeroQuest ? (
         <>
-          <View style={styles.namePanel}>
-            <Text style={styles.nameLabel}>Nombre de la partida</Text>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Ej. La mazmorra del mago"
-              placeholderTextColor={theme.textMuted}
-              value={matchName}
-              onChangeText={setMatchName}
-              maxLength={40}
-              returnKeyType="done"
-            />
+          <View style={styles.nameBlock}>
+            <Text style={styles.sectionLabel}>Nombre de la partida</Text>
+            <View style={styles.nameField}>
+              <TextInput
+                style={[styles.nameInput, { outlineWidth: 0 } as object]}
+                placeholder="Ej. La mazmorra del mago"
+                placeholderTextColor={theme.textMuted}
+                value={matchName}
+                onChangeText={setMatchName}
+                maxLength={40}
+                returnKeyType="done"
+              />
+            </View>
           </View>
           <Text style={styles.specialHint}>
             De {playerLimits.min} a {playerLimits.max} jugadores. Cada uno elige
@@ -605,141 +618,290 @@ export function CreateMatchScreen({
           </Text>
         </>
       ) : null}
+    </View>
+  );
 
-      {!isMenteVacuna ? (
-      <TourAnchor id="createMatch.players">
-        <MatchPlayerRoster
-          playerCount={players.length}
-          onChoosePlayers={handleChoosePlayers}
-          soloHint={soloHint}
-          maxPlayers={
-            Number.isFinite(playerLimits.max) ? playerLimits.max : undefined
-          }
-        />
-        {tokenColorHint ? (
-          <Text style={styles.specialHint}>{tokenColorHint}</Text>
-        ) : null}
-        {isHeroQuest
-          ? players.map((player) => (
-              <View key={player.id} style={styles.classBlock}>
-                <Text style={styles.nameLabel}>{player.name}</Text>
-                <View style={styles.classRow}>
-                  {HERO_QUEST_PRESETS.map((preset) => {
-                    const selected =
-                      heroQuestClassByPlayer[player.id] === preset.id;
-                    const taken = players.some(
-                      (other) =>
-                        other.id !== player.id &&
-                        heroQuestClassByPlayer[other.id] === preset.id,
-                    );
-                    return (
-                      <Pressable
-                        key={preset.id}
-                        disabled={taken}
-                        onPress={() =>
-                          setHeroQuestClassByPlayer((prev) => ({
-                            ...prev,
-                            [player.id]: preset.id,
-                          }))
-                        }
-                        style={[
-                          styles.classChip,
-                          selected && styles.classChipOn,
-                          taken && styles.classChipOff,
-                        ]}
-                      >
-                        <Text style={styles.classEmoji}>{preset.emoji}</Text>
-                        <Text
-                          style={[
-                            styles.className,
-                            selected && styles.classNameOn,
-                          ]}
-                        >
-                          {preset.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <TextInput
-                  style={styles.nameInput}
-                  placeholder="Nombre del héroe (opcional)"
-                  placeholderTextColor={theme.textMuted}
-                  value={heroQuestNameByPlayer[player.id] ?? ''}
-                  onChangeText={(text) =>
-                    setHeroQuestNameByPlayer((prev) => ({
-                      ...prev,
-                      [player.id]: text,
-                    }))
-                  }
-                  maxLength={32}
-                />
-              </View>
-            ))
-          : null}
-      </TourAnchor>
+  const orderHeader = (
+    <View style={styles.headerBlock}>
+      <Text style={styles.stepHeading}>{stepTitle}</Text>
+      {players.length > 1 ? (
+        <View style={styles.orderActions}>
+          <Pressable onPress={handleShuffle} style={styles.orderAction}>
+            <Text style={styles.orderActionText}>Mezclar</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <Text style={styles.specialHint}>Arrastra para cambiar el orden.</Text>
+      {tokenColorHint ? (
+        <Text style={styles.specialHint}>{tokenColorHint}</Text>
       ) : null}
     </View>
   );
+
+  const heroClassEditor =
+    isHeroQuest && players.length > 0 ? (
+      <View style={styles.headerBlock}>
+        {players.map((player) => (
+          <View key={player.id} style={styles.classBlock}>
+            <Text style={styles.sectionLabel}>{player.name}</Text>
+            <View style={styles.classRow}>
+              {HERO_QUEST_PRESETS.map((preset) => {
+                const selected = heroQuestClassByPlayer[player.id] === preset.id;
+                const taken = players.some(
+                  (other) =>
+                    other.id !== player.id &&
+                    heroQuestClassByPlayer[other.id] === preset.id,
+                );
+                return (
+                  <Pressable
+                    key={preset.id}
+                    disabled={taken}
+                    onPress={() =>
+                      setHeroQuestClassByPlayer((prev) => ({
+                        ...prev,
+                        [player.id]: preset.id,
+                      }))
+                    }
+                    style={[
+                      styles.classChip,
+                      selected && styles.classChipOn,
+                      taken && styles.classChipOff,
+                    ]}
+                  >
+                    <Text style={styles.classEmoji}>{preset.emoji}</Text>
+                    <Text
+                      style={[styles.className, selected && styles.classNameOn]}
+                    >
+                      {preset.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              style={styles.heroNameInput}
+              placeholder="Nombre del héroe (opcional)"
+              placeholderTextColor={theme.textMuted}
+              value={heroQuestNameByPlayer[player.id] ?? ''}
+              onChangeText={(text) =>
+                setHeroQuestNameByPlayer((prev) => ({
+                  ...prev,
+                  [player.id]: text,
+                }))
+              }
+              maxLength={32}
+            />
+          </View>
+        ))}
+      </View>
+    ) : null;
 
   return (
     <View style={styles.container}>
       <AppHeader
         title={sessionName ? 'Partida en sesión' : 'Nueva partida'}
-        onBack={onBack}
+        onBack={requestLeave}
+        plain
       />
-
-      <ReorderablePlayersList
-        players={isMenteVacuna ? [] : players}
-        contentContainerStyle={styles.list}
-        listHeaderComponent={header}
-        listEmptyComponent={
-          isMenteVacuna ? null : (
-          <Text style={styles.empty}>
-            {isRegicide
-              ? 'Sin jugadores: puedes abrir el asistente igual. Añádelos si quieres contar la victoria en la sesión.'
-              : 'Pulsa «Elegir jugadores» para añadir quién juega.'}
-          </Text>
-          )
-        }
-        onChange={setPlayers}
-        onRemove={handleRemove}
-        tokenColors={tokenColors ?? undefined}
-        onChangeColor={
-          tokenColors
-            ? (playerId, color) =>
-                setPlayers((prev) =>
-                  prev.map((player) =>
-                    player.id === playerId ? { ...player, color } : player,
-                  ),
-                )
-            : undefined
-        }
-      />
-
-      <View style={styles.footer}>
-        {players.length > 1 && !isRegicide && !isHeroQuest && !isMenteVacuna ? (
-          <>
-            <Button
-              label="Elegir inicio aleatorio"
-              onPress={handlePickRandomStarter}
-              variant="secondary"
-            />
-            {randomStarterName ? (
-              <Text style={styles.randomStarterText}>
-                Empieza: {randomStarterName}
-              </Text>
-            ) : null}
-          </>
-        ) : null}
-        <TourAnchor id="createMatch.start">
-          <Button
-            label={startLabel}
-            onPress={handleStart}
-            disabled={!canStart}
-          />
-        </TourAnchor>
+      <View style={styles.progressTrack}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${((stepIndex + 1) / steps.length) * 100}%` },
+          ]}
+        />
       </View>
+      {step === 'summary' ? null : (
+        <Text style={styles.progressLabel}>{stepTitle}</Text>
+      )}
+
+      {step === 'rules' ? (
+        <ScrollView
+          contentContainerStyle={styles.headerBlock}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {header}
+        </ScrollView>
+      ) : null}
+
+      {step === 'players' ? (
+        <SelectPlayersScreen
+          savedPlayers={savedPlayers}
+          groups={groups}
+          initialPlayers={players}
+          maxPlayers={playerLimits.max}
+          minPlayers={playerLimits.min}
+          allowAnonymous
+          embedded
+          confirmLabel="Siguiente"
+          showStepBack
+          onBack={goToPreviousStep}
+          onCreatePlayer={onCreatePlayer}
+          onConfirm={(roster) => {
+            setPlayers(applyRosterColors(gameType, roster));
+            setRandomStarterName(null);
+            goNext();
+          }}
+        />
+      ) : null}
+
+      {step === 'order' ? (
+        <View style={styles.stepBody}>
+          <ReorderablePlayersList
+            players={players}
+            contentContainerStyle={styles.list}
+            listHeaderComponent={orderHeader}
+            listFooterComponent={heroClassEditor}
+            listEmptyComponent={
+              <Text style={styles.empty}>
+                {isRegicide
+                  ? soloHint
+                  : 'No hay jugadores en la partida.'}
+              </Text>
+            }
+            onChange={setPlayers}
+            tokenColors={tokenColors ?? undefined}
+            onChangeColor={
+              tokenColors
+                ? (playerId, color) =>
+                    setPlayers((prev) =>
+                      prev.map((player) =>
+                        player.id === playerId ? { ...player, color } : player,
+                      ),
+                    )
+                : undefined
+            }
+          />
+        </View>
+      ) : null}
+
+      {step === 'summary' ? (
+        <ScrollView
+          contentContainerStyle={styles.summary}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.summaryTitle}>Resumen de la partida</Text>
+          <Text style={styles.summarySection}>Ajustes</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <CardsIcon color={theme.accent} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.sectionLabel}>Juego</Text>
+              <Text style={styles.summaryValue}>{selectedGameName}</Text>
+            </View>
+          </View>
+          {matchName.trim() ? (
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryText}>
+                <Text style={styles.sectionLabel}>Nombre</Text>
+                <Text style={styles.summaryValue}>{matchName.trim()}</Text>
+              </View>
+            </View>
+          ) : null}
+          {selectedTemplateName ? (
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryText}>
+                <Text style={styles.sectionLabel}>Plantilla</Text>
+                <Text style={styles.summaryValue}>{selectedTemplateName}</Text>
+              </View>
+            </View>
+          ) : null}
+          {!isMenteVacuna ? (
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <PawnsIcon color={theme.accent} />
+              </View>
+              <View style={styles.summaryText}>
+                <Text style={styles.sectionLabel}>Jugadores</Text>
+                <Text style={styles.summaryValue}>
+                  {players.length === 0
+                    ? 'Sin jugadores'
+                    : players.map((player) => player.name).join(', ')}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          {matchFacts.length > 0 ? (
+            matchFacts.map((fact) => (
+              <View key={fact.label} style={styles.summaryCard}>
+                {fact.label.startsWith('Condición') ? (
+                  <View style={styles.summaryIcon}>
+                    <GoalIcon color={theme.accent} />
+                  </View>
+                ) : null}
+                <View style={styles.summaryText}>
+                  <Text style={styles.sectionLabel}>{fact.label}</Text>
+                  <Text style={styles.summaryValue}>{fact.value}</Text>
+                </View>
+              </View>
+            ))
+          ) : !isHeroQuest && !isRegicide && !isMenteVacuna ? (
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <GoalIcon color={theme.accent} />
+              </View>
+              <View style={styles.summaryText}>
+                <Text style={styles.sectionLabel}>Configuraciones</Text>
+                <Text style={styles.summaryValue}>{finishSummary}</Text>
+              </View>
+            </View>
+          ) : null}
+          <Text style={styles.specialHint}>
+            Pulsa comenzar para abrir la partida.
+          </Text>
+        </ScrollView>
+      ) : null}
+
+      {step === 'players' ? null : (
+        <View style={styles.footer}>
+          {stepIndex > 0 ? (
+            <View style={styles.footerAction}>
+              <Button
+                label="Atrás"
+                onPress={goToPreviousStep}
+                variant="secondary"
+              />
+            </View>
+          ) : null}
+          {step === 'summary' || isMenteVacuna ? (
+            <View style={styles.footerAction}>
+              <TourAnchor id="createMatch.start">
+                <Button
+                  label={isMenteVacuna ? 'Comenzar' : startLabel}
+                  onPress={handleStart}
+                  disabled={!canStart}
+                />
+              </TourAnchor>
+            </View>
+          ) : (
+            <View style={styles.footerAction}>
+              <Button
+                label="Siguiente"
+                onPress={goNext}
+                disabled={step === 'order' && isHeroQuest && !heroQuestReady}
+              />
+            </View>
+          )}
+        </View>
+      )}
+      <GameRulesSheet
+        rules={rulesOpen ? howTo : null}
+        onClose={() => setRulesOpen(false)}
+      />
+      <ConfirmModal
+        visible={confirmLeave}
+        title="Salir de la partida"
+        message="Hay datos sin guardar. ¿Seguro que quieres salir?"
+        confirmLabel="Salir"
+        danger
+        onConfirm={() => {
+          setConfirmLeave(false);
+          onBack();
+        }}
+        onCancel={() => setConfirmLeave(false)}
+      />
     </View>
   );
 }
@@ -748,6 +910,99 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.border,
+    overflow: 'hidden',
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: theme.accent,
+  },
+  progressLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.textMuted,
+    marginBottom: 12,
+  },
+  stepHeading: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.text,
+  },
+  stepBody: {
+    flex: 1,
+  },
+  orderActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  orderAction: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
+  orderActionText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+    textAlign: 'center',
+  },
+  summary: {
+    gap: 12,
+    paddingBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  summarySection: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: theme.textMuted,
+  },
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  summaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.accent + '22',
+  },
+  summaryText: {
+    flex: 1,
+    gap: 2,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.text,
   },
   headerBlock: {
     gap: 16,
@@ -758,24 +1013,33 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontWeight: '600',
     color: theme.accent,
   },
-  namePanel: {
-    backgroundColor: theme.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-    gap: 8,
+  nameBlock: {
+    gap: 6,
   },
-  nameLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
     color: theme.textMuted,
   },
-  nameInput: {
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
+  nameField: {
+    borderWidth: 1.5,
     borderColor: theme.border,
-    borderRadius: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    backgroundColor: theme.bg,
+    overflow: 'hidden',
+  },
+  nameInput: {
+    paddingVertical: 14,
+    fontSize: 16,
+    color: theme.text,
+  },
+  heroNameInput: {
+    borderWidth: 1.5,
+    borderColor: theme.border,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -785,11 +1049,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: theme.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: 14,
+    paddingVertical: 4,
   },
   brutalInfo: {
     flex: 1,
@@ -803,11 +1063,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   classBlock: {
     gap: 12,
     marginTop: 8,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-    backgroundColor: theme.surface,
   },
   classRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   classChip: {
@@ -828,6 +1083,34 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   classEmoji: { fontSize: 18 },
   className: { color: theme.text, fontWeight: '700' },
   classNameOn: { color: theme.onAccent },
+  facts: {
+    gap: 10,
+  },
+  factRow: {
+    gap: 4,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  factValue: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  howToButton: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  howToLink: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.accent,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+  },
   specialHint: {
     fontSize: 14,
     color: theme.textMuted,
@@ -845,10 +1128,13 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginVertical: 16,
   },
   footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingTop: 12,
     gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
+  },
+  footerAction: {
+    flex: 1,
   },
   randomStarterText: {
     fontSize: 13,

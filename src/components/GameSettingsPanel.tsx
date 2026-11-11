@@ -7,6 +7,7 @@ type Props = {
   settings: GameSettings;
   onChange: (settings: GameSettings) => void;
   disabled?: boolean;
+  flat?: boolean;
 };
 
 const DEFAULT_MAX_ROUNDS = 3;
@@ -19,7 +20,12 @@ function parseLimit(text: string): number | null {
   return Number.isNaN(n) || n < 1 ? null : n;
 }
 
-export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
+export function GameSettingsPanel({
+  settings,
+  onChange,
+  disabled,
+  flat = false,
+}: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -78,8 +84,10 @@ export function GameSettingsPanel({ settings, onChange, disabled }: Props) {
   };
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.title}>Configuración de partida</Text>
+    <View style={flat ? styles.flat : styles.panel}>
+      <Text style={flat ? styles.flatTitle : styles.title}>
+        Configuración de partida
+      </Text>
 
       <View style={styles.row}>
         <View style={styles.rowInfo}>
@@ -197,10 +205,21 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderColor: theme.border,
     gap: 10,
   },
+  flat: {
+    gap: 10,
+  },
   title: {
     fontSize: 15,
     fontWeight: '700',
     color: theme.text,
+    marginBottom: 4,
+  },
+  flatTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: theme.textMuted,
     marginBottom: 4,
   },
   row: {

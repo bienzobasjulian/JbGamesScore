@@ -248,7 +248,11 @@ function AppShell() {
             selfPlayerId={app.selfPlayerId}
             onMenuPress={app.openMenu}
             onCreateMatch={app.goCreateMatch}
-            onOpenGame={(gameType) => app.goCreateMatch(undefined, gameType)}
+            onOpenGame={(gameType) =>
+              gameType === 'mente_vacuna'
+                ? app.openMenteVacuna()
+                : app.goCreateMatch(undefined, gameType)
+            }
             onViewAllGames={app.goGamesList}
             onPlayTemplate={app.playTemplate}
             onViewAllTemplates={app.goTemplatesList}
@@ -274,6 +278,8 @@ function AppShell() {
             }
             templates={app.data.templates}
             savedPlayers={app.data.players}
+            groups={app.data.groups}
+            onCreatePlayer={app.createSavedPlayerForSelection}
             preferredCreateMatchGames={
               app.data.preferredCreateMatchGames ?? []
             }
@@ -281,7 +287,6 @@ function AppShell() {
             initialGameType={app.screen.gameType ?? 'standard'}
             restoredDraft={restoredDraft}
             onBack={app.goHome}
-            onOpenPlayerSelection={app.openSelectPlayers}
             onStartStandard={(players, settings, name, sessionId) => {
               app.createAndStartMatch(players, settings, name, sessionId);
             }}
@@ -344,6 +349,8 @@ function AppShell() {
             }
             templates={app.data.templates}
             savedPlayers={app.data.players}
+            groups={app.data.groups}
+            onCreatePlayer={app.createSavedPlayerForSelection}
             preferredCreateMatchGames={
               app.data.preferredCreateMatchGames ?? []
             }
@@ -351,7 +358,6 @@ function AppShell() {
             sessionName={session.name}
             restoredDraft={restoredDraft}
             onBack={() => app.goSessionDetail(session.id)}
-            onOpenPlayerSelection={app.openSelectPlayers}
             onStartStandard={(players, settings, name, sessionId) => {
               app.createAndStartMatch(players, settings, name, sessionId);
             }}
