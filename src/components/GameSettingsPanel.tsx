@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { GameSettings } from '../types';
 
@@ -89,6 +89,51 @@ export function GameSettingsPanel({
         Configuración de partida
       </Text>
 
+      <Text style={styles.label}>Quién gana</Text>
+      {(
+        [
+          ['high', 'Más puntos gana', 'El podio ordena de mayor a menor.'],
+          [
+            'low',
+            'Menos puntos gana',
+            'El podio pone arriba a quien menos puntos tiene.',
+          ],
+          [
+            'loses',
+            'Menos puntos pierde',
+            'Quien menos tiene pierde y el resto gana igual. Se marca al perdedor, sin podio.',
+          ],
+        ] as const
+      ).map(([id, label, hint]) => {
+        const selected =
+          id === 'loses'
+            ? settings.lowestScoreLoses === true
+            : id === 'low'
+              ? settings.lowestScoreWins === true &&
+                settings.lowestScoreLoses !== true
+              : settings.lowestScoreWins !== true &&
+                settings.lowestScoreLoses !== true;
+        return (
+          <Pressable
+            key={id}
+            disabled={disabled}
+            onPress={() =>
+              onChange({
+                ...settings,
+                lowestScoreWins: id === 'low',
+                lowestScoreLoses: id === 'loses',
+              })
+            }
+            style={[styles.rule, selected && styles.ruleSelected]}
+          >
+            <Text style={[styles.ruleLabel, selected && styles.ruleLabelSelected]}>
+              {label}
+            </Text>
+            {selected ? <Text style={styles.hint}>{hint}</Text> : null}
+          </Pressable>
+        );
+      })}
+
       <View style={styles.row}>
         <View style={styles.rowInfo}>
           <Text style={styles.label}>Máximo de rondas</Text>
@@ -133,9 +178,11 @@ export function GameSettingsPanel({
         <View style={styles.rowInfo}>
           <Text style={styles.label}>Puntos para ganar/perder</Text>
           <Text style={styles.hint}>
-            {settings.lowestScoreWins
-              ? 'Se comprueba al terminar cada ronda; gana el menor total'
-              : 'Se comprueba al terminar cada ronda'}
+            {settings.lowestScoreLoses
+              ? 'Se comprueba al terminar cada ronda; pierde el menor total'
+              : settings.lowestScoreWins
+                ? 'Se comprueba al terminar cada ronda; gana el menor total'
+                : 'Se comprueba al terminar cada ronda'}
           </Text>
         </View>
         <Switch
@@ -173,25 +220,6 @@ export function GameSettingsPanel({
         />
       )}
 
-      <View style={[styles.row, styles.rowSpaced]}>
-        <View style={styles.rowInfo}>
-          <Text style={styles.label}>Gana quien tenga menos puntos</Text>
-          <Text style={styles.hint}>
-            Por defecto gana la puntuación más alta
-          </Text>
-        </View>
-        <Switch
-          value={settings.lowestScoreWins === true}
-          onValueChange={(lowestScoreWins) =>
-            onChange({ ...settings, lowestScoreWins })
-          }
-          trackColor={{ false: theme.border, true: theme.accentDark }}
-          thumbColor={
-            settings.lowestScoreWins ? theme.accent : theme.textMuted
-          }
-          disabled={disabled}
-        />
-      </View>
     </View>
   );
 }
@@ -254,5 +282,25 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 16,
     color: theme.text,
     marginTop: 2,
+  },
+  rule: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  ruleSelected: {
+    borderColor: theme.accent,
+    backgroundColor: theme.surfaceLight,
+  },
+  ruleLabel: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  ruleLabelSelected: {
+    color: theme.accent,
   },
 });

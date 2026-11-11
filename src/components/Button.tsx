@@ -14,6 +14,7 @@ type Props = {
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  numberOfLines?: number;
 };
 
 export function Button({
@@ -23,6 +24,7 @@ export function Button({
   disabled,
   loading,
   style,
+  numberOfLines,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -44,6 +46,7 @@ export function Button({
         <ActivityIndicator color={variant === 'ghost' ? theme.text : '#fff'} />
       ) : (
         <Text
+          numberOfLines={numberOfLines}
           style={[
             styles.label,
             variant === 'primary' && styles.primaryLabel,
@@ -90,6 +93,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '700',
+    textAlign: 'center',
   },
   primaryLabel: {
     color: theme.onAccent,

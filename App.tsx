@@ -287,8 +287,24 @@ function AppShell() {
             initialGameType={app.screen.gameType ?? 'standard'}
             restoredDraft={restoredDraft}
             onBack={app.goHome}
-            onStartStandard={(players, settings, name, sessionId) => {
-              app.createAndStartMatch(players, settings, name, sessionId);
+            onStartStandard={(
+              players,
+              settings,
+              name,
+              sessionId,
+              scoreLayout,
+              scoreTileWidth,
+              scoreRoundOrder,
+            ) => {
+              app.createAndStartMatch(
+                players,
+                settings,
+                name,
+                sessionId,
+                scoreLayout,
+                scoreTileWidth,
+                scoreRoundOrder,
+              );
             }}
             onStartPelusas={(players, sessionId, revolutionMode) => {
               app.startPelusasSession(players, sessionId, revolutionMode);
@@ -358,8 +374,24 @@ function AppShell() {
             sessionName={session.name}
             restoredDraft={restoredDraft}
             onBack={() => app.goSessionDetail(session.id)}
-            onStartStandard={(players, settings, name, sessionId) => {
-              app.createAndStartMatch(players, settings, name, sessionId);
+            onStartStandard={(
+              players,
+              settings,
+              name,
+              sessionId,
+              scoreLayout,
+              scoreTileWidth,
+              scoreRoundOrder,
+            ) => {
+              app.createAndStartMatch(
+                players,
+                settings,
+                name,
+                sessionId,
+                scoreLayout,
+                scoreTileWidth,
+                scoreRoundOrder,
+              );
             }}
             onStartPelusas={(players, sessionId, revolutionMode) => {
               app.startPelusasSession(players, sessionId, revolutionMode);
@@ -619,6 +651,7 @@ function AppShell() {
         return (
           <GameScreen
             state={state}
+            matchId={match.id}
             matchTitle={formatMatchTitle(match)}
             resultsRanking={resultsRanking}
             isMatchFinished={match.status === 'finished'}
@@ -651,6 +684,18 @@ function AppShell() {
             onSetScore={(playerId, value) =>
               app.setRoundScore(match.id, playerId, value)
             }
+            onAdjustScore={(playerId, delta) =>
+              app.adjustRoundScore(match.id, playerId, delta)
+            }
+            onChangeScoreLayout={(layout) =>
+              app.setScoreLayout(match.id, layout)
+            }
+            onChangeScoreTileWidth={(width) =>
+              app.setScoreTileWidth(match.id, width)
+            }
+            onChangeScoreRoundOrder={(order) =>
+              app.setScoreRoundOrder(match.id, order)
+            }
             onBack={() => {
               if (match.sessionId) {
                 app.goSessionDetail(match.sessionId);
@@ -660,6 +705,7 @@ function AppShell() {
             }}
             onEditMatch={() => app.goEditMatch(match.id)}
             onFinishMatch={() => app.finishMatch(match.id)}
+            onResetMatch={() => app.resetMatch(match.id)}
             onResumeMatch={() => app.resumeMatch(match.id)}
             onRepeatMatch={() => app.repeatMatch(match.id)}
             onDeleteMatch={() => app.deleteMatch(match.id)}
@@ -684,10 +730,26 @@ function AppShell() {
             savedPlayers={app.data.players}
             restoredDraft={restoredDraft}
             onBack={() => app.openMatch(match.id)}
-            onSave={(players, settings, name) =>
-              app.updateMatchConfiguration(match.id, players, settings, name)
+            groups={app.data.groups}
+            onCreatePlayer={app.createSavedPlayerForSelection}
+            onSave={(
+              players,
+              settings,
+              name,
+              scoreLayout,
+              scoreTileWidth,
+              scoreRoundOrder,
+            ) =>
+              app.updateMatchConfiguration(
+                match.id,
+                players,
+                settings,
+                name,
+                scoreLayout,
+                scoreTileWidth,
+                scoreRoundOrder,
+              )
             }
-            onOpenPlayerSelection={app.openSelectPlayers}
             selfPlayer={app.selfPlayer}
           />
         );

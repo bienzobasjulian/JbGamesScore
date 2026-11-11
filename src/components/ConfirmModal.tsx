@@ -8,6 +8,8 @@ type Props = {
   message: string;
   confirmLabel?: string;
   onConfirm: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
   onCancel: () => void;
   danger?: boolean;
 };
@@ -18,6 +20,8 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirmar',
   onConfirm,
+  secondaryLabel,
+  onSecondary,
   onCancel,
   danger,
 }: Props) {
@@ -43,6 +47,14 @@ export function ConfirmModal({
               variant={danger ? 'danger' : 'primary'}
               style={styles.btn}
             />
+            {secondaryLabel && onSecondary ? (
+              <Button
+                label={secondaryLabel}
+                onPress={onSecondary}
+                variant="secondary"
+                style={styles.btn}
+              />
+            ) : null}
             <Button
               label="Cancelar"
               onPress={onCancel}

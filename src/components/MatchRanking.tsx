@@ -9,6 +9,7 @@ type Props = {
   showPodium?: boolean;
   /** Si la partida tiene un tope, la lista muestra el avance hacia esa meta. */
   pointsGoal?: number | null;
+  note?: string | null;
 };
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -17,6 +18,7 @@ export function MatchRanking({
   ranking,
   showPodium = true,
   pointsGoal = null,
+  note = null,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -45,8 +47,6 @@ export function MatchRanking({
     <View style={styles.wrap}>
       {showPodium ? (
         <>
-          <Text style={styles.heading}>Resultado</Text>
-
           <View style={styles.podiumRow}>
             {podiumOrder.map((entry, index) => {
               const place =
@@ -92,13 +92,11 @@ export function MatchRanking({
               );
             })}
           </View>
+          {note ? <Text style={styles.note}>{note}</Text> : null}
         </>
       ) : null}
 
       <View style={[styles.list, !showPodium && styles.listOnly]}>
-        {showPodium ? (
-          <Text style={styles.listTitle}>Clasificación</Text>
-        ) : null}
         {ranking.map((entry) => {
           const goal = hasGoal ? pointsGoal : null;
           const reached = goal != null && entry.total >= goal;
@@ -227,6 +225,17 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   listOnly: {
     paddingTop: 0,
     borderTopWidth: 0,
+  },
+  note: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: theme.text,
+    fontSize: 15,
+    lineHeight: 22,
   },
   listTitle: {
     fontSize: 13,

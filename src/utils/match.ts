@@ -4,6 +4,9 @@ import {
   GameState,
   Match,
   Player,
+  normalizeScoreLayout,
+  normalizeScoreRoundOrder,
+  normalizeScoreTileWidth,
   RoundScores,
   SavedPlayer,
 } from '../types';
@@ -166,6 +169,9 @@ export function matchToGameState(match: Match): GameState {
     roundBreakdowns: m.roundBreakdowns,
     activeRoundIndex: m.activeRoundIndex,
     roundScoringMode: m.roundScoringMode ?? {},
+    scoreLayout: normalizeScoreLayout(m.scoreLayout),
+    scoreTileWidth: normalizeScoreTileWidth(m.scoreTileWidth),
+    scoreRoundOrder: normalizeScoreRoundOrder(m.scoreRoundOrder),
     isPlaying: m.status === 'in_progress',
     settings: m.settings,
   };
@@ -431,6 +437,9 @@ export function createMatch(
   settings: GameState['settings'],
   name?: string | null,
   sessionId?: string | null,
+  scoreLayout?: Match['scoreLayout'],
+  scoreTileWidth?: Match['scoreTileWidth'],
+  scoreRoundOrder?: Match['scoreRoundOrder'],
 ): Match {
   const now = Date.now();
   const trimmedName = name?.trim();
@@ -450,6 +459,9 @@ export function createMatch(
     roundBreakdowns,
     activeRoundIndex: 0,
     roundScoringMode: {},
+    scoreLayout: normalizeScoreLayout(scoreLayout),
+    scoreTileWidth: normalizeScoreTileWidth(scoreTileWidth),
+    scoreRoundOrder: normalizeScoreRoundOrder(scoreRoundOrder),
     status: 'in_progress',
     createdAt: now,
     updatedAt: now,

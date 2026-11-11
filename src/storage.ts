@@ -61,6 +61,12 @@ function normalizeAppData(raw: Partial<AppData> | null): AppData {
               normalizeStoredPlayer(player),
             ),
             roundScoringMode: m.roundScoringMode ?? {},
+            scoreLayout:
+              m.scoreLayout === 'table' || m.scoreLayout === 'big'
+                ? m.scoreLayout
+                : 'cards',
+            scoreTileWidth: m.scoreTileWidth === 'full' ? 'full' : 'half',
+            scoreRoundOrder: m.scoreRoundOrder === 'desc' ? 'desc' : 'asc',
             status: m.status === 'finished' ? 'finished' : 'in_progress',
             gameMode:
               m.gameMode === 'pelusas'

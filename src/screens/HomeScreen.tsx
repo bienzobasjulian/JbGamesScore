@@ -7,11 +7,12 @@ import { SectionBlock } from '../components/SectionBlock';
 import { SectionLabel } from '../components/SectionLabel';
 import { SessionListRow } from '../components/SessionListRow';
 import { TourScrollView, useAutoTour } from '../onboarding';
-import { useThemedStyles, type AppTheme } from '../theme';
+import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import { Match, MatchTemplate, PlaySession, PreferredCreateMatchGame, SavedPlayer } from '../types';
 import { getVisibleCreateMatchGames } from '../utils/games';
 import { formatPlayerLastUsed } from '../utils/players';
 import { getTemplateFacts } from '../utils/template';
+import { FactIcon } from './GamesListScreen';
 
 type Props = {
   inProgressMatches: Match[];
@@ -60,6 +61,7 @@ export function HomeScreen({
   onViewAllMatches,
   onViewAllPlayers,
 }: Props) {
+  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   useAutoTour('home');
 
@@ -130,22 +132,38 @@ export function HomeScreen({
                   </Text>
                   <View style={styles.templateFacts}>
                     {facts.facts.map((fact) => (
-                      <Text
-                        key={fact.label}
-                        style={[
-                          styles.templateFact,
-                          fact.tone === 'high' && styles.templateFactHigh,
-                          fact.tone === 'low' && styles.templateFactLow,
-                        ]}
-                      >
-                        {fact.label}
-                      </Text>
+                      <View key={fact.label} style={styles.templateFactRow}>
+                        {fact.icon ? (
+                          <FactIcon
+                            name={fact.icon}
+                            color={
+                              fact.tone === 'high'
+                                ? theme.success
+                                : fact.tone === 'low'
+                                  ? theme.danger
+                                  : theme.accent
+                            }
+                          />
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.templateFact,
+                            fact.tone === 'high' && styles.templateFactHigh,
+                            fact.tone === 'low' && styles.templateFactLow,
+                          ]}
+                        >
+                          {fact.label}
+                        </Text>
+                      </View>
                     ))}
                   </View>
                   {facts.playersLabel ? (
-                    <Text style={styles.templateSubtitle} numberOfLines={1}>
-                      {facts.playersLabel}
-                    </Text>
+                    <View style={styles.templateFactRow}>
+                      <FactIcon name="pawns" color={theme.textMuted} />
+                      <Text style={styles.templateSubtitle} numberOfLines={1}>
+                        {facts.playersLabel}
+                      </Text>
+                    </View>
                   ) : null}
                 </Pressable>
               );
@@ -331,6 +349,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
+  templateFactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: '100%',
+  },
   templateFact: {
     fontSize: 12,
     fontWeight: '700',
@@ -343,6 +367,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.danger,
   },
   templateSubtitle: {
+    flexShrink: 1,
     fontSize: 12,
     lineHeight: 16,
     color: theme.textMuted,

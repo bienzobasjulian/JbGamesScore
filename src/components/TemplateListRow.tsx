@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
 import type { TemplateFact } from '../utils/template';
+import { FactIcon } from '../screens/GamesListScreen';
 
 type Props = {
   title: string;
@@ -36,6 +37,9 @@ export function TemplateListRow({
               { backgroundColor: toneColor(theme, fact.tone) + '22' },
             ]}
           >
+            {fact.icon ? (
+              <FactIcon name={fact.icon} color={toneColor(theme, fact.tone)} />
+            ) : null}
             <Text style={[styles.factLabel, { color: toneColor(theme, fact.tone) }]}>
               {fact.label}
             </Text>
@@ -43,9 +47,12 @@ export function TemplateListRow({
         ))}
       </View>
       {playersLabel ? (
-        <Text style={styles.players} numberOfLines={1}>
-          {playersLabel}
-        </Text>
+        <View style={styles.playersRow}>
+          <FactIcon name="pawns" color={theme.textMuted} />
+          <Text style={styles.players} numberOfLines={1}>
+            {playersLabel}
+          </Text>
+        </View>
       ) : null}
       <View style={styles.actions}>
         <Pressable
@@ -101,6 +108,9 @@ const createStyles = (theme: AppTheme) =>
       gap: 6,
     },
     fact: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       borderRadius: 999,
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -109,7 +119,13 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 12,
       fontWeight: '700',
     },
+    playersRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
     players: {
+      flex: 1,
       fontSize: 13,
       color: theme.textMuted,
     },

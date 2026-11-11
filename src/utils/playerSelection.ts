@@ -1,7 +1,6 @@
 import { PLAYER_COLORS } from '../constants';
 import { Player } from '../types';
 import { createId } from './game';
-import { pickPlayerColor } from './match';
 
 export const ANONYMOUS_PLAYER_ID_PREFIX = 'anon:';
 
@@ -16,8 +15,15 @@ export function createAnonymousPlayer(
   return {
     id: `${ANONYMOUS_PLAYER_ID_PREFIX}${createId()}`,
     name: `Anónimo ${index}`,
-    color: pickPlayerColor(existing),
+    color: pickRandomPlayerColor(existing),
   };
+}
+
+function pickRandomPlayerColor(existing: Player[]): string {
+  const used = new Set(existing.map((player) => player.color.toLowerCase()));
+  const free = PLAYER_COLORS.filter((color) => !used.has(color.toLowerCase()));
+  const pool = free.length > 0 ? free : [...PLAYER_COLORS];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export function buildRosterFromSelection(
@@ -29,6 +35,31 @@ export function buildRosterFromSelection(
     roster.push(createAnonymousPlayer(i, roster));
   }
   return roster;
+}
+
+/** Mantiene los ids ya usados en la partida para no perder las puntuaciones. */
+export function preserveRosterIdentity(
+  previous: Player[],
+  next: Player[],
+): Player[] {
+  const previousById = new Map(previous.map((player) => [player.id, player]));
+  const unusedAnonymous = previous.filter(isAnonymousPlayer);
+  let anonymousCursor = 0;
+
+  return next.map((player) => {
+    if (!isAnonymousPlayer(player)) {
+      const same = previousById.get(player.id);
+      return same ? { ...same, ...player, id: same.id } : player;
+    }
+
+    const reused = unusedAnonymous[anonymousCursor];
+    anonymousCursor += 1;
+    if (!reused) return player;
+    return {
+      ...reused,
+      name: player.name,
+    };
+  });
 }
 
 export function parseRosterPlayers(players: Player[]): {

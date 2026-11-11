@@ -49,7 +49,10 @@ export function normalizePlayerAvatar(value: unknown): string | null {
 }
 
 export function getPlayerInitial(name: string): string {
-  const initial = name.trim().charAt(0);
+  const trimmed = name.trim();
+  const anonymousNumber = trimmed.match(/^an[oó]nimo\s+(\d+)$/i);
+  if (anonymousNumber) return anonymousNumber[1];
+  const initial = trimmed.charAt(0);
   return initial ? initial.toUpperCase() : '';
 }
 

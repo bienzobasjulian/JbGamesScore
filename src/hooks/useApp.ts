@@ -19,6 +19,9 @@ import {
   PelusasSession,
   PlaySession,
   Player,
+  normalizeScoreLayout,
+  normalizeScoreRoundOrder,
+  normalizeScoreTileWidth,
   PreferredCreateMatchGame,
   SkullKingRoundEntry,
   SkullKingSession,
@@ -48,6 +51,7 @@ import {
   createId,
   normalizeSettings,
 } from '../utils/game';
+import { createInitialRounds } from '../utils/rounds';
 import {
   createMatch,
   createWinnerOnlyMatch,
@@ -2535,9 +2539,20 @@ export function useApp() {
       settings: GameSettings,
       name?: string | null,
       sessionId?: string | null,
+      scoreLayout?: Match['scoreLayout'],
+      scoreTileWidth?: Match['scoreTileWidth'],
+      scoreRoundOrder?: Match['scoreRoundOrder'],
     ) => {
       if (players.length < 1) return null;
-      const match = createMatch(players, settings, name, sessionId);
+      const match = createMatch(
+        players,
+        settings,
+        name,
+        sessionId,
+        scoreLayout,
+        scoreTileWidth,
+        scoreRoundOrder,
+      );
       setData((prev) =>
         appendMatch(
           {
@@ -2678,6 +2693,9 @@ export function useApp() {
       players: Player[],
       settings: GameSettings,
       name: string | null,
+      scoreLayout?: Match['scoreLayout'],
+      scoreTileWidth?: Match['scoreTileWidth'],
+      scoreRoundOrder?: Match['scoreRoundOrder'],
     ) => {
       updateMatch(matchId, (match) => {
         if (match.status === 'finished') return match;
@@ -2717,6 +2735,13 @@ export function useApp() {
           rounds,
           roundBreakdowns,
           roundScoringMode,
+          scoreLayout: normalizeScoreLayout(scoreLayout ?? m.scoreLayout),
+          scoreTileWidth: normalizeScoreTileWidth(
+            scoreTileWidth ?? m.scoreTileWidth,
+          ),
+          scoreRoundOrder: normalizeScoreRoundOrder(
+            scoreRoundOrder ?? m.scoreRoundOrder,
+          ),
           activeRoundIndex: Math.min(
             m.activeRoundIndex,
             Math.max(0, rounds.length - 1),
@@ -2808,6 +2833,48 @@ export function useApp() {
         }
 
         return m;
+      });
+    },
+    [updateMatch],
+  );
+
+  const setScoreLayout = useCallback(
+    (matchId: string, scoreLayout: Match['scoreLayout']) => {
+      updateMatch(matchId, (match) => {
+        if (match.status === 'finished' && !match.editingAfterFinish) {
+          return match;
+        }
+        return { ...match, scoreLayout: normalizeScoreLayout(scoreLayout) };
+      });
+    },
+    [updateMatch],
+  );
+
+  const setScoreTileWidth = useCallback(
+    (matchId: string, scoreTileWidth: Match['scoreTileWidth']) => {
+      updateMatch(matchId, (match) => {
+        if (match.status === 'finished' && !match.editingAfterFinish) {
+          return match;
+        }
+        return {
+          ...match,
+          scoreTileWidth: normalizeScoreTileWidth(scoreTileWidth),
+        };
+      });
+    },
+    [updateMatch],
+  );
+
+  const setScoreRoundOrder = useCallback(
+    (matchId: string, scoreRoundOrder: Match['scoreRoundOrder']) => {
+      updateMatch(matchId, (match) => {
+        if (match.status === 'finished' && !match.editingAfterFinish) {
+          return match;
+        }
+        return {
+          ...match,
+          scoreRoundOrder: normalizeScoreRoundOrder(scoreRoundOrder),
+        };
       });
     },
     [updateMatch],
@@ -2991,6 +3058,29 @@ export function useApp() {
         status: 'finished',
         editingAfterFinish: false,
       }));
+    },
+    [updateMatch],
+  );
+
+  const resetMatch = useCallback(
+    (matchId: string) => {
+      updateMatch(matchId, (match) => {
+        const m = normalizeMatchRounds(match);
+        const roundCount = m.settings.maxRounds ?? 1;
+        const { rounds, roundBreakdowns } = createInitialRounds(
+          m.players,
+          roundCount,
+        );
+        return {
+          ...m,
+          rounds,
+          roundBreakdowns,
+          activeRoundIndex: 0,
+          roundScoringMode: {},
+          status: 'in_progress',
+          editingAfterFinish: false,
+        };
+      });
     },
     [updateMatch],
   );
@@ -3231,7 +3321,15 @@ export function useApp() {
         return;
       }
 
-      const newMatch = createMatch(source.players, source.settings, source.name);
+      const newMatch = createMatch(
+        source.players,
+        source.settings,
+        source.name,
+        undefined,
+        source.scoreLayout,
+        source.scoreTileWidth,
+        source.scoreRoundOrder,
+      );
       setData((prev) => ({
         ...prev,
         matches: [...prev.matches, newMatch],
@@ -3440,11 +3538,15 @@ export function useApp() {
     addNextRound,
     adjustRoundScore,
     setRoundScore,
+    setScoreLayout,
+    setScoreTileWidth,
+    setScoreRoundOrder,
     setRoundScoringMode,
     addBreakdownItem,
     setRoundBreakdown,
     removeBreakdownItem,
     markMatchFinished,
+    resetMatch,
     finishMatch,
     resumeMatch,
     repeatMatch,

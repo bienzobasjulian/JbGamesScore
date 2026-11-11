@@ -24,11 +24,37 @@ export type RoundBreakdown = Record<string, number[]>;
 
 export type ScoringMode = 'direct' | 'breakdown';
 
+/** Presentación del marcador genérico. No cambia los puntos, solo cómo se editan. */
+export type ScoreLayout = 'cards' | 'table' | 'big';
+
+export function normalizeScoreLayout(value: unknown): ScoreLayout {
+  return value === 'table' || value === 'big' ? value : 'cards';
+}
+
+/** Ancho de cada ficha en la vista Marcador. */
+export type ScoreTileWidth = 'full' | 'half';
+
+export function normalizeScoreTileWidth(value: unknown): ScoreTileWidth {
+  return value === 'full' ? 'full' : 'half';
+}
+
+/** Orden de las filas de ronda en la vista Tabla. */
+export type ScoreRoundOrder = 'asc' | 'desc';
+
+export function normalizeScoreRoundOrder(value: unknown): ScoreRoundOrder {
+  return value === 'desc' ? 'desc' : 'asc';
+}
+
 export type GameSettings = {
   maxRounds: number | null;
   maxPointsToWin: number | null;
   /** Si es true, gana quien tenga menos puntos (por defecto gana quien tenga más). */
   lowestScoreWins?: boolean;
+  /**
+   * Si es true, pierde quien tenga menos puntos y el resto gana igual.
+   * No se combina con lowestScoreWins.
+   */
+  lowestScoreLoses?: boolean;
 };
 
 export type MatchStatus = 'in_progress' | 'finished';
@@ -86,6 +112,11 @@ export type Match = {
   currentRound?: RoundScores;
   currentRoundBreakdown?: RoundBreakdown;
   roundScoringMode: Record<string, ScoringMode>;
+  /** Vista del marcador. Las partidas antiguas usan tarjetas. */
+  scoreLayout?: ScoreLayout;
+  /** Ancho de ficha cuando la vista es Marcador. */
+  scoreTileWidth?: ScoreTileWidth;
+  scoreRoundOrder?: ScoreRoundOrder;
   status: MatchStatus;
   /** Partida retomada tras finalizar: permite editar sin bloquear la UI. */
   editingAfterFinish?: boolean;
@@ -112,6 +143,9 @@ export type GameState = {
   roundBreakdowns: RoundBreakdown[];
   activeRoundIndex: number;
   roundScoringMode: Record<string, ScoringMode>;
+  scoreLayout: ScoreLayout;
+  scoreTileWidth: ScoreTileWidth;
+  scoreRoundOrder: ScoreRoundOrder;
   isPlaying: boolean;
   settings: GameSettings;
 };

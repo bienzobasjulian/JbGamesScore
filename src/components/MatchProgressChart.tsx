@@ -33,7 +33,7 @@ export function MatchProgressChart({ players, rounds }: Props) {
   if (rounds.length === 0) {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.heading}>Evolución de la partida</Text>
+        <Text style={styles.heading}>Evolución de la puntuación</Text>
         <Text style={styles.empty}>No hay rondas registradas para graficar.</Text>
       </View>
     );
@@ -75,7 +75,7 @@ export function MatchProgressChart({ players, rounds }: Props) {
 
   return (
     <View style={styles.wrap} onLayout={onLayout}>
-      <Text style={styles.heading}>Evolución de la partida</Text>
+      <Text style={styles.heading}>Evolución de la puntuación</Text>
       <Text style={styles.subtitle}>Puntos acumulados por ronda</Text>
 
       {width > 0 && (

@@ -211,9 +211,9 @@ export function PlayerAvatar({
   const fg = getPlayerAvatarTextColor(color);
   const resolvedRadius = radius ?? Math.round(size * 0.28);
   const iconSize = Math.round(size * 0.72);
-  const fontSize = Math.round(size * 0.42);
-  const avatarId = avatar && isPlayerAvatarId(avatar) ? avatar : null;
   const initial = getPlayerInitial(name);
+  const fontSize = Math.round(size * (initial.length > 1 ? 0.32 : 0.42));
+  const avatarId = avatar && isPlayerAvatarId(avatar) ? avatar : null;
 
   return (
     <View

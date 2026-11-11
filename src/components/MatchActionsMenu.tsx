@@ -1,6 +1,12 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSheetBottomInset } from '../hooks/useSheetBottomInset';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
+import { ScoreLayout, ScoreRoundOrder, ScoreTileWidth } from '../types';
+import {
+  ScoreLayoutPicker,
+  ScoreRoundOrderPicker,
+  ScoreTileWidthPicker,
+} from './ScoreLayoutPicker';
 
 type Props = {
   visible: boolean;
@@ -14,6 +20,12 @@ type Props = {
   onHowToPlay?: () => void;
   onSaveAndExit?: () => void;
   onDeleteAndExit?: () => void;
+  scoreLayout?: ScoreLayout;
+  scoreTileWidth?: ScoreTileWidth;
+  onChangeScoreLayout?: (layout: ScoreLayout) => void;
+  onChangeScoreTileWidth?: (width: ScoreTileWidth) => void;
+  scoreRoundOrder?: ScoreRoundOrder;
+  onChangeScoreRoundOrder?: (order: ScoreRoundOrder) => void;
 };
 
 export function MatchActionsMenu({
@@ -28,6 +40,12 @@ export function MatchActionsMenu({
   onHowToPlay,
   onSaveAndExit,
   onDeleteAndExit,
+  scoreLayout,
+  scoreTileWidth,
+  onChangeScoreLayout,
+  onChangeScoreTileWidth,
+  scoreRoundOrder,
+  onChangeScoreRoundOrder,
 }: Props) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -45,6 +63,38 @@ export function MatchActionsMenu({
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: 16 + bottomInset }]}>
           <View style={styles.handle} />
+
+          {onChangeScoreLayout && scoreLayout ? (
+            <View style={styles.viewBlock}>
+              <Text style={styles.optionTitle}>Vista de puntos</Text>
+              <ScoreLayoutPicker
+                value={scoreLayout}
+                onChange={onChangeScoreLayout}
+              />
+              {scoreLayout === 'big' &&
+              scoreTileWidth &&
+              onChangeScoreTileWidth ? (
+                <>
+                  <Text style={styles.optionHint}>Ancho del marcador</Text>
+                  <ScoreTileWidthPicker
+                    value={scoreTileWidth}
+                    onChange={onChangeScoreTileWidth}
+                  />
+                </>
+              ) : null}
+              {scoreLayout === 'table' &&
+              scoreRoundOrder &&
+              onChangeScoreRoundOrder ? (
+                <>
+                  <Text style={styles.optionHint}>Orden de las rondas</Text>
+                  <ScoreRoundOrderPicker
+                    value={scoreRoundOrder}
+                    onChange={onChangeScoreRoundOrder}
+                  />
+                </>
+              ) : null}
+            </View>
+          ) : null}
 
           {onViewRanking ? (
             <Pressable
@@ -248,6 +298,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 2,
+  },
+  viewBlock: {
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
   },
   cancelLabel: {
     fontSize: 16,

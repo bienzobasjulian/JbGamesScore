@@ -1,4 +1,4 @@
-import { GameState, Player, RoundScores } from '../types';
+import { GameSettings, GameState, Player, RoundScores } from '../types';
 
 export function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -48,7 +48,9 @@ export function sortPlayersByScore(
   state: GameState,
   throughRoundIndex?: number,
 ): Player[] {
-  const lowestWins = state.settings.lowestScoreWins === true;
+  const lowestWins =
+    state.settings.lowestScoreWins === true &&
+    state.settings.lowestScoreLoses !== true;
   const totalOf = (id: string) =>
     throughRoundIndex != null
       ? getPlayerTotalThroughRound(id, state, throughRoundIndex)
@@ -64,6 +66,7 @@ export const defaultSettings = (): GameState['settings'] => ({
   maxRounds: null,
   maxPointsToWin: null,
   lowestScoreWins: false,
+  lowestScoreLoses: false,
 });
 
 export function normalizeSettings(
@@ -77,11 +80,23 @@ export function normalizeSettings(
     settings?.maxPointsToWin != null && settings.maxPointsToWin > 0
       ? settings.maxPointsToWin
       : null;
+  const lowestScoreLoses = settings?.lowestScoreLoses === true;
   return {
     maxRounds,
     maxPointsToWin,
-    lowestScoreWins: settings?.lowestScoreWins === true,
+    lowestScoreWins: settings?.lowestScoreWins === true && !lowestScoreLoses,
+    lowestScoreLoses,
   };
+}
+
+export function scoreRuleLabel(settings: GameSettings): string {
+  if (settings.lowestScoreLoses) {
+    return 'Pierde el que tenga menos puntos';
+  }
+  if (settings.lowestScoreWins) {
+    return 'Gana el que tenga menos puntos';
+  }
+  return 'Gana el que tenga más puntos';
 }
 
 export function initialGameState(): GameState {
@@ -91,6 +106,9 @@ export function initialGameState(): GameState {
     roundBreakdowns: [],
     activeRoundIndex: 0,
     roundScoringMode: {},
+    scoreLayout: 'cards',
+    scoreTileWidth: 'half',
+    scoreRoundOrder: 'asc',
     isPlaying: false,
     settings: normalizeSettings(),
   };
@@ -138,6 +156,13 @@ export function checkGameOver(
     );
 
     if (someoneReachedLimit) {
+      if (state.settings.lowestScoreLoses) {
+        return {
+          isOver: true,
+          reason: 'points',
+          winners: winnersExceptLowest(state.players, totalOf),
+        };
+      }
       if (lowestWins) {
         const ranked = sortPlayersByScore(
           state.players,
@@ -163,10 +188,10 @@ export function checkGameOver(
       const ranked = sortPlayersByScore(state.players, state, through);
       const totalOf = (id: string) =>
         getPlayerTotalThroughRound(id, state, through);
-      const bestScore = ranked.length > 0 ? totalOf(ranked[0].id) : 0;
-      const winners =
-        ranked.length > 0
-          ? ranked.filter((p) => totalOf(p.id) === bestScore)
+      const winners = state.settings.lowestScoreLoses
+        ? winnersExceptLowest(state.players, totalOf)
+        : ranked.length > 0
+          ? ranked.filter((p) => totalOf(p.id) === totalOf(ranked[0].id))
           : noWinners;
       return { isOver: true, reason: 'rounds', winners };
     }
@@ -189,8 +214,21 @@ export function formatRoundProgress(state: GameState): string {
 
 export function formatPointsGoal(state: GameState): string | null {
   if (state.settings.maxPointsToWin == null) return null;
+  if (state.settings.lowestScoreLoses) {
+    return `Al cerrar ronda: si alguien llega a ${state.settings.maxPointsToWin} pts, pierde el menor total`;
+  }
   if (state.settings.lowestScoreWins) {
     return `Al cerrar ronda: si alguien llega a ${state.settings.maxPointsToWin} pts, gana el menor total`;
   }
   return `Al cerrar ronda: ${state.settings.maxPointsToWin} pts para ganar`;
+}
+
+function winnersExceptLowest(
+  players: Player[],
+  totalOf: (id: string) => number,
+): Player[] {
+  if (players.length === 0) return [];
+  const lowest = Math.min(...players.map((player) => totalOf(player.id)));
+  const above = players.filter((player) => totalOf(player.id) !== lowest);
+  return above.length > 0 ? above : players;
 }

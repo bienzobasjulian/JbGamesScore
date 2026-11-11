@@ -12,6 +12,11 @@ import { AppHeader } from '../components/AppHeader';
 import { Button } from '../components/Button';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { GameSettingsPanel } from '../components/GameSettingsPanel';
+import {
+  ScoreLayoutPicker,
+  ScoreRoundOrderPicker,
+  ScoreTileWidthPicker,
+} from '../components/ScoreLayoutPicker';
 import { GameRulesSheet } from '../components/GameRulesSheet';
 import {
   CardsIcon,
@@ -28,6 +33,12 @@ import { CreateMatchDraft } from '../types/playerSelection';
 import {
   AventurerosTrenSubmode,
   GameSettings,
+  ScoreLayout,
+  ScoreRoundOrder,
+  ScoreTileWidth,
+  normalizeScoreLayout,
+  normalizeScoreRoundOrder,
+  normalizeScoreTileWidth,
   MatchTemplate,
   Player,
   PlayerGroup,
@@ -49,7 +60,7 @@ import {
   resolveCreateMatchGameType,
 } from '../utils/games';
 import { HERO_QUEST_PRESETS } from '../utils/heroQuest';
-import { defaultSettings } from '../utils/game';
+import { defaultSettings, scoreRuleLabel } from '../utils/game';
 import {
   assignUniquePlayerColors,
   ensureMatchPlayers,
@@ -131,6 +142,9 @@ type Props = {
     settings: GameSettings,
     name?: string | null,
     sessionId?: string | null,
+    scoreLayout?: ScoreLayout,
+    scoreTileWidth?: ScoreTileWidth,
+    scoreRoundOrder?: ScoreRoundOrder,
   ) => void;
   onStartPelusas: (
     players: Player[],
@@ -229,6 +243,15 @@ export function CreateMatchScreen({
   );
   const [settings, setSettings] = useState<GameSettings>(
     restoredDraft?.settings ?? templateInitial.settings,
+  );
+  const [scoreLayout, setScoreLayout] = useState<ScoreLayout>(
+    normalizeScoreLayout(restoredDraft?.scoreLayout),
+  );
+  const [scoreTileWidth, setScoreTileWidth] = useState<ScoreTileWidth>(
+    normalizeScoreTileWidth(restoredDraft?.scoreTileWidth),
+  );
+  const [scoreRoundOrder, setScoreRoundOrder] = useState<ScoreRoundOrder>(
+    normalizeScoreRoundOrder(restoredDraft?.scoreRoundOrder),
   );
   const [matchName, setMatchName] = useState(
     restoredDraft?.matchName ?? templateInitial.matchName,
@@ -386,9 +409,12 @@ export function CreateMatchScreen({
         settings.maxPointsToWin != null
           ? `${settings.maxPointsToWin} puntos`
           : null,
-        settings.lowestScoreWins
-          ? 'Gana el que tenga menos puntos'
-          : 'Gana el que tenga más puntos',
+        scoreRuleLabel(settings),
+        scoreLayout === 'table'
+          ? 'Vista de tabla'
+          : scoreLayout === 'big'
+            ? 'Vista de marcador'
+            : 'Vista de tarjetas',
       ]
         .filter(Boolean)
         .join(' · ') || 'Manual';
@@ -492,6 +518,9 @@ export function CreateMatchScreen({
         settings,
         matchName.trim() || null,
         sessionId ?? null,
+        scoreLayout,
+        scoreTileWidth,
+        scoreRoundOrder,
       );
     }
   };
@@ -545,6 +574,28 @@ export function CreateMatchScreen({
               onChange={setSettings}
               flat
             />
+            <View style={styles.layoutBlock}>
+              <Text style={styles.sectionLabel}>Vista de puntos</Text>
+              <ScoreLayoutPicker value={scoreLayout} onChange={setScoreLayout} />
+              {scoreLayout === 'big' ? (
+                <>
+                  <Text style={styles.sectionLabel}>Ancho del marcador</Text>
+                  <ScoreTileWidthPicker
+                    value={scoreTileWidth}
+                    onChange={setScoreTileWidth}
+                  />
+                </>
+              ) : null}
+              {scoreLayout === 'table' ? (
+                <>
+                  <Text style={styles.sectionLabel}>Orden de las rondas</Text>
+                  <ScoreRoundOrderPicker
+                    value={scoreRoundOrder}
+                    onChange={setScoreRoundOrder}
+                  />
+                </>
+              ) : null}
+            </View>
           </TourAnchor>
         </>
       ) : matchFacts.length > 0 ? (
@@ -1012,6 +1063,10 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: theme.accent,
+  },
+  layoutBlock: {
+    gap: 8,
+    marginTop: 8,
   },
   nameBlock: {
     gap: 6,

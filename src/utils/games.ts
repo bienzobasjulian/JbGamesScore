@@ -184,6 +184,7 @@ export type GameCatalogMeta = {
   roundsLabel: string | null;
   objectiveLabel: string | null;
   objectiveTone: GameCatalogTone;
+  objectiveIcon: 'trophy' | 'poop' | 'goal' | null;
 };
 
 function formatKnownPlayerRange(limits: CreateMatchPlayerLimits): string | null {
@@ -202,6 +203,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: null,
         objectiveLabel: `Objetivo ${FLIP7_WIN_AT}`,
         objectiveTone: 'high',
+        objectiveIcon: 'goal',
       };
     case 'flip7_vengeance':
       return {
@@ -209,6 +211,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: null,
         objectiveLabel: `Objetivo ${FLIP7_VENGEANCE_WIN_AT}`,
         objectiveTone: 'high',
+        objectiveIcon: 'goal',
       };
     case 'skull_king':
       return {
@@ -216,6 +219,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: `${SKULL_KING_TOTAL_ROUNDS} rondas`,
         objectiveLabel: 'Más alto',
         objectiveTone: 'high',
+        objectiveIcon: 'trophy',
       };
     case 'sushi_go':
       return {
@@ -223,6 +227,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: `${SUSHI_GO_TOTAL_ROUNDS} rondas`,
         objectiveLabel: 'Más alto',
         objectiveTone: 'high',
+        objectiveIcon: 'trophy',
       };
     case 'pili_pili':
       return {
@@ -230,6 +235,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: null,
         objectiveLabel: `Pierde a ${PILI_PILI_LOSE_AT}`,
         objectiveTone: 'low',
+        objectiveIcon: 'poop',
       };
     case 'pelusas':
     case 'pelusas_revolution':
@@ -240,13 +246,15 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: null,
         objectiveLabel: 'Más alto',
         objectiveTone: 'high',
+        objectiveIcon: 'trophy',
       };
     case 'regicide':
       return {
-        playersLabel,
+        playersLabel: '1–4',
         roundsLabel: null,
-        objectiveLabel: 'Cooperativo',
+        objectiveLabel: null,
         objectiveTone: 'neutral',
+        objectiveIcon: null,
       };
     default:
       return {
@@ -254,6 +262,7 @@ export function getGameCatalogMeta(gameType: CreateMatchGameType): GameCatalogMe
         roundsLabel: null,
         objectiveLabel: null,
         objectiveTone: 'neutral',
+        objectiveIcon: null,
       };
   }
 }

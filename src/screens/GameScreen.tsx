@@ -1,26 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BackHandler,
-  FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Button } from '../components/Button';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { CurrentRankingModal } from '../components/CurrentRankingModal';
 import { ExitMatchModal } from '../components/ExitMatchModal';
-import { FinishMatchModal } from '../components/FinishMatchModal';
 import { MatchActionsMenu } from '../components/MatchActionsMenu';
-import { MatchResultsPager } from '../components/MatchResultsPager';
+import { MatchResultsPager, PoopIcon } from '../components/MatchResultsPager';
 import { PlayerCard } from '../components/PlayerCard';
 import { PlayerAvatar } from '../components/PlayerAvatar';
+import { ScoreBigView } from '../components/ScoreBigView';
+import { ScoreTableView } from '../components/ScoreTableView';
 import { RoundHistory } from '../components/RoundHistory';
 import { RoundPagination } from '../components/RoundPagination';
 import { TourAnchor, useAutoTour } from '../onboarding';
 import { useTheme, useThemedStyles, type AppTheme } from '../theme';
-import { GameState } from '../types';
+import { GameState, ScoreLayout, ScoreRoundOrder, ScoreTileWidth } from '../types';
 import {
   checkGameOver,
   formatPointsGoal,
@@ -35,6 +37,7 @@ import { getPlayerBreakdownItems } from '../utils/scoring';
 
 type Props = {
   state: GameState;
+  matchId: string;
   matchTitle?: string;
   resultsRanking?: RankedPlayer[];
   isMatchFinished?: boolean;
@@ -44,12 +47,17 @@ type Props = {
   roundLabels?: string[];
   isWinnerOnlyMatch?: boolean;
   onSetScore: (playerId: string, value: number) => void;
+  onAdjustScore: (playerId: string, delta: number) => void;
+  onChangeScoreLayout: (layout: ScoreLayout) => void;
+  onChangeScoreTileWidth: (width: ScoreTileWidth) => void;
+  onChangeScoreRoundOrder: (order: ScoreRoundOrder) => void;
   onSetBreakdown: (playerId: string, items: number[]) => void;
   onGoToRound: (roundIndex: number) => void;
   onAddRound: () => void;
   onBack: () => void;
   onEditMatch?: () => void;
   onFinishMatch: () => void;
+  onResetMatch: () => void;
   onResumeMatch: () => void;
   onRepeatMatch: () => void;
   onDeleteMatch: () => void;
@@ -57,6 +65,7 @@ type Props = {
 
 export function GameScreen({
   state,
+  matchId,
   matchTitle,
   resultsRanking,
   isMatchFinished = false,
@@ -66,6 +75,10 @@ export function GameScreen({
   roundLabels,
   isWinnerOnlyMatch = false,
   onSetScore,
+  onAdjustScore,
+  onChangeScoreLayout,
+  onChangeScoreTileWidth,
+  onChangeScoreRoundOrder,
   onSetBreakdown,
   onGoToRound,
   onAddRound,
@@ -79,11 +92,16 @@ export function GameScreen({
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const [finishModalVisible, setFinishModalVisible] = useState(false);
   const [exitModalVisible, setExitModalVisible] = useState(false);
   const [actionsMenuVisible, setActionsMenuVisible] = useState(false);
   const [rankingModalVisible, setRankingModalVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [repeatConfirmVisible, setRepeatConfirmVisible] = useState(false);
   const [viewingResults, setViewingResults] = useState(isMatchFinished);
+
+  useEffect(() => {
+    setViewingResults(isMatchFinished);
+  }, [matchId]);
 
   useEffect(() => {
     if (isMatchFinished) {
@@ -105,11 +123,6 @@ export function GameScreen({
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
-        if (finishModalVisible) {
-          setFinishModalVisible(false);
-          return true;
-        }
-
         if (rankingModalVisible) {
           setRankingModalVisible(false);
           return true;
@@ -127,7 +140,7 @@ export function GameScreen({
 
         if (showResults) {
           if (showingUnsavedResults) {
-            setExitModalVisible(true);
+            setViewingResults(false);
           } else {
             onBack();
           }
@@ -142,7 +155,6 @@ export function GameScreen({
     return () => subscription.remove();
   }, [
     exitModalVisible,
-    finishModalVisible,
     actionsMenuVisible,
     rankingModalVisible,
     onBack,
@@ -168,7 +180,6 @@ export function GameScreen({
   const pointsGoal = formatPointsGoal(state);
 
   const handleSaveFinished = () => {
-    setFinishModalVisible(false);
     setViewingResults(true);
     onFinishMatch();
   };
@@ -178,9 +189,23 @@ export function GameScreen({
     onResumeMatch();
   };
 
-  const handleViewResults = () => {
-    setFinishModalVisible(false);
-    setViewingResults(true);
+  const handleRepeatMatch = () => {
+    setViewingResults(false);
+    onRepeatMatch();
+  };
+
+  const handleRepeatPress = () => {
+    if (showingUnsavedResults) {
+      setRepeatConfirmVisible(true);
+      return;
+    }
+    handleRepeatMatch();
+  };
+
+  const handleRepeatSaving = () => {
+    setRepeatConfirmVisible(false);
+    onFinishMatch();
+    handleRepeatMatch();
   };
 
   const handleSaveAndExit = () => {
@@ -233,11 +258,27 @@ export function GameScreen({
               {pointsGoal && (
                 <Text style={styles.goal}>{pointsGoal}</Text>
               )}
-              {leader && (
+              {leader && state.settings.lowestScoreLoses && rankedPlayers.length > 1 ? (
+                <View style={styles.leaderRow}>
+                  <PoopIcon size={14} />
+                  <Text style={styles.leader} numberOfLines={1}>
+                    {(() => {
+                      const floor = getPlayerTotal(
+                        rankedPlayers[rankedPlayers.length - 1].id,
+                        state,
+                      );
+                      const names = rankedPlayers
+                        .filter((player) => getPlayerTotal(player.id, state) === floor)
+                        .map((player) => player.name);
+                      return `${names.join(', ')} ${names.length > 1 ? 'van' : 'va'} perdiendo`;
+                    })()}
+                  </Text>
+                </View>
+              ) : leader ? (
                 <Text style={styles.leader} numberOfLines={1}>
                   🏆 {leader.name} — {leaderTotal} pts
                 </Text>
-              )}
+              ) : null}
             </>
           )}
           {showResults && (
@@ -295,86 +336,140 @@ export function GameScreen({
               rounds={state.rounds}
               floorTotalAtZero={floorRoundTotalsAtZero}
               roundLabels={roundLabels}
+              lowestScoreWins={state.settings.lowestScoreWins === true}
+              lowestScoreLoses={state.settings.lowestScoreLoses === true}
+              pointsGoal={
+                state.settings.maxPointsToWin != null &&
+                state.settings.maxPointsToWin > 0
+                  ? state.settings.maxPointsToWin
+                  : null
+              }
             />
           )
         ) : (
           <TourAnchor id="match.scores" style={styles.scroll}>
-          <FlatList
+          <ScrollView
             style={styles.scroll}
-            data={state.players}
-            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            ListHeaderComponent={
-              pastRounds.length > 0 ? (
-                <View style={styles.listHeader}>
-                  <RoundHistory
-                    players={state.players}
-                    rounds={pastRounds}
-                    floorTotalAtZero={floorRoundTotalsAtZero}
-                    roundLabels={roundLabels}
-                  />
-                </View>
-              ) : null
-            }
-            renderItem={({ item }) => (
-              <PlayerCard
-                player={item}
-                total={getPlayerTotal(item.id, state)}
-                roundScore={getRoundScore(activeRound, item.id)}
-                breakdownItems={getPlayerBreakdownItems(
-                  activeBreakdown,
-                  item.id,
-                )}
-                onSetScore={(value) => onSetScore(item.id, value)}
-                onSetBreakdown={(items) => onSetBreakdown(item.id, items)}
+          >
+            {state.scoreLayout === 'cards' && pastRounds.length > 0 ? (
+              <RoundHistory
+                players={state.players}
+                rounds={pastRounds}
+                floorTotalAtZero={floorRoundTotalsAtZero}
+                roundLabels={roundLabels}
               />
+            ) : null}
+            {state.scoreLayout === 'table' ? (
+              <ScoreTableView
+                players={state.players}
+                rounds={state.rounds}
+                roundBreakdowns={state.roundBreakdowns}
+                activeRoundIndex={state.activeRoundIndex}
+                roundLabels={roundLabels}
+                onGoToRound={onGoToRound}
+                onSetScore={onSetScore}
+                onSetBreakdown={onSetBreakdown}
+                maxRounds={state.settings.maxRounds}
+                onAddRound={onAddRound}
+                roundOrder={state.scoreRoundOrder}
+              />
+            ) : state.scoreLayout === 'big' ? (
+              <ScoreBigView
+                players={state.players}
+                roundScores={activeRound}
+                tileWidth={state.scoreTileWidth}
+                breakdown={activeBreakdown}
+                onSetScore={onSetScore}
+                onSetBreakdown={onSetBreakdown}
+                onAdjustScore={onAdjustScore}
+              />
+            ) : (
+              state.players.map((item) => (
+                <PlayerCard
+                  key={item.id}
+                  player={item}
+                  total={getPlayerTotal(item.id, state)}
+                  roundScore={getRoundScore(activeRound, item.id)}
+                  breakdownItems={getPlayerBreakdownItems(
+                    activeBreakdown,
+                    item.id,
+                  )}
+                  onSetScore={(value) => onSetScore(item.id, value)}
+                  onSetBreakdown={(items) => onSetBreakdown(item.id, items)}
+                />
+              ))
             )}
-          />
+          </ScrollView>
           </TourAnchor>
         )}
       </View>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          !showResults && state.scoreLayout === 'table' && styles.footerHidden,
+        ]}
+      >
         {showResults ? (
-          <>
-            {showingUnsavedResults ? (
-              <>
-                <Button
-                  label="Guardar partida"
-                  onPress={handleSaveFinished}
-                />
-                <Button
-                  label="Retomar partida"
-                  onPress={handleResumeMatch}
-                  variant="secondary"
-                />
-                <Button
-                  label="Salir sin guardar"
-                  onPress={onDeleteMatch}
-                  variant="danger"
-                />
-              </>
-            ) : (
-              <>
-                <Button label="Repetir partida" onPress={onRepeatMatch} />
-                {!isDedicatedGameMatch ? (
+          <View style={styles.footerGrid}>
+            <View style={styles.footerRow}>
+              {showingUnsavedResults ? (
+                <View style={styles.footerCell}>
                   <Button
-                    label="Retomar partida"
+                    label="Guardar finalizada"
+                    onPress={handleSaveFinished}
+                    numberOfLines={1}
+                    style={styles.footerButton}
+                  />
+                </View>
+              ) : !isDedicatedGameMatch ? (
+                <View style={styles.footerCell}>
+                  <Button
+                    label="Seguir jugando"
                     onPress={handleResumeMatch}
                     variant="secondary"
+                    numberOfLines={1}
+                    style={styles.footerButton}
                   />
-                ) : null}
+                </View>
+              ) : null}
+              <View style={styles.footerCell}>
+                <Button
+                  label="Repetir partida"
+                  onPress={handleRepeatPress}
+                  variant={showingUnsavedResults ? 'secondary' : 'primary'}
+                  numberOfLines={1}
+                  style={styles.footerButton}
+                />
+              </View>
+            </View>
+            <View style={styles.footerRow}>
+              {!isDedicatedGameMatch && showingUnsavedResults ? (
+                <View style={styles.footerCell}>
+                  <Button
+                    label="Seguir jugando"
+                    onPress={handleResumeMatch}
+                    variant="secondary"
+                    numberOfLines={1}
+                    style={styles.footerButton}
+                  />
+                </View>
+              ) : null}
+              <View style={styles.footerCell}>
                 <Button
                   label="Eliminar partida"
-                  onPress={onDeleteMatch}
+                  onPress={() => setDeleteConfirmVisible(true)}
                   variant="danger"
+                  numberOfLines={1}
+                  style={styles.footerButton}
                 />
-              </>
-            )}
-          </>
-        ) : (
+              </View>
+            </View>
+          </View>
+        ) : state.scoreLayout === 'table' ? null : (
           <>
             <Text style={styles.roundsLabel}>Rondas</Text>
             <TourAnchor id="match.rounds">
@@ -403,12 +498,22 @@ export function GameScreen({
                 : undefined
             }
             onEditMatch={() => onEditMatch?.()}
-            onFinishMatch={() => setFinishModalVisible(true)}
+            onFinishMatch={() => setViewingResults(true)}
             canEditMatch={canEditMatch}
+            scoreLayout={state.scoreLayout}
+            scoreTileWidth={state.scoreTileWidth}
+            onChangeScoreLayout={onChangeScoreLayout}
+            onChangeScoreTileWidth={onChangeScoreTileWidth}
+            scoreRoundOrder={state.scoreRoundOrder}
+            onChangeScoreRoundOrder={onChangeScoreRoundOrder}
           />
           <CurrentRankingModal
             visible={rankingModalVisible}
             ranking={ranking}
+            players={state.players}
+            rounds={state.rounds}
+            floorTotalAtZero={floorRoundTotalsAtZero}
+            roundLabels={roundLabels}
             pointsGoal={
               state.settings.maxPointsToWin != null &&
               state.settings.maxPointsToWin > 0
@@ -416,14 +521,6 @@ export function GameScreen({
                 : null
             }
             onClose={() => setRankingModalVisible(false)}
-          />
-          <FinishMatchModal
-            visible={finishModalVisible}
-            matchTitle={matchTitle}
-            onClose={() => setFinishModalVisible(false)}
-            onViewResults={handleViewResults}
-            onSaveFinished={handleSaveFinished}
-            onDelete={onDeleteMatch}
           />
           <ExitMatchModal
             visible={exitModalVisible}
@@ -434,6 +531,32 @@ export function GameScreen({
           />
         </>
       )}
+
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        title="¿Eliminar partida?"
+        message="Se borra de forma permanente, con sus puntos y rondas."
+        confirmLabel="Eliminar"
+        danger
+        onConfirm={() => {
+          setDeleteConfirmVisible(false);
+          onDeleteMatch();
+        }}
+        onCancel={() => setDeleteConfirmVisible(false)}
+      />
+      <ConfirmModal
+        visible={repeatConfirmVisible}
+        title="¿Guardar la partida actual?"
+        message="Vas a empezar otra con la misma configuración y los mismos jugadores."
+        confirmLabel="Guardar y repetir"
+        secondaryLabel="Repetir sin guardar"
+        onConfirm={handleRepeatSaving}
+        onSecondary={() => {
+          setRepeatConfirmVisible(false);
+          handleRepeatMatch();
+        }}
+        onCancel={() => setRepeatConfirmVisible(false)}
+      />
 
     </View>
   );
@@ -507,6 +630,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.warning,
     fontWeight: '600',
   },
+  leaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
   leader: {
     fontSize: 14,
     color: theme.textMuted,
@@ -523,17 +652,28 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     gap: 12,
     paddingBottom: 8,
   },
-  listHeader: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
   footer: {
     gap: 10,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: theme.border,
+  },
+  footerGrid: {
+    gap: 8,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  footerCell: {
+    flex: 1,
+  },
+  footerButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  footerHidden: {
+    display: 'none',
   },
   roundsLabel: {
     fontSize: 13,
