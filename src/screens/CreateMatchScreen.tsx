@@ -345,7 +345,7 @@ export function CreateMatchScreen({
 
   const steps = isMenteVacuna
     ? (['rules', 'summary'] as const)
-    : isRegicide || players.length === 1
+    : isRegicide || (players.length === 1 && !isHeroQuest)
       ? (['rules', 'players', 'summary'] as const)
       : (['rules', 'players', 'order', 'summary'] as const);
   const [stepIndex, setStepIndex] = useState(0);
@@ -373,7 +373,9 @@ export function CreateMatchScreen({
       : step === 'players'
         ? 'Jugadores'
         : step === 'order'
-          ? 'Orden de juego'
+          ? isHeroQuest && players.length === 1
+            ? 'Ficha del héroe'
+            : 'Orden de juego'
           : 'Resumen';
 
   const goToPreviousStep = () => {
@@ -682,7 +684,9 @@ export function CreateMatchScreen({
           </Pressable>
         </View>
       ) : null}
-      <Text style={styles.specialHint}>Arrastra para cambiar el orden.</Text>
+      {players.length > 1 ? (
+        <Text style={styles.specialHint}>Arrastra para cambiar el orden.</Text>
+      ) : null}
       {tokenColorHint ? (
         <Text style={styles.specialHint}>{tokenColorHint}</Text>
       ) : null}
